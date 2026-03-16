@@ -16,9 +16,6 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
-  Users,
-  Zap,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -78,7 +75,7 @@ export const Bookings: React.FC = () => {
 
     // الحجوزات في هذا اليوم
     const dayBookings = getTodayBookings().filter(
-      (b) => new Date(b.bookingtime).toLocaleDateString('en-CA') === date
+      (b: any) => new Date(b.bookingtime).toLocaleDateString('en-CA') === date
     )
 
     for (let hour = workingHours.start; hour < workingHours.end; hour++) {
@@ -87,7 +84,7 @@ export const Bookings: React.FC = () => {
         const timeMs = hour * 60 + min
 
         // تحقق من التضاربات
-        const hasConflict = dayBookings.some((booking) => {
+        const hasConflict = dayBookings.some((booking: any) => {
           const bookingHour = parseInt(booking.bookingtime.split('T')[1].substring(0, 2))
           const bookingMin = parseInt(booking.bookingtime.split('T')[1].substring(3, 5))
           const bookingTimeMs = bookingHour * 60 + bookingMin
@@ -119,15 +116,15 @@ export const Bookings: React.FC = () => {
   React.useEffect(() => {
     if (formData.bookingTime) {
       const dayBookings = getTodayBookings().filter(
-        (b) => new Date(b.bookingtime).toLocaleDateString('en-CA') === formData.bookingDate
+        (b: any) => new Date(b.bookingtime).toLocaleDateString('en-CA') === formData.bookingDate
       )
-      const queueNumber = (dayBookings.filter((b) => 
+      const queueNumber = (dayBookings.filter((b: any) => 
         parseInt(b.bookingtime.split('T')[1]) < parseInt(formData.bookingTime)
       ).length || 0) + 1
 
       const totalWaitMinutes = dayBookings
-        .filter((b) => parseInt(b.bookingtime.split('T')[1]) < parseInt(formData.bookingTime))
-        .reduce((sum, b) => sum + (b.duration || 30), 0)
+        .filter((b: any) => parseInt(b.bookingtime.split('T')[1]) < parseInt(formData.bookingTime))
+        .reduce((sum, b: any) => sum + (b.duration || 30), 0)
 
       setPreviewInfo({
         queueNumber,
@@ -202,9 +199,9 @@ export const Bookings: React.FC = () => {
           clientId: formData.clientId,
           clientName: formData.clientName,
           clientPhone: formData.clientPhone,
-          barberid: formData.barberId || undefined,
-          servicetype: formData.serviceType || undefined,
-          bookingtime: bookingTime,
+          barberId: formData.barberId || undefined,
+          serviceType: formData.serviceType || undefined,
+          bookingTime: bookingTime,
           duration: formData.duration,
         }
 
@@ -249,17 +246,17 @@ export const Bookings: React.FC = () => {
     }
   }
 
-  const handleEdit = (booking: Booking) => {
-    const bookingDate = booking.bookingTime.split('T')[0]
-    const bookingTime = booking.bookingTime.split('T')[1]?.substring(0, 5) || '10:00'
+  const handleEdit = (booking: any) => {
+    const bookingDate = booking.bookingtime.split('T')[0]
+    const bookingTime = booking.bookingtime.split('T')[1]?.substring(0, 5) || '10:00'
 
     setFormData({
       searchQuery: '',
-      clientId: booking.clientId,
-      clientName: booking.clientName,
-      clientPhone: booking.clientPhone,
-      barberId: booking.barberId || null,
-      serviceType: booking.serviceType || '',
+      clientId: booking.clientid,
+      clientName: booking.clientname,
+      clientPhone: booking.clientphone,
+      barberId: booking.barberid || null,
+      serviceType: booking.servicetype || '',
       bookingDate,
       bookingTime,
       duration: booking.duration || 30,
