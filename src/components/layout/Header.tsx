@@ -1,9 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useTheme } from '../../hooks/useTheme'
+import { useAuth } from '../../hooks/useAuth'
 import { useTranslation } from 'react-i18next'
-import { Moon, Sun, Globe } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Moon, Sun, Globe, LogOut, User } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -13,6 +15,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { language, toggleLanguage } = useLanguage()
   const { theme, toggleTheme } = useTheme()
   const { t } = useTranslation()
+  const { user, role, signOut } = useAuth()
+  const navigate = useNavigate()
+  const [showUserMenu, setShowUserMenu] = useState(false)
+
+  const handleLogout = async () => {
+    await signOut()
+    setShowUserMenu(false)
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header className="glass-dark fixed top-0 left-0 right-0 h-16 z-40 border-b border-white/5 backdrop-blur-xl">
@@ -71,6 +82,49 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               {language === 'ar' ? 'AR' : 'EN'}
             </span>
           </motion.button>
+
+          {/* User Menu */}
+          <div className="relative">
+            <motion.button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="p-2 hover:bg-white/10 rounded-lg transition flex items-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <User size={18} className="text-gold-400" />
+              <span className="text-xs sm:text-sm text-white/70 hidden sm:inline truncate max-w-[100px]">
+                {user?.email}
+              </span>
+            </motion.button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {showUserMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute right-0 mt-2 w-48 bg-slate-900 border border-white/10 rounded-lg shadow-lg overflow-hidden"
+                >
+                  <div className="px-4 py-3 border-b border-white/10">
+                    <p className="text-white text-sm font-medium">{user?.email}</p>
+                    <p className="text-gold-400 text-xs mt-1">
+                      {role === 'admin' ? 'Administrator' : 'Shop Owner'}
+                    </p>
+                  </div>
+
+                  <motion.button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-red-400 hover:bg-white/5 transition"
+                    whileHover={{ paddingLeft: 20 }}
+                  >
+                    <LogOut size={16} />
+                    <span>{t('common.logout') || 'Logout'}</span>
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </header>

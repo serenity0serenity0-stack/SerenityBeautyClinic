@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../../hooks/useLanguage'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,15 +27,16 @@ interface SidebarProps {
   isOpen: boolean
   onClose: () => void
   currentPath: string
-  onNavigate: (path: string) => void
+  onNavigate?: (path: string) => void
 }
 
-export const Sidebar: React.FC<SidebarProps> =({ isOpen, onClose, currentPath, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath, onNavigate }) => {
   const { t } = useTranslation()
   const { language } = useLanguage()
+  const navigate = useNavigate()
 
   const links: SidebarLink[] = [
-    { icon: <Home size={20} />, label: t('navigation.dashboard'), href: '/' },
+    { icon: <Home size={20} />, label: t('navigation.dashboard'), href: '/dashboard' },
     { icon: <ShoppingCart size={20} />, label: t('navigation.pos'), href: '/pos' },
     { icon: <Users size={20} />, label: t('navigation.clients'), href: '/clients' },
     { icon: <Scissors size={20} />, label: 'الحلاقين', href: '/barbers' },
@@ -48,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> =({ isOpen, onClose, currentPath, o
   ]
 
   const handleNavigate = (path: string) => {
-    onNavigate(path)
+    navigate(path)
     onClose()
   }
 
