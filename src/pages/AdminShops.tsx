@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/db/supabase'
 import toast from 'react-hot-toast'
-import { Edit2, Trash2, Eye } from 'lucide-react'
+import { Trash2, Eye } from 'lucide-react'
 
 interface ShopWithPlan {
   id: string
@@ -11,8 +11,8 @@ interface ShopWithPlan {
   subscription_end_date: string | null
   plan_id: string
   plans: {
-    name: string
-    pricing_type: string
+    name: any
+    pricing_type: any
   } | null
 }
 
@@ -43,7 +43,7 @@ export const AdminShops = () => {
           .order('created_at', { ascending: false })
 
         if (error) throw error
-        setShops(data || [])
+        setShops((data as unknown as ShopWithPlan[]) || [])
       } catch (error: any) {
         console.error('Error fetching shops:', error)
         toast.error('Failed to load shops')
@@ -82,7 +82,7 @@ export const AdminShops = () => {
         `)
         .order('created_at', { ascending: false })
       
-      setShops(data || [])
+      setShops((data as unknown as ShopWithPlan[]) || [])
       setShowModal(false)
     } catch (error: any) {
       toast.error('Failed to update subscription')

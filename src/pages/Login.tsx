@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
-import { useLanguage } from '@/hooks/useLanguage'
 import { motion } from 'framer-motion'
 import { Mail, Lock, LogIn } from 'lucide-react'
 
@@ -28,7 +28,7 @@ type LoginFormInputs = z.infer<typeof loginSchema>
 export default function Login() {
   const navigate = useNavigate()
   const { signIn, loading: authLoading, error: authError, role } = useAuth()
-  const { t, i18n } = useLanguage()
+  const { t, i18n } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const {

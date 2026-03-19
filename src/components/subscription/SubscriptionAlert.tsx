@@ -1,8 +1,6 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useState } from 'react'
 import { checkSubscriptionStatus, SubscriptionStatus, getBillingInfo } from '@/utils/subscriptionChecker'
-import { supabase } from '@/db/supabase'
-import toast from 'react-hot-toast'
 import { AlertCircle, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 
 export const SubscriptionAlert = () => {

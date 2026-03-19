@@ -33,7 +33,7 @@ interface SidebarProps {
   onNavigate?: (path: string) => void
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }) => {
   const { t } = useTranslation()
   const { language } = useLanguage()
   const { role } = useAuth()

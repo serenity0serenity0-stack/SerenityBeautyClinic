@@ -20,7 +20,7 @@ export const AdminPlans = () => {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    pricing_type: 'per_transaction' as const,
+    pricing_type: 'per_transaction' as 'per_transaction' | 'per_service' | 'quota',
     price_per_unit: '',
     quota_limit: '',
     monthly_price: '',
@@ -119,7 +119,7 @@ export const AdminPlans = () => {
     setEditingPlan(plan)
     setFormData({
       name: plan.name,
-      pricing_type: plan.pricing_type,
+      pricing_type: (plan.pricing_type as 'per_transaction' | 'per_service' | 'quota'),
       price_per_unit: plan.price_per_unit?.toString() || '',
       quota_limit: plan.quota_limit?.toString() || '',
       monthly_price: plan.monthly_price?.toString() || '',
