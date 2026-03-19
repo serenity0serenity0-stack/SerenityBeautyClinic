@@ -46,7 +46,12 @@
     "amount": "Amount",
     "total": "Total",
     "currency": "EGP",
-    "delete_confirm": "Are you sure you want to delete?"
+    "delete_confirm": "Are you sure you want to delete?",
+    "login": "Login",
+    "password": "Password",
+    "demoCredentials": "Demo Credentials:",
+    "logout": "Logout",
+    "allRightsReserved": "All rights reserved."
   },
   "navigation": {
     "dashboard": "Dashboard",

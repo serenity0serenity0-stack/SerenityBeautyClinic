@@ -46,7 +46,12 @@
     "amount": "المبلغ",
     "total": "الإجمالي",
     "currency": "ج.م",
-    "delete_confirm": "هل أنت متأكد من الحذف؟"
+    "delete_confirm": "هل أنت متأكد من الحذف؟",
+    "login": "تسجيل الدخول",
+    "password": "كلمة المرور",
+    "demoCredentials": "بيانات غير حقيقية للاختبار:",
+    "logout": "تسجيل الخروج",
+    "allRightsReserved": "جميع الحقوق محفوظة."
   },
   "navigation": {
     "dashboard": "لوحة التحكم",
