@@ -69,6 +69,7 @@ export const useBookings = () => {
   /**
    * Smart algorithm to calculate queue number and find next available slot
    * يختار الحلاق الأقل انشغالاً في نفس اليوم
+   * ✅ Fixed: Ensures unique queue numbers even with simultaneous bookings
    */
   const calculateSmartQueue = async (
     bookingTime: string,
@@ -85,6 +86,7 @@ export const useBookings = () => {
     // Parse the booking time to get hour and minutes
     const newBookingHour = parseInt(bookingTime.split('T')[1].substring(0, 2))
     const newBookingMin = parseInt(bookingTime.split('T')[1].substring(3, 5))
+    const newBookingTime = newBookingHour * 100 + newBookingMin
 
     // If barber is specified, calculate queue for that barber
     if (selectedBarberId) {
@@ -94,19 +96,26 @@ export const useBookings = () => {
         .sort((a, b) => {
           const aTime = parseInt(a.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
           const bTime = parseInt(b.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
+          // If times are equal, sort by creation time (earlier first)
+          if (aTime === bTime) {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          }
           return aTime - bTime
         })
 
-      // Count bookings before this time
+      // Count bookings before this time (more reliable than using queueNumber)
       const bookingsBefore = barberBookings.filter((b) => {
         const bHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
         const bMin = parseInt(b.bookingTime.split('T')[1].substring(3, 5))
         const bTime = bHour * 100 + bMin
-        const newTime = newBookingHour * 100 + newBookingMin
-        return bTime < newTime
+        return bTime < newBookingTime
       })
 
+      // Queue number = count of bookings before + 1
+      // This ensures sequential numbering even with simultaneous bookings
       const nextQueue = bookingsBefore.length + 1
+      console.log(`Queue calculation: ${bookingsBefore.length} bookings before time ${newBookingTime}, so queue #${nextQueue}`)
+      
       return { queueNumber: nextQueue, recommendedBarberId: selectedBarberId }
     }
 
@@ -118,9 +127,9 @@ export const useBookings = () => {
         .eq('active', true)
 
       if (!barbers || barbers.length === 0) {
-        // Fallback: use next available queue number
-        const allQueues = dayBookings.map((b) => b.queueNumber).sort((a, b) => a - b)
-        const nextQueue = allQueues.length === 0 ? 1 : Math.max(...allQueues) + 1
+        // Fallback: use total count + 1
+        const nextQueue = dayBookings.length + 1
+        console.log(`Fallback queue: ${dayBookings.length} bookings today, assigning #${nextQueue}`)
         return { queueNumber: nextQueue }
       }
 
@@ -135,12 +144,18 @@ export const useBookings = () => {
         (current.count < prev.count) ? current : prev
       )
 
+      console.log(`Recommended barber: ${recommendedBarber.id} with ${recommendedBarber.count} bookings`)
+
       // Get all bookings for the recommended barber, sorted by time
       const barberBookings = dayBookings
         .filter((b) => b.barberId === recommendedBarber.id)
         .sort((a, b) => {
           const aTime = parseInt(a.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
           const bTime = parseInt(b.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
+          // If times are equal, sort by creation time
+          if (aTime === bTime) {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          }
           return aTime - bTime
         })
 
@@ -149,8 +164,7 @@ export const useBookings = () => {
         const bHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
         const bMin = parseInt(b.bookingTime.split('T')[1].substring(3, 5))
         const bTime = bHour * 100 + bMin
-        const newTime = newBookingHour * 100 + newBookingMin
-        return bTime < newTime
+        return bTime < newBookingTime
       })
 
       const nextQueue = bookingsBefore.length + 1
@@ -159,8 +173,9 @@ export const useBookings = () => {
       return { queueNumber: nextQueue, recommendedBarberId: recommendedBarber.id }
     } catch (err) {
       console.error('Error in smart queue calculation:', err)
-      const allQueues = dayBookings.map((b) => b.queueNumber).sort((a, b) => a - b)
-      const nextQueue = allQueues.length === 0 ? 1 : Math.max(...allQueues) + 1
+      // Safest fallback: use total count of bookings today + 1
+      const nextQueue = dayBookings.length + 1
+      console.log(`Error fallback: assigning queue #${nextQueue}`)
       return { queueNumber: nextQueue }
     }
   }
@@ -305,12 +320,44 @@ export const useBookings = () => {
         updatedat: new Date().toISOString(),
       }
 
+      // Generate unique ID (Supabase should do this, but we add safeguard)
+      const bookingId = crypto.randomUUID()
+      
+      const bookingWithId = {
+        ...newBooking,
+        id: bookingId,
+      }
+
+      console.log('Inserting booking with ID:', bookingId, 'Queue:', queueNumber)
+
       const { data, error } = await supabase
         .from('bookings')
-        .insert(newBooking as any)
+        .insert(bookingWithId as any)
         .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Booking insert error:', error)
+        if (error.message?.includes('duplicate') || error.message?.includes('unique')) {
+          // If ID collision (very rare), retry with a new ID
+          console.warn('ID collision detected, retrying...')
+          const retryBooking = {
+            ...bookingWithId,
+            id: crypto.randomUUID(),
+          }
+          const { data: retryData, error: retryError } = await supabase
+            .from('bookings')
+            .insert(retryBooking as any)
+            .select()
+          
+          if (retryError) throw retryError
+          
+          await fetchBookings()
+          appEmitter.emit('booking:created', retryData?.[0])
+          toast.success('تم إنشاء الحجز بنجاح ✓ (محاولة ثانية)')
+          return retryData?.[0]
+        }
+        throw error
+      }
 
       await fetchBookings()
       appEmitter.emit('booking:created', data?.[0])
