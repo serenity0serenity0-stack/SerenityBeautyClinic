@@ -88,6 +88,7 @@
     "clients_this_month": "Clients This Month",
     "month_revenue": "Month Revenue",
     "today_expenses": "Today's Expenses",
+    "daily_net": "Daily Net",
     "revenue_vs_last_month": "vs Last Month",
     "last_transactions": "Last Transactions",
     "today_activity": "Today's Activity",
@@ -101,7 +102,9 @@
     "add_expense": "Add Expense",
     "transactions": "Transactions",
     "expenses": "Expenses",
-    "last_updated": "Last Updated"
+    "last_updated": "Last Updated",
+    "no_transactions": "No transactions yet",
+    "unknown_client": "Unknown Client"
   },
   "pos": {
     "title": "Cashier",

@@ -78,6 +78,7 @@
     "clients_this_month": "العملاء هذا الشهر",
     "month_revenue": "إيراد الشهر",
     "today_expenses": "مصروفات اليوم",
+    "daily_net": "صافي اليوم",
     "revenue_vs_last_month": "مقارنة مع الشهر الماضي",
     "last_transactions": "آخر العمليات",
     "today_activity": "نشاط اليوم",
@@ -91,7 +92,9 @@
     "add_expense": "إضافة مصروف",
     "transactions": "المعاملات",
     "expenses": "المصروفات",
-    "last_updated": "آخر تحديث"
+    "last_updated": "آخر تحديث",
+    "no_transactions": "لا توجد معاملات بعد",
+    "unknown_client": "عميل غير معروف"
   },
   "pos": {
     "title": "الكاشير",

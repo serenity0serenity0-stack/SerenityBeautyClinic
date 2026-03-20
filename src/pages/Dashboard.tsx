@@ -220,7 +220,7 @@ export const Dashboard: React.FC = () => {
           suffix=" ج.م"
         />
         <KPICard
-          title="صافي اليوم"
+          title={t('dashboard.daily_net')}
           value={todayRevenue - todayExpenses}
           icon={TrendingUp}
           suffix=" ج.م"
@@ -247,7 +247,7 @@ export const Dashboard: React.FC = () => {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold text-sm md:text-base truncate">
-                      {tx.clientName || 'Unknown'}
+                      {tx.clientName || t('dashboard.unknown_client')}
                     </p>
                     <p className="text-xs md:text-xs text-gray-400">
                       {tx.date} {tx.time}
@@ -257,7 +257,7 @@ export const Dashboard: React.FC = () => {
                 </motion.div>
               ))
             ) : (
-              <p className="text-center text-gray-400 py-6">لا توجد معاملات بعد</p>
+              <p className="text-center text-gray-400 py-6">{t('dashboard.no_transactions')}</p>
             )}
           </div>
         </GlassCard>
