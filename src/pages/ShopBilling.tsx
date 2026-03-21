@@ -51,42 +51,40 @@ export const ShopBilling = () => {
     try {
       setLoading(true)
 
-      // Fetch shop data with plan
-      const { data: shopsData, error: shopError } = await supabase
+      // Query 1: Get shop data
+      const { data: shop, error: shopError } = await supabase
         .from('shops')
-        .select(`
-          id,
-          name,
-          subscription_status,
-          subscription_end_date,
-          plan_id,
-          plans (
-            id,
-            name,
-            pricing_type,
-            price_per_unit,
-            monthly_price,
-            quota_limit
-          )
-        `)
+        .select('id, name, subscription_status, subscription_end_date, plan_id')
         .eq('id', shopId!)
         .single()
 
       if (shopError) throw shopError
 
-      // Parse the plan data correctly
-      const shop: ShopData = {
-        id: shopsData.id,
-        name: shopsData.name,
-        subscription_status: shopsData.subscription_status,
-        subscription_end_date: shopsData.subscription_end_date,
-        plan_id: shopsData.plan_id,
-        plan: shopsData.plans 
-          ? (Array.isArray(shopsData.plans) ? shopsData.plans[0] : shopsData.plans)
-          : null,
+      // Query 2: Get plan data separately using plan_id if it exists
+      let plan: PlanData | null = null
+      if (shop?.plan_id) {
+        const { data: planData, error: planError } = await supabase
+          .from('plans')
+          .select('id, name, pricing_type, price_per_unit, monthly_price, quota_limit')
+          .eq('id', shop.plan_id)
+          .single()
+
+        if (!planError && planData) {
+          plan = planData
+        }
       }
 
-      setShopData(shop)
+      // Build shop data object
+      const shopData: ShopData = {
+        id: shop.id,
+        name: shop.name,
+        subscription_status: shop.subscription_status,
+        subscription_end_date: shop.subscription_end_date,
+        plan_id: shop.plan_id,
+        plan,
+      }
+
+      setShopData(shopData)
 
       // Get current month usage (using Egypt timezone)
       const currentYearMonth = getEgyptYearMonth()
@@ -103,8 +101,7 @@ export const ShopBilling = () => {
       setCurrentMonthUsage(monthUsage)
 
       // Calculate estimated bill
-      if (shop.plan) {
-        const plan = shop.plan
+      if (plan) {
         let bill = 0
         if (plan.pricing_type === 'quota') {
           bill = plan.monthly_price || 0
