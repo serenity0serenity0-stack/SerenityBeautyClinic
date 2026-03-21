@@ -17,6 +17,30 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import Fuse from 'fuse.js'
 
+// ✅ Normalize search input - fix Arabic keyboard/IME issues
+const normalizeSearchInput = (value: string): string => {
+  if (!value) return ''
+  
+  // Map Arabic numerals to English
+  const arabicToEnglish: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+  }
+  
+  let normalized = value
+  
+  // Convert Arabic numerals to English
+  for (const [arabic, english] of Object.entries(arabicToEnglish)) {
+    normalized = normalized.replace(new RegExp(arabic, 'g'), english)
+  }
+  
+  // Remove any control characters or encoding issues
+  // Keep only letters, numbers, and common symbols (+ - space)
+  normalized = normalized.replace(/[^\u0621-\u064Ea-zA-Z0-9\s\-+]/g, '')
+  
+  return normalized.trim()
+}
+
 interface CartItem {
   id: string
   name: string
@@ -86,12 +110,41 @@ export const POS: React.FC = () => {
     }
   }, [services, getVariantsByServiceId])
 
-  // Fuzzy search clients
+  // Fuzzy search clients with enhanced phone search
   const fuse = new Fuse(clients, {
-    keys: ['name', 'phone'],
-    threshold: 0.3,
+    keys: [
+      { name: 'name', weight: 0.9 },
+      { name: 'phone', weight: 0.8 }
+    ],
+    threshold: 0.4,  // ✅ More lenient threshold for partial matches
+    includeScore: true,
   })
-  const searchResults = searchQuery.trim() ? fuse.search(searchQuery) : []
+  
+  // ✅ Filter results based on normalized search query
+  const searchResults = (() => {
+    const normalized = normalizeSearchInput(searchQuery)
+    if (!normalized) return []
+    
+    // First try Fuse fuzzy search
+    let results = fuse.search(normalized)
+    
+    // If few results, try literal phone number match
+    if (results.length < 3 && /^\d+$/.test(normalized)) {
+      const phoneMatches = clients.filter(client => 
+        client.phone && client.phone.includes(normalized)
+      )
+      
+      // Combine and deduplicate results
+      const existingIds = new Set(results.map(r => r.item.id))
+      phoneMatches.forEach(client => {
+        if (!existingIds.has(client.id)) {
+          results.push({ item: client, score: 0 } as any)
+        }
+      })
+    }
+    
+    return results
+  })()
 
   const handleAddService = async (service: any) => {
     const variants = allVariants[service.id]
@@ -619,7 +672,13 @@ export const POS: React.FC = () => {
               type="text"
               placeholder="ابحث باسم أو هاتف"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                // ✅ Use currentTarget to get the actual DOM element value
+                const inputValue = e.currentTarget.value
+                // ✅ Normalize the input to handle keyboard/IME issues
+                const normalizedValue = normalizeSearchInput(inputValue)
+                setSearchQuery(normalizedValue)
+              }}
               autoFocus
               className="w-full pl-4 pr-10 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500"
             />
