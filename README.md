@@ -87,7 +87,24 @@ src/
 
 ## 🎯 Core Features
 
-### 1. **Point of Sale (POS)** — `/pos`
+### 1. **Customer Portal** — `/shop/:slug/*` ⭐ **NEW**
+- **5 Professional Templates**: Choose from Modern Minimalist, Luxury Premium, Dark Modern, Gradient, or Colorful designs
+- **Fully Customizable**: Colors, welcome message, branding
+- **Live Preview**: See how your portal looks before publishing
+- **Secure Access**: Customers register and login to book appointments
+- **Multi-Shop Support**: Each shop has unique portal with independent settings
+- **One-Click Admin Control**: Enable/disable portal from settings
+- **Auto-Created**: Portal automatically created when adding new shop
+
+#### Portal Pages:
+- **Landing** - 5 template options with live preview
+- **Login/Register** - Secure customer authentication
+- **Dashboard** - Customer overview with stats
+- **Bookings** - Real-time availability and appointment booking
+- **History** - Past visits and transactions
+- **Profile** - Update customer information
+
+### 2. **Point of Sale (POS)** — `/pos`
 - **Phone-first client search**: Type phone number to instantly find returning clients
 - **Service grid**: Browse services by category with one-click add to cart
 - **Dynamic cart**: Quantity controls, discount (% or fixed), payment method selection
@@ -174,7 +191,47 @@ src/
 
 ## 🟡 Recent Improvements & Fixes
 
-### ✅ Quality Enhancements (March 2026)
+### ✅ Customer Portal System (March 2026) 🎉 NEW
+**Complete customer-facing booking portal with 5 customizable templates**
+
+#### Portal Features:
+- **5 Professional Templates**: Modern Minimalist, Luxury Premium, Dark Modern, Gradient, Colorful
+- **Live Template Preview**: See exactly how your portal looks before publishing
+- **Customizable Branding**: 
+  - Primary, secondary, and accent colors
+  - Personalized welcome message
+  - Unique portal slug per shop
+  - Can be disabled/enabled by admin
+- **Auto Portal Creation**: Portal settings automatically created when shop is added
+- **Multi-Shop Support**: Each shop gets its own independent portal with unique slug
+- **Data Isolation**: Secure multi-tenant isolation - customers can only see their own shop
+
+#### Portal Pages:
+- 🏠 **Landing Page** - 5 different template designs
+- 🔐 **Login** - Secure customer authentication  
+- 📝 **Register** - New customer signup
+- 📊 **Dashboard** - Customer stats and quick links
+- 📅 **Bookings** - Browse available times and create appointments
+- 📜 **History** - View past visits and transactions
+- 👤 **Profile** - Update personal information
+
+#### Admin Portal Management:
+- **Settings Page**: Edit portal colors, templates, welcome message, enable/disable
+- **Real-time Preview**: See changes instantly as you edit
+- **Auto-disable on Suspension**: Portal automatically disabled when shop is inactive/suspended
+- **Better Loading States**: Improved UI feedback while portal settings load
+
+#### Security & Fixes (March 22, 2026):
+✅ Fixed column name mismatches (isActive → active)  
+✅ Fixed table name references (portal_customers → customer_users)  
+✅ Added shop_id isolation to prevent cross-shop data access  
+✅ Added is_active portal status check  
+✅ Enhanced error handling for missing portals  
+✅ Fixed settings table schema compatibility  
+
+---
+
+### ✅ Earlier Improvements (Previous Sessions)
 1. **Fixed Logic Error** in queue percentage calculation - now accurate
 2. **Standardized Arabic Translations** - consistent throughout system
 3. **Added Missing Translations** - complete i18n coverage
@@ -286,6 +343,9 @@ vercel
 - [x] Expense Tracking
 - [x] Booking System with Smart Scheduling
 - [x] Real-time Queue Display
+- [x] **Customer Portal with 5 Templates** ⭐ NEW
+- [x] Portal Live Preview & Customization ⭐ NEW
+- [x] Multi-Shop Portal Management ⭐ NEW
 - [x] Arabic/English Support
 - [x] Receipt Printing
 - [x] VIP Tracking
@@ -297,7 +357,7 @@ vercel
 - [ ] Staff Commission Tracking
 - [ ] Inventory Management
 - [ ] Video/Photo Gallery
-- [ ] Customer Portal
+- [ ] Portal SMS/Email Notifications
 - [ ] Mobile App (React Native)
 - [ ] Audio Alerts for Queue
 
