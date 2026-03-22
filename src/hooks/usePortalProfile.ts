@@ -21,8 +21,8 @@ export function usePortalProfile(customerId?: string) {
     setLoading(true)
     try {
       const { data, error: err } = await supabase
-        .from('portal_customers')
-        .select('id, name, email, phone, phone_verified, email_verified')
+        .from('customer_users')
+        .select('id, full_name, email, phone')
         .eq('id', customerId)
         .single()
 
@@ -30,11 +30,11 @@ export function usePortalProfile(customerId?: string) {
       if (data) {
         setProfile({
           id: data.id,
-          name: data.name,
+          name: data.full_name,
           email: data.email,
           phone: data.phone,
-          phone_verified: data.phone_verified,
-          email_verified: data.email_verified
+          phone_verified: false,
+          email_verified: false
         })
       }
     } catch (err) {
@@ -59,8 +59,8 @@ export function usePortalProfile(customerId?: string) {
       setLoading(true)
       try {
         const { error: err } = await supabase
-          .from('portal_customers')
-          .update({ name, phone })
+          .from('customer_users')
+          .update({ full_name: name, phone })
           .eq('id', customerId)
 
         if (err) throw err
@@ -90,8 +90,8 @@ export function usePortalProfile(customerId?: string) {
         // In a real app, send SMS verification code
         // For now, we'll just mark as verified
         const { error: err } = await supabase
-          .from('portal_customers')
-          .update({ phone_verified: true })
+          .from('customer_users')
+          .update({ verified: true })
           .eq('id', customerId)
 
         if (err) throw err
@@ -120,8 +120,8 @@ export function usePortalProfile(customerId?: string) {
         // In a real app, send email verification code
         // For now, we'll just mark as verified
         const { error: err } = await supabase
-          .from('portal_customers')
-          .update({ email_verified: true })
+          .from('customer_users')
+          .update({ verified: true })
           .eq('id', customerId)
 
         if (err) throw err

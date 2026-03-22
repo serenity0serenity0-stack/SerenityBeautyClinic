@@ -48,7 +48,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         .from('services')
         .select('id, nameEn, nameAr, durationMinutes, price')
         .eq('shop_id', shopId)
-        .eq('isActive', true)
+        .eq('active', true)
 
       if (err) throw err
       setServices(data || [])
@@ -66,7 +66,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         .from('barbers')
         .select('id, name, email')
         .eq('shop_id', shopId)
-        .eq('isActive', true)
+        .eq('active', true)
         .order('name')
 
       if (err) throw err

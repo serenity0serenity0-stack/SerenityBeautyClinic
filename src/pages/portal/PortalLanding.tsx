@@ -307,13 +307,26 @@ export function PortalLanding() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
+          <p className="text-red-400 mb-4">{error || 'البوربتال غير موجود'}</p>
           <button
             onClick={() => navigate('/')}
             className="px-6 py-2 bg-gold-400 text-black rounded hover:bg-gold-500 transition"
           >
             العودة للرئيسة
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if portal is inactive
+  if (settings.is_active === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-5xl font-bold mb-4 text-white">قريباً</h1>
+          <p className="text-xl text-gray-400 mb-8">{settings.shop_name}</p>
+          <p className="text-gray-500">سيعود البوربتال قريباً</p>
         </div>
       </div>
     )
