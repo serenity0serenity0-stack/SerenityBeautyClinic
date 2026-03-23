@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { usePortalAuth } from '@/hooks/usePortalAuth'
 import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
 import { usePortalProfile } from '@/hooks/usePortalProfile'
-import { ArrowRight, Save, CheckCircle } from 'lucide-react'
+import { ArrowRight, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function PortalProfile() {
@@ -15,14 +15,12 @@ export function PortalProfile() {
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
 
   // Profile data
-  const { profile, loading: profileLoading, error: profileError, updateProfile, sendPhoneVerification, sendEmailVerification } = usePortalProfile(customer?.id)
+  const { profile, loading: profileLoading, error: profileError, updateProfile } = usePortalProfile(customer?.id)
 
   // Form state
   const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState({ name: '', phone: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' })
   const [updating, setUpdating] = useState(false)
-  const [verifyingPhone, setVerifyingPhone] = useState(false)
-  const [verifyingEmail, setVerifyingEmail] = useState(false)
 
   // Update browser title
   useEffect(() => {
@@ -42,6 +40,7 @@ export function PortalProfile() {
     if (profile) {
       setFormData({
         name: profile.name,
+        email: profile.email || '',
         phone: profile.phone || ''
       })
     }
@@ -51,6 +50,7 @@ export function PortalProfile() {
     if (isEditing) {
       setFormData({
         name: profile?.name || '',
+        email: profile?.email || '',
         phone: profile?.phone || ''
       })
     }
@@ -58,14 +58,14 @@ export function PortalProfile() {
   }
 
   const handleSave = async () => {
-    if (!formData.name || !formData.phone) {
+    if (!formData.name || !formData.email || !formData.phone) {
       toast.error('يرجى ملء جميع الحقول المطلوبة')
       return
     }
 
     setUpdating(true)
     try {
-      const success = await updateProfile(formData.name, formData.phone)
+      const success = await updateProfile(formData.name, formData.email, formData.phone)
       if (success) {
         toast.success('تم تحديث البيانات بنجاح')
         setIsEditing(false)
@@ -79,48 +79,6 @@ export function PortalProfile() {
     }
   }
 
-  const handlePhoneVerification = async () => {
-    if (!formData.phone) {
-      toast.error('يرجى إدخال رقم الهاتف')
-      return
-    }
-
-    setVerifyingPhone(true)
-    try {
-      const success = await sendPhoneVerification()
-      if (success) {
-        toast.success('تم التحقق من الهاتف بنجاح')
-      } else {
-        toast.error('فشل التحقق من الهاتف')
-      }
-    } catch (err) {
-      toast.error('خطأ في التحقق من الهاتف')
-    } finally {
-      setVerifyingPhone(false)
-    }
-  }
-
-  const handleEmailVerification = async () => {
-    if (!profile?.email) {
-      toast.error('لا يوجد بريد إلكتروني')
-      return
-    }
-
-    setVerifyingEmail(true)
-    try {
-      const success = await sendEmailVerification()
-      if (success) {
-        toast.success('تم التحقق من البريد الإلكتروني بنجاح')
-      } else {
-        toast.error('فشل التحقق من البريد الإلكتروني')
-      }
-    } catch (err) {
-      toast.error('خطأ في التحقق من البريد الإلكتروني')
-    } finally {
-      setVerifyingEmail(false)
-    }
-  }
-
   if (authLoading || settingsLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -131,8 +89,6 @@ export function PortalProfile() {
       </div>
     )
   }
-
-  const primaryColor = settings?.primary_color || '#FFD700'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" dir="rtl">
@@ -188,6 +144,17 @@ export function PortalProfile() {
               </div>
 
               <div>
+                <label className="block text-sm font-bold mb-3 text-white/70">البريد الإلكتروني *</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-white/30 transition"
+                  placeholder="البريد الإلكتروني"
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-bold mb-3 text-white/70">رقم الهاتف *</label>
                 <input
                   type="tel"
@@ -205,7 +172,7 @@ export function PortalProfile() {
                   disabled={updating}
                   className="flex-1 py-3 px-4 rounded-lg font-bold text-black transition disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ 
-                    backgroundColor: primaryColor,
+                    backgroundColor: '#D4AF37',
                     opacity: updating ? 0.5 : 1
                   }}
                 >
@@ -231,52 +198,14 @@ export function PortalProfile() {
 
               <div>
                 <label className="block text-sm font-medium mb-3 text-white/60">البريد الإلكتروني</label>
-                <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-4 py-3">
-                  <div>
-                    <p className="text-lg text-white font-semibold">{profile?.email}</p>
-                    <p className="text-xs text-white/50 mt-1">
-                      {profile?.email_verified ? '✓ مُتحقق' : '✗ غير مُتحقق'}
-                    </p>
-                  </div>
-                  {!profile?.email_verified && (
-                    <button
-                      onClick={handleEmailVerification}
-                      disabled={verifyingEmail}
-                      className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white/70 text-sm rounded transition disabled:opacity-50"
-                    >
-                      {verifyingEmail ? 'جاري...' : 'تحقق'}
-                    </button>
-                  )}
-                  {profile?.email_verified && (
-                    <CheckCircle size={20} className="text-green-400" />
-                  )}
-                </div>
+                <p className="text-lg text-white font-semibold">{profile?.email || 'لم يتم إدخاله'}</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-3 text-white/60">رقم الهاتف</label>
-                <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-4 py-3">
-                  <div>
-                    <p className="text-lg text-white font-semibold" dir="ltr">
-                      {profile?.phone || 'لم يتم إدخاله'}
-                    </p>
-                    <p className="text-xs text-white/50 mt-1">
-                      {profile?.phone_verified ? '✓ مُتحقق' : profile?.phone ? '✗ غير مُتحقق' : '-'}
-                    </p>
-                  </div>
-                  {profile?.phone && !profile?.phone_verified && (
-                    <button
-                      onClick={handlePhoneVerification}
-                      disabled={verifyingPhone}
-                      className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white/70 text-sm rounded transition disabled:opacity-50"
-                    >
-                      {verifyingPhone ? 'جاري...' : 'تحقق'}
-                    </button>
-                  )}
-                  {profile?.phone_verified && (
-                    <CheckCircle size={20} className="text-green-400" />
-                  )}
-                </div>
+                <p className="text-lg text-white font-semibold" dir="ltr">
+                  {profile?.phone || 'لم يتم إدخاله'}
+                </p>
               </div>
 
               <div className="border-t border-white/10 pt-6 mt-6">

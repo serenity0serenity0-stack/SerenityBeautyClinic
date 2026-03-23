@@ -50,7 +50,7 @@ export function usePortalProfile(customerId?: string) {
   }, [fetchProfile])
 
   const updateProfile = useCallback(
-    async (name: string, phone: string) => {
+    async (name: string, email: string, phone: string) => {
       if (!customerId) {
         setError('خطأ في البيانات')
         return false
@@ -60,12 +60,12 @@ export function usePortalProfile(customerId?: string) {
       try {
         const { error: err } = await supabase
           .from('customer_users')
-          .update({ full_name: name, phone })
+          .update({ full_name: name, email, phone })
           .eq('id', customerId)
 
         if (err) throw err
 
-        setProfile(prev => prev ? { ...prev, name, phone } : null)
+        setProfile(prev => prev ? { ...prev, name, email, phone } : null)
         return true
       } catch (err: any) {
         console.error('Error updating profile:', err)
@@ -80,62 +80,16 @@ export function usePortalProfile(customerId?: string) {
 
   const sendPhoneVerification = useCallback(
     async () => {
-      if (!customerId) {
-        setError('خطأ في البيانات')
-        return false
-      }
-
-      setLoading(true)
-      try {
-        // In a real app, send SMS verification code
-        // For now, we'll just mark as verified
-        const { error: err } = await supabase
-          .from('customer_users')
-          .update({ verified: true })
-          .eq('id', customerId)
-
-        if (err) throw err
-        setProfile(prev => prev ? { ...prev, phone_verified: true } : null)
-        return true
-      } catch (err: any) {
-        console.error('Error verifying phone:', err)
-        setError(err.message || 'خطأ في التحقق من الهاتف')
-        return false
-      } finally {
-        setLoading(false)
-      }
+      return false
     },
-    [customerId]
+    []
   )
 
   const sendEmailVerification = useCallback(
     async () => {
-      if (!customerId) {
-        setError('خطأ في البيانات')
-        return false
-      }
-
-      setLoading(true)
-      try {
-        // In a real app, send email verification code
-        // For now, we'll just mark as verified
-        const { error: err } = await supabase
-          .from('customer_users')
-          .update({ verified: true })
-          .eq('id', customerId)
-
-        if (err) throw err
-        setProfile(prev => prev ? { ...prev, email_verified: true } : null)
-        return true
-      } catch (err: any) {
-        console.error('Error verifying email:', err)
-        setError(err.message || 'خطأ في التحقق من البريد الإلكتروني')
-        return false
-      } finally {
-        setLoading(false)
-      }
+      return false
     },
-    [customerId]
+    []
   )
 
   return {

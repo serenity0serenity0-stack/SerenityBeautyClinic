@@ -16,6 +16,9 @@ export function PortalLogin() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotPhone, setForgotPhone] = useState('')
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
@@ -65,20 +68,46 @@ export function PortalLogin() {
   }
 
   const handleForgotPassword = async () => {
-    if (!email) {
-      toast.error('الرجاء إدخال بريدك الإلكتروني')
+    if (!forgotEmail || !forgotPhone) {
+      toast.error('يرجى إدخال البريد الإلكتروني ورقم الهاتف')
+      return
+    }
+
+    if (!settings) {
+      toast.error('البوربتال غير متاح الآن')
       return
     }
 
     setLoading(true)
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Check if both email and phone match in customer_users for this shop
+      const { data, error: checkErr } = await supabase
+        .from('customer_users')
+        .select('id, email')
+        .eq('shop_id', settings.shop_id)
+        .eq('email', forgotEmail)
+        .eq('phone', forgotPhone)
+        .maybeSingle()
+
+      if (checkErr && checkErr.code !== 'PGRST116') throw checkErr
+
+      if (!data) {
+        toast.error('البيانات غير متطابقة، تحقق من بريدك الإلكتروني ورقم هاتفك')
+        return
+      }
+
+      // Both match - send reset email
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
         redirectTo: `${window.location.origin}/shop/${slug}/reset-password`,
       })
 
-      if (error) throw error
-      toast.success('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك')
+      if (resetErr) throw resetErr
+      toast.success('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني ✓')
+      setShowForgotPassword(false)
+      setForgotEmail('')
+      setForgotPhone('')
     } catch (err: any) {
+      console.error('Forgot password error:', err)
       toast.error(err.message || 'خطأ في إرسال رابط إعادة التعيين')
     } finally {
       setLoading(false)
@@ -132,69 +161,120 @@ export function PortalLogin() {
             <p className="text-white/70">تسجيل الدخول إلى حسابك</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-white/80">
-                البريد الإلكتروني
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 focus:border-white/30 focus:outline-none transition"
-                placeholder="your@email.com"
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2 text-white/80">
-                كلمة المرور
-              </label>
-              <div className="relative">
+          {!showForgotPassword ? (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white/80">
+                  البريد الإلكتروني
+                </label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 focus:border-white/30 focus:outline-none transition pr-10"
-                  placeholder="••••••••"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 focus:border-white/30 focus:outline-none transition"
+                  placeholder="your@email.com"
                   required
                   disabled={loading}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-3 text-white/50 hover:text-white/70 transition"
-                >
-                  {showPassword ? (
-                    <EyeOff size={18} />
-                  ) : (
-                    <Eye size={18} />
-                  )}
-                </button>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 rounded font-semibold text-white transition hover:shadow-lg disabled:opacity-50"
-              style={{ backgroundColor: settings.primary_color }}
-            >
-              {loading ? 'جاري التحميل...' : 'دخول'}
-            </button>
-          </form>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white/80">
+                  كلمة المرور
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 focus:border-white/30 focus:outline-none transition pr-10"
+                    placeholder="••••••••"
+                    required
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-3 text-white/50 hover:text-white/70 transition"
+                  >
+                    {showPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2 rounded font-semibold text-white transition hover:shadow-lg disabled:opacity-50"
+                style={{ backgroundColor: settings.primary_color }}
+              >
+                {loading ? 'جاري التحميل...' : 'دخول'}
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white/80">
+                  البريد الإلكتروني
+                </label>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 focus:border-white/30 focus:outline-none transition"
+                  placeholder="your@email.com"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white/80">
+                  رقم الهاتف
+                </label>
+                <input
+                  type="tel"
+                  value={forgotPhone}
+                  onChange={(e) => setForgotPhone(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded text-white placeholder-white/30 focus:border-white/30 focus:outline-none transition"
+                  placeholder="01012345678"
+                  dir="ltr"
+                  disabled={loading}
+                />
+              </div>
+
+              <button
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="w-full py-2 rounded font-semibold text-white transition hover:shadow-lg disabled:opacity-50"
+                style={{ backgroundColor: settings.primary_color }}
+              >
+                {loading ? 'جاري الإرسال...' : 'إرسال رابط إعادة التعيين'}
+              </button>
+
+              <button
+                onClick={() => setShowForgotPassword(false)}
+                className="w-full py-2 rounded font-semibold text-white/70 border border-white/20 transition hover:bg-white/5"
+              >
+                العودة
+              </button>
+            </div>
+          )}
 
           <div className="mt-6 space-y-3">
-            <button
-              onClick={handleForgotPassword}
-              disabled={loading}
-              className="w-full text-sm transition hover:opacity-70 disabled:opacity-50"
-              style={{ color: settings.primary_color }}
-            >
-              هل نسيت كلمة المرور؟
-            </button>
+            {!showForgotPassword && (
+              <button
+                onClick={() => setShowForgotPassword(true)}
+                disabled={loading}
+                className="w-full text-sm transition hover:opacity-70 disabled:opacity-50"
+                style={{ color: settings.primary_color }}
+              >
+                هل نسيت كلمة المرور؟
+              </button>
+            )}
 
             <div className="text-center pt-3 border-t border-white/10">
               <p className="text-white/70 text-sm">

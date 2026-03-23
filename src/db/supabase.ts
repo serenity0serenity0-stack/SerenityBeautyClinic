@@ -16,12 +16,14 @@ export interface Client {
   id?: string
   name: string
   phone: string
+  email?: string | null
   birthday?: string
   notes?: string
   totalVisits: number
   totalSpent: number
   isVIP: boolean
   lastVisit?: string
+  shop_id?: string
   createdAt: string
   updatedAt: string
 }

@@ -57,8 +57,9 @@ export const useSettings = () => {
         .upsert({
           key,
           value,
+          shop_id: shopId,
         }, {
-          onConflict: 'key'
+          onConflict: 'key,shop_id'
         })
 
       if (error) throw error

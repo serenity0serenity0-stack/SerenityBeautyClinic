@@ -23,8 +23,8 @@ export const Clients: React.FC = () => {
   const [clientVisitLogs, setClientVisitLogs] = useState<VisitLog[]>([])
   const [editingClientId, setEditingClientId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [formData, setFormData] = useState({ name: '', phone: '', birthday: '' })
-  const [editFormData, setEditFormData] = useState({ name: '', phone: '', birthday: '' })
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', birthday: '', isVIP: false })
+  const [editFormData, setEditFormData] = useState({ name: '', phone: '', email: '', birthday: '', isVIP: false })
 
   // Filter states
   const [vipFilter, setVipFilter] = useState<'all' | 'vip' | 'regular'>('all')
@@ -56,13 +56,14 @@ export const Clients: React.FC = () => {
       await addClient({
         name: formData.name,
         phone: formData.phone,
+        email: formData.email || null,
         birthday: formData.birthday,
         totalVisits: 0,
         totalSpent: 0,
-        isVIP: false,
+        isVIP: formData.isVIP,
       })
       toast.success(t('notifications.client_added'))
-      setFormData({ name: '', phone: '', birthday: '' })
+      setFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
       setIsModalOpen(false)
     } catch (err: any) {
       // Check if error is due to duplicate phone number
@@ -79,7 +80,9 @@ export const Clients: React.FC = () => {
     setEditFormData({
       name: client.name,
       phone: client.phone,
+      email: client.email || '',
       birthday: client.birthday || '',
+      isVIP: client.isVIP || false,
     })
     setIsEditModalOpen(true)
   }
@@ -94,11 +97,13 @@ export const Clients: React.FC = () => {
       await updateClient(editingClientId!, {
         name: editFormData.name,
         phone: editFormData.phone,
+        email: editFormData.email || null,
         birthday: editFormData.birthday,
+        isVIP: editFormData.isVIP,
       })
       toast.success(t('notifications.client_updated'))
       setEditingClientId(null)
-      setEditFormData({ name: '', phone: '', birthday: '' })
+      setEditFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
       setIsEditModalOpen(false)
     } catch (err) {
       toast.error(t('errors.database_error'))
@@ -334,10 +339,49 @@ export const Clients: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
           />
           <input
+            type="email"
+            placeholder="البريد الإلكتروني (اختياري)"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+          <input
             type="date"
             value={formData.birthday}
             onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
           />
+          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+            <label className="text-white text-sm font-medium">VIP عميل</label>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, isVIP: !formData.isVIP })}
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                height: '24px',
+                width: '44px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0',
+                overflow: 'hidden',
+                backgroundColor: formData.isVIP ? '#22c55e' : '#4b5563',
+                transition: 'background-color 0.2s',
+                flexShrink: 0
+              }}
+            >
+              <span style={{
+                position: 'absolute',
+                top: '3px',
+                left: formData.isVIP ? '23px' : '3px',
+                height: '18px',
+                width: '18px',
+                borderRadius: '50%',
+                backgroundColor: 'white',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+              }} />
+            </button>
+          </div>
           <div className="flex gap-3 pt-4">
             <button
               onClick={() => setIsModalOpen(false)}
@@ -361,7 +405,7 @@ export const Clients: React.FC = () => {
         onClose={() => {
           setIsEditModalOpen(false)
           setEditingClientId(null)
-          setEditFormData({ name: '', phone: '', birthday: '' })
+          setEditFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
         }}
         title={t('clients.edit_client')}
       >
@@ -379,16 +423,55 @@ export const Clients: React.FC = () => {
             onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
           />
           <input
+            type="email"
+            placeholder="البريد الإلكتروني (اختياري)"
+            value={editFormData.email}
+            onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+          />
+          <input
             type="date"
             value={editFormData.birthday}
             onChange={(e) => setEditFormData({ ...editFormData, birthday: e.target.value })}
           />
+          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+            <label className="text-white text-sm font-medium">VIP عميل</label>
+            <button
+              type="button"
+              onClick={() => setEditFormData({ ...editFormData, isVIP: !editFormData.isVIP })}
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                height: '24px',
+                width: '44px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '0',
+                overflow: 'hidden',
+                backgroundColor: editFormData.isVIP ? '#22c55e' : '#4b5563',
+                transition: 'background-color 0.2s',
+                flexShrink: 0
+              }}
+            >
+              <span style={{
+                position: 'absolute',
+                top: '3px',
+                left: editFormData.isVIP ? '23px' : '3px',
+                height: '18px',
+                width: '18px',
+                borderRadius: '50%',
+                backgroundColor: 'white',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+              }} />
+            </button>
+          </div>
           <div className="flex gap-3 pt-4">
             <button
               onClick={() => {
                 setIsEditModalOpen(false)
                 setEditingClientId(null)
-                setEditFormData({ name: '', phone: '', birthday: '' })
+                setEditFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
               }}
               className="flex-1 px-4 py-3 border border-white/20 rounded-lg hover:bg-white/5 transition font-medium text-gray-300"
             >
