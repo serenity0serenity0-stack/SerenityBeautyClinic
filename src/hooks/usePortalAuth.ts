@@ -454,10 +454,29 @@ export function usePortalAuth(expectedShopId?: string) {
       return customerData
     } catch (err: any) {
       console.error('Sign up error:', err)
-      if (mountedRef.current) {
-        setState(prev => ({ ...prev, loading: false, error: err.message }))
+      let friendlyMessage = err.message
+      
+      // Map common Supabase errors to Arabic messages
+      if (err.message?.includes('duplicate key')) {
+        if (err.message?.includes('email')) {
+          friendlyMessage = 'هذا البريد الإلكتروني مسجل بالفعل'
+        } else if (err.message?.includes('phone')) {
+          friendlyMessage = 'رقم الهاتف مسجل بالفعل'
+        } else {
+          friendlyMessage = 'هذه البيانات مسجلة بالفعل'
+        }
+      } else if (err.message?.includes('already registered') || err.message?.includes('User already exists')) {
+        friendlyMessage = 'هذا البريد الإلكتروني مسجل بالفعل'
+      } else if (err.message?.includes('unique constraint')) {
+        friendlyMessage = 'هذه البيانات مسجلة بالفعل'
+      } else if (!friendlyMessage) {
+        friendlyMessage = 'حدث خطأ أثناء التسجيل، يرجى المحاولة لاحقاً'
       }
-      throw err
+      
+      if (mountedRef.current) {
+        setState(prev => ({ ...prev, loading: false, error: friendlyMessage }))
+      }
+      throw new Error(friendlyMessage)
     }
   }, [signIn])
 

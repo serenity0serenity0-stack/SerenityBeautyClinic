@@ -49,15 +49,25 @@ export function PortalLogin() {
       toast.success('تم تسجيل الدخول بنجاح')
     } catch (err: any) {
       console.error('Login error:', err)
-      const errorMessage = err.message || 'خطأ في تسجيل الدخول'
+      let errorMessage = err.message || 'خطأ في تسجيل الدخول'
+      
+      // Map common error messages to Arabic
       if (
         errorMessage.includes('Invalid login credentials') ||
-        errorMessage.includes('invalid credentials')
+        errorMessage.includes('invalid credentials') ||
+        errorMessage.includes('Unable to validate') ||
+        errorMessage.includes('Invalid credentials')
       ) {
-        toast.error('البريد أو كلمة المرور غير صحيحة')
-      } else {
-        toast.error(errorMessage)
+        errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage = 'يرجى تأكيد بريدك الإلكتروني'
+      } else if (errorMessage.includes('User not found')) {
+        errorMessage = 'لا توجد حسابات بهذا البريد الإلكتروني'
+      } else if (!['البريد', 'كلمة', 'حساب', 'خطأ', 'جلسة'].some(word => errorMessage.includes(word))) {
+        errorMessage = 'خطأ في الاتصال - يرجى المحاولة لاحقاً'
       }
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

@@ -99,10 +99,21 @@ export function PortalRegister() {
       console.error('Registration error:', err)
       let errorMessage = err.message || 'خطأ في التسجيل'
       
-      if (errorMessage.includes('already registered')) {
+      // Map common error messages to Arabic
+      if (errorMessage.includes('already registered') || errorMessage.includes('User already exists')) {
         errorMessage = 'هذا البريد الإلكتروني مسجل بالفعل'
-      } else if (errorMessage.includes('User already exists')) {
-        errorMessage = 'هذا البريد الإلكتروني مسجل بالفعل'
+      } else if (errorMessage.includes('duplicate key')) {
+        if (errorMessage.includes('email')) {
+          errorMessage = 'هذا البريد الإلكتروني مسجل بالفعل'
+        } else if (errorMessage.includes('phone')) {
+          errorMessage = 'رقم الهاتف مسجل بالفعل'
+        } else {
+          errorMessage = 'هذه البيانات مسجلة بالفعل'
+        }
+      } else if (errorMessage.includes('unique constraint')) {
+        errorMessage = 'هذه البيانات مسجلة بالفعل'
+      } else if (!['البريد', 'كلمة', 'حساب', 'خطأ', 'هاتف'].some(word => errorMessage.includes(word))) {
+        errorMessage = 'خطأ في الاتصال - يرجى المحاولة لاحقاً'
       }
       
       toast.error(errorMessage)
