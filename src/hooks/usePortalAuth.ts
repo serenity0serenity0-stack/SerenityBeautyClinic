@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/db/supabase'
-import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
 export interface CustomerAuthUser {
@@ -17,8 +16,58 @@ export interface CustomerAuthUser {
   error: string | null
 }
 
+// LocalStorage portal session management
+interface PortalSessionData {
+  customerId: string
+  shopId: string
+  customerName: string
+  email: string
+  phone: string | null
+  clientId: string | null
+  savedAt: number
+}
+
+const PORTAL_SESSION_KEY = 'portal_session'
+const SESSION_VALIDITY_DAYS = 30
+
+const getPortalSession = (): PortalSessionData | null => {
+  try {
+    const stored = localStorage.getItem(PORTAL_SESSION_KEY)
+    if (!stored) return null
+    
+    const data = JSON.parse(stored) as PortalSessionData
+    
+    // Check if session is still valid (30 days)
+    const ageInDays = (Date.now() - data.savedAt) / (1000 * 60 * 60 * 24)
+    if (ageInDays > SESSION_VALIDITY_DAYS) {
+      localStorage.removeItem(PORTAL_SESSION_KEY)
+      return null
+    }
+    
+    return data
+  } catch (err) {
+    console.error('Error reading portal session:', err)
+    return null
+  }
+}
+
+const savePortalSession = (data: PortalSessionData): void => {
+  try {
+    localStorage.setItem(PORTAL_SESSION_KEY, JSON.stringify(data))
+  } catch (err) {
+    console.error('Error saving portal session:', err)
+  }
+}
+
+const clearPortalSession = (): void => {
+  try {
+    localStorage.removeItem(PORTAL_SESSION_KEY)
+  } catch (err) {
+    console.error('Error clearing portal session:', err)
+  }
+}
+
 export function usePortalAuth(expectedShopId?: string) {
-  const navigate = useNavigate()
   const mountedRef = useRef(true)
   
   const [state, setState] = useState<CustomerAuthUser>({
@@ -66,7 +115,35 @@ export function usePortalAuth(expectedShopId?: string) {
   }, [])
 
   useEffect(() => {
-    const resolveCustomer = async (session: Session | null) => {
+    const resolveCustomer = async (session: Session | null, portalSessionData?: PortalSessionData | null) => {
+      // If we have a saved portal session in localStorage, try to use it first
+      if (portalSessionData) {
+        // Verify the saved session is still valid in the database
+        const isValid = await verifyCustomerBelongsToShop(portalSessionData.customerId, portalSessionData.shopId)
+        
+        if (isValid) {
+          // Session is still valid, restore from localStorage
+          if (mountedRef.current) {
+            setState({
+              user: session?.user || null, // Can be null for localStorage-only sessions
+              session: session || null,
+              customerId: portalSessionData.customerId,
+              shopId: portalSessionData.shopId,
+              customerName: portalSessionData.customerName,
+              email: portalSessionData.email,
+              phone: portalSessionData.phone,
+              clientId: portalSessionData.clientId,
+              loading: false,
+              error: null,
+            })
+          }
+          return
+        } else {
+          // Stored session is no longer valid, clear it
+          clearPortalSession()
+        }
+      }
+
       // No session - clear state
       if (!session) {
         if (mountedRef.current) {
@@ -93,6 +170,7 @@ export function usePortalAuth(expectedShopId?: string) {
       if (customerRole !== 'customer') {
         // Not a customer - sign out
         await supabase.auth.signOut()
+        clearPortalSession()
         if (mountedRef.current) {
           setState({
             user: null,
@@ -107,7 +185,6 @@ export function usePortalAuth(expectedShopId?: string) {
             error: 'Invalid user role for portal',
           })
           toast.error('انتهت جلستك - رجاء تسجيل دخول مجدداً')
-          navigate('/portal-login', { replace: true })
         }
         return
       }
@@ -118,6 +195,7 @@ export function usePortalAuth(expectedShopId?: string) {
       if (!customerData) {
         // Customer record not found
         await supabase.auth.signOut()
+        clearPortalSession()
         if (mountedRef.current) {
           setState({
             user: null,
@@ -132,7 +210,6 @@ export function usePortalAuth(expectedShopId?: string) {
             error: 'Customer record not found',
           })
           toast.error('حسابك غير موجود - رجاء التواصل مع المحل')
-          navigate('/portal-login', { replace: true })
         }
         return
       }
@@ -144,6 +221,7 @@ export function usePortalAuth(expectedShopId?: string) {
         if (!belongsToShop) {
           // Customer shop mismatch - potential security issue
           await supabase.auth.signOut()
+          clearPortalSession()
           if (mountedRef.current) {
             setState({
               user: null,
@@ -158,13 +236,23 @@ export function usePortalAuth(expectedShopId?: string) {
               error: 'Customer does not belong to this shop',
             })
             toast.error('حسابك غير متوافق مع هذا المحل')
-            navigate('/portal-login', { replace: true })
           }
           return
         }
       }
 
-      // All good - set customer data
+      // All good - set customer data and save to localStorage
+      const portalData: PortalSessionData = {
+        customerId: customerData.id,
+        shopId: customerData.shop_id,
+        customerName: customerData.full_name,
+        email: customerData.email,
+        phone: customerData.phone,
+        clientId: customerData.client_id,
+        savedAt: Date.now(),
+      }
+      savePortalSession(portalData)
+
       if (mountedRef.current) {
         setState({
           user: session.user,
@@ -181,17 +269,23 @@ export function usePortalAuth(expectedShopId?: string) {
       }
     }
 
-    // Step 1: Check existing session
+    // Step 1: Check localStorage first for portal session
+    const savedSession = getPortalSession()
+    
+    // Step 2: Check Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      resolveCustomer(session)
+      resolveCustomer(session, savedSession)
     })
 
-    // Step 2: Listen for auth changes
+    // Step 3: Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mountedRef.current) resolveCustomer(session)
+      if (mountedRef.current) {
+        const saved = getPortalSession()
+        resolveCustomer(session, saved)
+      }
     })
 
-    // Step 3: Fallback timeout to prevent infinite loading
+    // Step 4: Fallback timeout to prevent infinite loading
     const timeout = setTimeout(() => {
       if (mountedRef.current) {
         setState(prev => prev.loading ? { ...prev, loading: false, error: null } : prev)
@@ -203,7 +297,7 @@ export function usePortalAuth(expectedShopId?: string) {
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
-  }, [getCustomerData, verifyCustomerBelongsToShop, expectedShopId, navigate])
+  }, [getCustomerData, verifyCustomerBelongsToShop, expectedShopId])
 
   // Sign in as customer
   const signIn = useCallback(async (email: string, password: string, shopId: string) => {
@@ -219,18 +313,31 @@ export function usePortalAuth(expectedShopId?: string) {
         throw error
       }
 
-      // Verify customer belongs to shop
-      const session = await supabase.auth.getSession()
-      if (session.data.session) {
-        const customerData = await getCustomerData(session.data.session.user.id)
+      // Get session and verify customer belongs to shop
+      const sessionResult = await supabase.auth.getSession()
+      if (sessionResult.data.session) {
+        const customerData = await getCustomerData(sessionResult.data.session.user.id)
         
         if (!customerData || customerData.shop_id !== shopId) {
           await supabase.auth.signOut()
+          clearPortalSession()
           if (mountedRef.current) {
             setState(prev => ({ ...prev, loading: false, error: 'Customer not found in this shop' }))
           }
           throw new Error('Customer not found in this shop')
         }
+
+        // Save to localStorage for portal session persistence
+        const portalData: PortalSessionData = {
+          customerId: customerData.id,
+          shopId: customerData.shop_id,
+          customerName: customerData.full_name,
+          email: customerData.email,
+          phone: customerData.phone,
+          clientId: customerData.client_id,
+          savedAt: Date.now(),
+        }
+        savePortalSession(portalData)
       }
     } catch (err: any) {
       console.error('Sign in error:', err)
@@ -326,6 +433,24 @@ export function usePortalAuth(expectedShopId?: string) {
       // Auto-login after signup
       await signIn(email, password, shopId)
       
+      // Get the final customer data for portal session
+      const sessionResult = await supabase.auth.getSession()
+      if (sessionResult.data.session) {
+        const finalCustomerData = await getCustomerData(sessionResult.data.session.user.id)
+        if (finalCustomerData) {
+          const portalData: PortalSessionData = {
+            customerId: finalCustomerData.id,
+            shopId: finalCustomerData.shop_id,
+            customerName: finalCustomerData.full_name,
+            email: finalCustomerData.email,
+            phone: finalCustomerData.phone,
+            clientId: finalCustomerData.client_id,
+            savedAt: Date.now(),
+          }
+          savePortalSession(portalData)
+        }
+      }
+      
       return customerData
     } catch (err: any) {
       console.error('Sign up error:', err)
@@ -341,6 +466,7 @@ export function usePortalAuth(expectedShopId?: string) {
     setState(prev => ({ ...prev, loading: true }))
     try {
       await supabase.auth.signOut()
+      clearPortalSession()
       if (mountedRef.current) {
         setState({
           user: null,
@@ -357,6 +483,8 @@ export function usePortalAuth(expectedShopId?: string) {
       }
     } catch (err: any) {
       console.error('Sign out error:', err)
+      // Always clear localStorage even if signOut fails
+      clearPortalSession()
       if (mountedRef.current) {
         setState(prev => ({ ...prev, loading: false, error: err.message }))
       }
