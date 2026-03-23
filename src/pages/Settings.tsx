@@ -102,15 +102,16 @@ export const Settings: React.FC = () => {
 
     setIsPortalSaving(true)
     try {
+      // Always enable portal when saving settings with a slug
       await updatePortalSettings({
-        is_active: portalFormData.is_active,
+        is_active: true,
         portal_slug: portalFormData.portal_slug,
         welcome_message: portalFormData.welcome_message,
       })
       // Refetch to ensure state is fully updated before switching to view mode
       await fetchPortalSettings()
       setIsPortalEditing(false)
-      toast.success('تم حفظ إعدادات البوابة بنجاح ✓')
+      toast.success('تم حفظ إعدادات البوابة وتفعيلها بنجاح ✓')
     } catch (err: any) {
       console.error('Error saving portal settings:', err)
       toast.error('حدث خطأ في حفظ البيانات')

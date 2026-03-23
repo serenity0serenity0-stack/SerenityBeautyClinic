@@ -127,15 +127,35 @@ export function PortalLogin() {
 
   if (!settings) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400">البوربتال غير متاح</p>
-          <button
-            onClick={() => navigate(`/shop/${slug}`)}
-            className="mt-4 px-6 py-2 bg-gold-400 text-black rounded hover:bg-gold-500 transition"
-          >
-            العودة
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="space-y-2">
+            <div className="text-5xl">⚠️</div>
+            <h1 className="text-2xl font-bold text-white">البوابة غير متاحة</h1>
+          </div>
+          
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 space-y-3">
+            <p className="text-red-300 text-sm">
+              لم يتم العثور على بيانات البوابة. قد يكون السبب:
+            </p>
+            <ul className="text-red-300/80 text-xs space-y-2 text-right">
+              <li>• البوابة لم يتم تفعيلها من لوحة التحكم</li>
+              <li>• الرابط غير صحيح</li>
+              <li>• لم يتم إعداد البوابة بعد</li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-slate-400 text-sm">
+              👇 اتصل بمدير المحل لتفعيل البوابة من الإعدادات
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 transition duration-200"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
         </div>
       </div>
     )

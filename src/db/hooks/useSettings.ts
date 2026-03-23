@@ -52,14 +52,21 @@ export const useSettings = () => {
         throw new Error('No shop ID available')
       }
 
+      // First, try to delete existing record with this key and shop_id
+      await supabase
+        .from('settings')
+        .delete()
+        .eq('key', key)
+        .eq('shop_id', shopId)
+
+      // Then insert the new record
       const { error } = await supabase
         .from('settings')
-        .upsert({
+        .insert({
           key,
           value,
           shop_id: shopId,
-        }, {
-          onConflict: 'key,shop_id'
+          updatedAt: new Date().toISOString(),
         })
 
       if (error) throw error
