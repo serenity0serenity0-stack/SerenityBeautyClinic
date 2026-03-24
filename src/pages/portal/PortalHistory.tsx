@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
-import { usePortalAuth } from '@/hooks/usePortalAuth'
+import { usePortalAuthSecure } from '@/hooks/usePortalAuthSecure'
 import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
 import { usePortalHistory } from '@/hooks/usePortalHistory'
 import { ArrowRight, Filter, Calendar, DollarSign, Scissors } from 'lucide-react'
@@ -12,11 +12,11 @@ export function PortalHistory() {
   const navigate = useNavigate()
 
   // Auth & Settings
-  const { customer, loading: authLoading } = usePortalAuth(slug || '')
+  const { customer, loading: authLoading } = usePortalAuthSecure(slug)
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
 
   // History data
-  const { history, loading: historyLoading, error: historyError, getStats } = usePortalHistory(customer?.shopId, customer?.id)
+  const { history, loading: historyLoading, error: historyError, getStats } = usePortalHistory(customer?.shop_id, customer?.id)
 
   // Filters & Sorting
   const [sortBy, setSortBy] = useState<SortType>('date-desc')

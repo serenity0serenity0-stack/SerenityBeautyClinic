@@ -26,7 +26,7 @@ export function PortalBookings() {
   const navigate = useNavigate()
   
   // Auth & Settings
-  const { customer, loading: authLoading } = usePortalAuthSecure(slug || '')
+  const { customer, loading: authLoading } = usePortalAuthSecure(slug)
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
   
   // Booking data

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { usePortalAuth } from '@/hooks/usePortalAuth'
+import { usePortalAuthSecure } from '@/hooks/usePortalAuthSecure'
 import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
 import { usePortalDashboardStats } from '@/hooks/usePortalDashboardStats'
 import { LogOut, Calendar, TrendingUp, Clock } from 'lucide-react'
@@ -10,12 +10,12 @@ export function PortalDashboard() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
-  // Auth & Settings
-  const { customer, loading: authLoading, signOut } = usePortalAuth(slug || '')
+  // Auth & Settings - use lazy initialization with localStorage
+  const { customer, loading: authLoading, logoutPortalUser } = usePortalAuthSecure(slug)
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
 
   // Stats
-  const { stats, loading: statsLoading } = usePortalDashboardStats(customer?.shopId, customer?.id)
+  const { stats, loading: statsLoading } = usePortalDashboardStats(customer?.shop_id, customer?.id)
 
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -26,7 +26,7 @@ export function PortalDashboard() {
     }
   }, [settings?.shop_name])
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (only after initial load)
   useEffect(() => {
     if (!authLoading && !customer) {
       navigate(`/shop/${slug}/login`, { replace: true })
@@ -36,7 +36,7 @@ export function PortalDashboard() {
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
-      signOut()
+      await logoutPortalUser()
       toast.success('تم تسجيل الخروج بنجاح')
       navigate(`/shop/${slug}`, { replace: true })
     } catch (err) {
@@ -68,7 +68,7 @@ export function PortalDashboard() {
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-4xl font-bold mb-2">مرحباً {customer.fullName}</h1>
+            <h1 className="text-4xl font-bold mb-2">مرحباً {customer.name || customer.phone}</h1>
             {settings && <p className="text-white/70 text-lg">{settings.shop_name}</p>}
           </div>
           <button

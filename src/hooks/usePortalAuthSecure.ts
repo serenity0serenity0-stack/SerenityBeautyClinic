@@ -20,23 +20,53 @@ export interface PortalCustomer {
  * - RLS-enforced data isolation
  */
 export function usePortalAuthSecure(slug?: string) {
-  const [customer, setCustomer] = useState<PortalCustomer | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Helper function to get session key based on shop slug
+  const getSessionKey = () => slug ? `portal_session_${slug}` : 'portal_session'
+  
+  // Initialize customer from localStorage on mount
+  const [customer, setCustomer] = useState<PortalCustomer | null>(() => {
+    try {
+      const stored = localStorage.getItem(getSessionKey())
+      return stored ? JSON.parse(stored) : null
+    } catch {
+      return null
+    }
+  })
+  
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Sync session to localStorage
+  const saveSession = (data: PortalCustomer | null) => {
+    if (data) {
+      localStorage.setItem(getSessionKey(), JSON.stringify(data))
+    } else {
+      localStorage.removeItem(getSessionKey())
+    }
+  }
 
   // Check current session on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // If we have customer from localStorage, skip auth check
+        if (customer) {
+          return
+        }
+        
         setLoading(true)
         const { data, error: err } = await supabase.auth.getSession()
         
         if (err) throw err
         if (data.session?.user) {
           // Load portal user data
-          await loadPortalUser(data.session.user.id)
+          const userData = await loadPortalUser(data.session.user.id)
+          if (userData) {
+            saveSession(userData)
+          }
         } else {
           setCustomer(null)
+          saveSession(null)
         }
       } catch (err) {
         console.error('❌ Session check error:', err)
@@ -68,6 +98,7 @@ export function usePortalAuthSecure(slug?: string) {
       }
 
       setCustomer(data)
+      saveSession(data)
       return data
     } catch (err) {
       console.error('❌ Error loading portal user:', err)
@@ -83,20 +114,65 @@ export function usePortalAuthSecure(slug?: string) {
         setLoading(true)
         setError(null)
 
-        // ⭐ Use real email if provided, otherwise use phone-based email
-        const authEmail = email?.trim() || `${phone}@portal.local`
+        // Determine shop ID
+        const finalShopId = shopId || (slug ? slug.split('-')[0] : 'default')
+        
+        console.log('📱 Registering with phone:', phone, 'for shop:', finalShopId)
 
-        console.log('📧 Registering with email:', authEmail)
+        // 1. Check for duplicate phone in THIS shop
+        const { data: phoneExists, error: phoneCheckErr } = await supabase
+          .from('portal_users')
+          .select('phone')
+          .eq('shop_id', finalShopId)
+          .eq('phone', phone)
+          .maybeSingle()
 
-        // 1. Create Supabase auth user
+        if (phoneCheckErr && phoneCheckErr.code !== 'PGRST116') {
+          throw phoneCheckErr
+        }
+
+        if (phoneExists) {
+          console.error('❌ Phone already registered in this shop:', phone)
+          setError('رقم الهاتف مسجل بالفعل')
+          setLoading(false)
+          return null
+        }
+
+        // 2. Check for duplicate email in THIS shop (only if email provided)
+        if (email?.trim()) {
+          const emailLower = email.toLowerCase().trim()
+          const { data: emailExists, error: emailCheckErr } = await supabase
+            .from('portal_users')
+            .select('email')
+            .eq('shop_id', finalShopId)
+            .ilike('email', emailLower)
+            .maybeSingle()
+
+          if (emailCheckErr && emailCheckErr.code !== 'PGRST116') {
+            throw emailCheckErr
+          }
+
+          if (emailExists) {
+            console.error('❌ Email already registered in this shop:', email)
+            setError('البريد الإلكتروني مسجل بالفعل')
+            setLoading(false)
+            return null
+          }
+        }
+
+        // 3. Create auth email with correct format: phone@shopId.portal
+        const authEmail = email?.trim() || `${phone}@${finalShopId}.portal`
+        console.log('📧 Auth email:', authEmail)
+
+        // 4. Create Supabase auth user
         const { data: authData, error: authErr } = await supabase.auth.signUp({
-          email: authEmail, // Use real email or fallback to phone@portal.local
+          email: authEmail,
           password,
           options: {
             data: {
               phone,
-              name,
-              email: authEmail // Store the actual email used
+              name: name || null,
+              email: authEmail
             }
           }
         })
@@ -106,13 +182,13 @@ export function usePortalAuthSecure(slug?: string) {
 
         console.log('✅ Auth user created:', authData.user.id)
 
-        // 2. Create portal_users record (RLS will allow because auth.uid() matches)
+        // 5. Create portal_users record
         const portalUserData = {
           id: authData.user.id,
-          shop_id: shopId || slug?.split('-')[0], // Extract shop ID from slug or use provided
+          shop_id: finalShopId,
           phone,
           name: name || null,
-          email: authEmail // Store the email used for authentication
+          email: authEmail
         }
 
         const { data: portalUser, error: portalErr } = await supabase
@@ -129,6 +205,7 @@ export function usePortalAuthSecure(slug?: string) {
 
         console.log('✅ Portal user created:', portalUser)
         setCustomer(portalUser)
+        saveSession(portalUser)
         return portalUser
       } catch (err: any) {
         const message = err.message || 'خطأ في التسجيل'
@@ -185,7 +262,7 @@ export function usePortalAuthSecure(slug?: string) {
 
         console.log('✅ User signed in. Auth UID:', data.user.id)
 
-        // Step 3: Set customer data directly (don't wait for DB read)
+        // Step 3: Set customer data directly and save to session
         const customerData: PortalCustomer = {
           id: data.user.id,
           shop_id: portalUser.shop_id,
@@ -195,7 +272,8 @@ export function usePortalAuthSecure(slug?: string) {
         }
 
         setCustomer(customerData)
-        console.log('✅ Customer state updated:', customerData)
+        saveSession(customerData)
+        console.log('✅ Customer state updated and session saved:', customerData)
         
         return customerData
       } catch (err: any) {
@@ -219,6 +297,7 @@ export function usePortalAuthSecure(slug?: string) {
       
       console.log('✅ User logged out')
       setCustomer(null)
+      saveSession(null)
       setError(null)
     } catch (err: any) {
       console.error('❌ Logout error:', err)
@@ -246,11 +325,12 @@ export function usePortalAuthSecure(slug?: string) {
 
         console.log('✅ Profile updated')
         setCustomer(data)
+        saveSession(data)
         return data
       } catch (err: any) {
-        console.error('❌ Update error:', err)
-        setError('خطأ في تحديث الملف الشخصي')
-        return null
+        console.error('❌ Profile update error:', err)
+        setError('خطأ في تحديث البيانات')
+        throw err
       } finally {
         setLoading(false)
       }

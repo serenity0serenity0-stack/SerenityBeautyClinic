@@ -10,7 +10,7 @@ export function PortalProfile() {
   const navigate = useNavigate()
 
   // Auth & Settings
-  const { customer, loading: authLoading, updateProfile } = usePortalAuthSecure(slug || '')
+  const { customer, loading: authLoading, updateProfile } = usePortalAuthSecure(slug)
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
 
   // Form state

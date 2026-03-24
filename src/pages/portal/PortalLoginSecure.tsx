@@ -78,9 +78,12 @@ export function PortalLoginSecure() {
       const result = await loginPortalUser(phone, password)
       
       if (result) {
-        console.log('✅ Login successful, customer state updated')
+        console.log('✅ Login successful, redirecting to dashboard')
         toast.success('تم تسجيل الدخول بنجاح ✓')
-        // Don't manually navigate - let useEffect handle it when customer state updates
+        // Use window.location.href to force full page reload with new session
+        setTimeout(() => {
+          window.location.href = `/shop/${slug}/dashboard`
+        }, 500)
       } else {
         console.error('❌ Login returned null/falsy')
         toast.error('فشل تسجيل الدخول')
