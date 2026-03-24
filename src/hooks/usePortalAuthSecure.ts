@@ -233,27 +233,37 @@ export function usePortalAuthSecure(slug?: string) {
           return false
         }
 
-        // Check if email and phone match in portal_users for current user
-        const { data, error: checkErr } = await supabase
+        console.log('🔍 Checking if phone exists:', phone)
+
+        // Step 1: Check if phone is registered at all
+        const { data: phoneCheck, error: phoneCheckErr } = await supabase
           .from('portal_users')
           .select('id, email, phone')
-          .eq('email', email)
           .eq('phone', phone)
-          .single()
+          .maybeSingle()
 
-        if (checkErr && checkErr.code !== 'PGRST116') {
-          throw checkErr
+        if (phoneCheckErr && phoneCheckErr.code !== 'PGRST116') {
+          throw phoneCheckErr
         }
 
-        if (!data) {
-          console.error('❌ Email and phone do not match')
+        if (!phoneCheck) {
+          console.error('❌ Phone not registered:', phone)
+          setError('رقم الهاتف غير مسجل. يرجى التسجيل أولاً')
+          return false
+        }
+
+        console.log('✅ Phone found, verifying email match')
+
+        // Step 2: Verify that email matches this phone
+        if (phoneCheck.email !== email) {
+          console.error('❌ Email does not match phone:', { phone, providedEmail: email, dbEmail: phoneCheck.email })
           setError('البريد الإلكتروني ورقم الهاتف غير متطابقين')
           return false
         }
 
-        // Email and phone match - update the password
         console.log('✅ Email and phone verified, updating password')
 
+        // Step 3: Update the password
         const { error: updateErr } = await supabase.auth.updateUser({
           password: newPassword
         })
