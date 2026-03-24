@@ -101,15 +101,33 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
   const fetchCustomerBookings = useCallback(async () => {
     if (!customerId || !shopId) return
     try {
+      // First, get the customer phone from auth or profile
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       const { data, error: err } = await supabase
-        .from('customer_bookings')
-        .select('*')
-        .eq('customer_user_id', customerId)
+        .from('bookings')
+        .select('id, bookingtime, servicetype, barbername, status, notes')
         .eq('shop_id', shopId)
-        .order('booking_date', { ascending: false })
+        .eq('clientphone', user.phone || '')
+        .order('bookingtime', { ascending: false })
 
       if (err) throw err
-      setBookings(data || [])
+      
+      // Transform booking data to match interface
+      const transformedBookings = (data || []).map(b => ({
+        id: b.id,
+        status: b.status,
+        serviceId: '',
+        barberId: '',
+        bookingDate: b.bookingtime?.split('T')[0] || '',
+        bookingTime: b.bookingtime?.split('T')[1]?.substring(0, 5) || '',
+        serviceName: b.servicetype || '',
+        barberName: b.barbername,
+        createdAt: new Date().toISOString(),
+      }))
+      
+      setBookings(transformedBookings)
     } catch (err) {
       console.error('Error fetching bookings:', err)
       setError('خطأ في تحميل المواعيد')
@@ -157,16 +175,22 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         if (barberId) {
           const { data: bookedSlots, error } = await supabase
             .from('bookings')
-            .select('booking_time')
+            .select('bookingtime')
             .eq('shop_id', shopId)
-            .eq('booking_date', bookingDate)
-            .eq('assigned_barber_id', barberId)
+            .ilike('bookingtime', `${bookingDate}%`)
+            .eq('barberid', barberId)
             .in('status', ['confirmed', 'pending'])
 
           if (error) {
             console.warn('⚠️ Could not fetch booked slots:', error)
           } else {
-            const bookedTimes = new Set(bookedSlots?.map(b => b.booking_time) || [])
+            const bookedTimes = new Set(
+              bookedSlots?.map(b => {
+                // Extract time portion from ISO string (e.g., "14:30" from "2025-03-25T14:30:00")
+                const timeMatch = b.bookingtime?.match(/T(\d{2}:\d{2})/)
+                return timeMatch ? timeMatch[1] : ''
+              }) || []
+            )
             const available = slots.filter(s => !bookedTimes.has(s))
             console.log(`📅 Available: ${available.length}/${slots.length} slots`)
             return available
@@ -210,13 +234,20 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         // Create booking in bookings table (for staff)
         const bookingData = {
           shop_id: shopId,
-          booking_date: bookingDate,
-          booking_time: bookingTime,
-          service_id: serviceId,
-          assigned_barber_id: barberId || null,
-          client_id: clientId || null,
+          clientid: clientId || customerId,
+          clientname: '', // Will be fetched from customer profile
+          clientphone: '', // Will be fetched from customer profile
+          customer_phone: '', // Will be fetched from customer profile
+          barberid: barberId || null,
+          barbername: barberId ? barbers.find(b => b.id === barberId)?.name || null : null,
+          bookingtime: `${bookingDate}T${bookingTime}:00`,
+          servicetype: service.nameAr || service.nameEn,
+          duration: service.duration || 30,
+          queuenumber: 0,
           status: 'pending',
           notes: 'Booked via customer portal',
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString(),
         }
 
         const { data: bookings, error: bookingErr } = await supabase
@@ -231,32 +262,10 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
 
         const booking = bookings[0]
 
-        // Create booking in customer_bookings table
-        const customerBookingData = {
-          customer_user_id: customerId,
-          shop_id: shopId,
-          booking_id: booking.id,
-          service_id: serviceId,
-          barber_id: barberId || null,
-          booking_date: bookingDate,
-          booking_time: bookingTime,
-          status: 'pending',
-        }
-
-        const { data: customerBookings, error: custErr } = await supabase
-          .from('customer_bookings')
-          .insert([customerBookingData])
-          .select()
-
-        if (custErr) throw custErr
-        if (!customerBookings || customerBookings.length === 0) {
-          throw new Error('Failed to create customer booking')
-        }
-
         // Refresh bookings list
         await fetchCustomerBookings()
 
-        return customerBookings[0]
+        return booking
       } catch (err: any) {
         console.error('❌ Error creating booking:', err)
         setError(err.message || 'خطأ في إنشاء الحجز')
@@ -274,24 +283,23 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
       try {
         setLoading(true)
 
-        // Update customer_bookings
-        const { error: custErr } = await supabase
-          .from('customer_bookings')
-          .update({ status: 'cancelled' })
-          .eq('id', bookingId)
-
-        if (custErr) throw custErr
-
-        // Find and update corresponding booking in bookings table
-        const booking = bookings.find((b) => b.id === bookingId)
-        if (booking) {
-          const { error: err } = await supabase
-            .from('bookings')
-            .update({ status: 'cancelled' })
-            .eq('id', booking.id)
-
-          if (err) throw err
+        // Get customer phone from auth
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user?.phone) {
+          throw new Error('Customer phone not found')
         }
+
+        // Update booking with cancelled status and new updatedat timestamp
+        const { error: err } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'cancelled',
+            updatedat: new Date().toISOString()
+          })
+          .eq('id', bookingId)
+          .eq('clientphone', user.phone) // Security check - only cancel own bookings
+
+        if (err) throw err
 
         // Refresh bookings list
         await fetchCustomerBookings()
@@ -304,7 +312,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         setLoading(false)
       }
     },
-    [bookings, fetchCustomerBookings]
+    [fetchCustomerBookings]
   )
 
   // Initial load
