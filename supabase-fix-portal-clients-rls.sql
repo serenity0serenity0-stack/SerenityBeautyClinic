@@ -58,23 +58,23 @@ INSERT INTO clients (
   shop_id, 
   name, 
   phone, 
-  totalVisits, 
-  totalSpent, 
-  isVIP, 
+  totalvisits, 
+  totalspent, 
+  isvip, 
   notes, 
-  createdAt, 
-  updatedAt
+  createdat, 
+  updatedat
 )
 SELECT 
   pu.shop_id,
   COALESCE(pu.name, pu.phone) as name,
   pu.phone,
-  0 as totalVisits,
-  0 as totalSpent,
-  false as isVIP,
+  0 as totalvisits,
+  0 as totalspent,
+  false as isvip,
   'مسجل عبر البوابة الإلكترونية' as notes,
-  pu.created_at as createdAt,
-  pu.created_at as updatedAt
+  pu.created_at as createdat,
+  pu.created_at as updatedat
 FROM portal_users pu
 WHERE NOT EXISTS (
   SELECT 1 FROM clients c 
