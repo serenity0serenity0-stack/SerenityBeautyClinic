@@ -61,6 +61,46 @@ export const useTransactions = () => {
       // ✅ Database trigger (log_transaction_usage) automatically logs to usage_logs
       // No need to insert here - trigger handles it automatically
 
+      // 🔄 Auto-complete today's pending/confirmed bookings for this client
+      try {
+        const clientPhone = transaction.clientPhone
+        if (clientPhone) {
+          const today = new Date().toISOString().split('T')[0] // today's date
+          
+          // Find client's active bookings for today
+          const { data: activeBookings, error: bookingErr } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('shop_id', shopId)
+            .eq('clientPhone', clientPhone)
+            .in('status', ['pending', 'confirmed'])
+            .gte('bookingDate', today + 'T00:00:00')
+            .lte('bookingDate', today + 'T23:59:59')
+            .order('bookingTime', { ascending: true })
+
+          if (!bookingErr && activeBookings && activeBookings.length > 0) {
+            // Update each booking to completed
+            for (const booking of activeBookings) {
+              const { error: updateErr } = await supabase
+                .from('bookings')
+                .update({
+                  status: 'completed',
+                  updatedAt: new Date().toISOString()
+                })
+                .eq('id', booking.id)
+              
+              if (updateErr) {
+                console.warn('⚠️ Warning: Failed to complete booking:', booking.id, updateErr)
+              }
+            }
+            console.log(`✅ Auto-completed ${activeBookings.length} booking(s) for client ${clientPhone}`)
+          }
+        }
+      } catch (bookingErr) {
+        console.warn('⚠️ Warning: Error auto-completing bookings:', bookingErr)
+        // Don't throw - transaction should succeed even if booking completion fails
+      }
+
       await fetchTransactions()
       return data?.[0]
     } catch (err: any) {

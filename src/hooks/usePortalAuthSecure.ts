@@ -204,6 +204,64 @@ export function usePortalAuthSecure(slug?: string) {
         }
 
         console.log('✅ Portal user created:', portalUser)
+
+        // 6. Create/update client record in clients table
+        try {
+          // Check if client already exists by phone + shop_id
+          const { data: existingClient, error: checkErr } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('shop_id', finalShopId)
+            .eq('phone', phone)
+            .maybeSingle()
+
+          if (checkErr && checkErr.code !== 'PGRST116') {
+            console.warn('⚠️ Error checking existing client:', checkErr)
+          } else if (!existingClient) {
+            // Create new client record
+            const { error: insertErr } = await supabase
+              .from('clients')
+              .insert({
+                shop_id: finalShopId,
+                name: name || phone, // use phone as name if no name provided
+                phone: phone,
+                email: email || null,
+                birthday: null,
+                totalVisits: 0,
+                totalSpent: 0,
+                isVIP: false,
+                notes: 'مسجل عبر البوابة الإلكترونية',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              })
+
+            if (insertErr) {
+              console.warn('⚠️ Warning: Failed to create client record:', insertErr)
+              // Don't throw - portal registration is complete, client record is optional
+            } else {
+              console.log('✅ Client record created')
+            }
+          } else {
+            // Update existing client with portal info
+            const { error: updateErr } = await supabase
+              .from('clients')
+              .update({
+                email: email || null,
+                updatedAt: new Date().toISOString()
+              })
+              .eq('id', existingClient.id)
+
+            if (updateErr) {
+              console.warn('⚠️ Warning: Failed to update client record:', updateErr)
+            } else {
+              console.log('✅ Client record updated')
+            }
+          }
+        } catch (clientErr) {
+          console.warn('⚠️ Error managing client record:', clientErr)
+          // Don't throw - portal registration should succeed even if client record creation fails
+        }
+
         setCustomer(portalUser)
         saveSession(portalUser)
         return portalUser

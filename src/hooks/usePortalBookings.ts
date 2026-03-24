@@ -70,7 +70,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
       console.log('🔍 Fetching barbers for shop:', shopId)
       const { data, error: err } = await supabase
         .from('barbers')
-        .select('id, name, email')
+        .select('id, name')
         .eq('shop_id', shopId)
         .eq('active', true)
         .order('name', { ascending: true })
@@ -81,7 +81,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         console.log('⚠️ Retrying without active filter...')
         const { data: altData, error: altErr } = await supabase
           .from('barbers')
-          .select('id, name, email')
+          .select('id, name')
           .eq('shop_id', shopId)
           .order('name', { ascending: true })
 
