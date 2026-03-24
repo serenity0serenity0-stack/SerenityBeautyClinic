@@ -5,7 +5,6 @@ import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
 import { usePortalDashboardStats } from '@/hooks/usePortalDashboardStats'
 import { LogOut, Calendar, TrendingUp, Clock } from 'lucide-react'
 import { PortalBottomNav } from './PortalBottomNav'
-import { PortalLanguageToggle } from './PortalLanguageToggle'
 import toast from 'react-hot-toast'
 
 type Language = 'ar' | 'en'
@@ -78,14 +77,18 @@ export function PortalDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-24" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PortalLanguageToggle currentLanguage={lang} onLanguageChange={handleLanguageChange} />
       <div className="max-w-5xl mx-auto p-8">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">مرحباً {customer.name || customer.phone}</h1>
-            {settings && <p className="text-white/70 text-lg">{settings.shop_name}</p>}
-          </div>
+        {/* Header with language toggle and logout */}
+        <div className="flex justify-between items-center mb-8">
+          {/* Language Toggle */}
+          <button
+            onClick={() => handleLanguageChange(lang === 'ar' ? 'en' : 'ar')}
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm font-bold transition"
+          >
+            <span>{lang === 'ar' ? 'EN' : 'ع'}</span>
+          </button>
+
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
             disabled={loggingOut}
@@ -94,6 +97,12 @@ export function PortalDashboard() {
             <LogOut size={18} />
             {loggingOut ? 'جاري...' : 'خروج'}
           </button>
+        </div>
+
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">مرحباً {customer.name || customer.phone}</h1>
+          {settings && <p className="text-white/70 text-lg">{settings.shop_name}</p>}
         </div>
 
         {/* Stats Cards */}

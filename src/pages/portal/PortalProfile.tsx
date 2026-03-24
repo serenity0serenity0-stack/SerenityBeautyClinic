@@ -4,7 +4,6 @@ import { usePortalAuthSecure } from '@/hooks/usePortalAuthSecure'
 import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
 import { ArrowRight, Save } from 'lucide-react'
 import { PortalBottomNav } from './PortalBottomNav'
-import { PortalLanguageToggle } from './PortalLanguageToggle'
 import toast from 'react-hot-toast'
 
 type Language = 'ar' | 'en'
@@ -106,18 +105,27 @@ export function PortalProfile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-24" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PortalLanguageToggle currentLanguage={lang} onLanguageChange={handleLanguageChange} />
       <div className="max-w-2xl mx-auto p-8">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(`/shop/${slug}/dashboard`)}
-          className="flex items-center gap-2 mb-8 text-white/70 hover:text-white transition"
-        >
-          <ArrowRight size={20} />
-          {lang === 'ar' ? 'العودة للرئيسة' : 'Back to Dashboard'}
-        </button>
+        {/* Header with Back Button and Language Toggle */}
+        <div className="flex items-center justify-between mb-8">
+          <button
+            onClick={() => navigate(`/shop/${slug}/dashboard`)}
+            className="flex items-center gap-2 text-white/70 hover:text-white transition"
+          >
+            <ArrowRight size={20} />
+            {lang === 'ar' ? 'العودة للرئيسة' : 'Back to Dashboard'}
+          </button>
 
-        {/* Header */}
+          {/* Language Toggle */}
+          <button
+            onClick={() => handleLanguageChange(lang === 'ar' ? 'en' : 'ar')}
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm font-bold transition"
+          >
+            <span>{lang === 'ar' ? 'EN' : 'ع'}</span>
+          </button>
+        </div>
+
+        {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">{lang === 'ar' ? 'بيانات الحساب' : 'Account Settings'}</h1>
           <p className="text-white/60">{lang === 'ar' ? 'مع' : 'with'} {settings?.shop_name}</p>

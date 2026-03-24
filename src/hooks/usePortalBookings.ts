@@ -5,7 +5,7 @@ export interface ServiceData {
   id: string
   nameEn: string
   nameAr: string
-  durationMinutes: number
+  duration: number
   price: number
 }
 
@@ -47,7 +47,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
       console.log('🔍 Fetching services for shop:', shopId)
       const { data, error: err } = await supabase
         .from('services')
-        .select('id, nameEn, nameAr, durationMinutes, price')
+        .select('id, nameEn, nameAr, duration, price, category')
         .eq('shop_id', shopId)
         .eq('active', true)
 

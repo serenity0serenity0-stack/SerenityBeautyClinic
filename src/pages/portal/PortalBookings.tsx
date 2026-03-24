@@ -5,7 +5,6 @@ import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
 import { usePortalBookings } from '@/hooks/usePortalBookings'
 import { ArrowRight, X, CheckCircle, Clock, User, Calendar } from 'lucide-react'
 import { PortalBottomNav } from './PortalBottomNav'
-import { PortalLanguageToggle } from './PortalLanguageToggle'
 import toast from 'react-hot-toast'
 
 type TabType = 'new' | 'existing'
@@ -283,16 +282,23 @@ export function PortalBookings() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-24" dir={dir}>
-      <PortalLanguageToggle currentLanguage={lang} onLanguageChange={handleLanguageChange} />
       <div className="max-w-5xl mx-auto p-8">
-        {/* Top Bar with Back Button */}
-        <div className="flex items-center justify-start mb-8">
+        {/* Top Bar with Back Button and Language Toggle */}
+        <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate(`/shop/${slug}/dashboard`)}
             className="flex items-center gap-2 text-white/70 hover:text-white transition"
           >
             <ArrowRight size={20} />
             {t.back}
+          </button>
+
+          {/* Language Toggle */}
+          <button
+            onClick={() => handleLanguageChange(lang === 'ar' ? 'en' : 'ar')}
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm font-bold transition"
+          >
+            <span>{lang === 'ar' ? 'EN' : 'ع'}</span>
           </button>
         </div>
 
@@ -378,7 +384,7 @@ export function PortalBookings() {
                       <option value="">{t.selectService}</option>
                       {services.map(service => (
                         <option key={service.id} value={service.id}>
-                          {lang === 'ar' ? service.nameAr : service.nameEn} - {service.price} ج.م ({service.durationMinutes} {lang === 'ar' ? 'دقيقة' : 'mins'})
+                          {lang === 'ar' ? service.nameAr : service.nameEn} - {service.price} ج.م ({service.duration} {lang === 'ar' ? 'دقيقة' : 'mins'})
                         </option>
                       ))}
                     </select>
