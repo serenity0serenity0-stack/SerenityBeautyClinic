@@ -301,7 +301,22 @@ export function usePortalAuthSecure(slug?: string) {
           return null
         }
 
+        // ⭐ SECURITY CHECK: Validate user is accessing correct shop
+        // Get the shop ID from slug (same logic as registration)
+        const expectedShopId = slug ? slug.split('-')[0] : 'default'
+        
+        if (portalUser.shop_id !== expectedShopId) {
+          console.error('❌ SECURITY: Phone registered in different shop', {
+            phone,
+            attemptedShopId: expectedShopId,
+            actualShopId: portalUser.shop_id
+          })
+          setError('رقم الهاتف غير مسجل في هذا المتجر')
+          return null
+        }
+
         console.log('✅ Email found for phone:', portalUser.email)
+        console.log('✅ Shop validation passed:', portalUser.shop_id)
 
         // Step 2: Login using the email we found
         const { data, error: signInErr } = await supabase.auth.signInWithPassword({
