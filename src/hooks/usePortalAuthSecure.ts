@@ -225,7 +225,6 @@ export function usePortalAuthSecure(slug?: string) {
                 shop_id: finalShopId,
                 name: name || phone, // use phone as name if no name provided
                 phone: phone,
-                email: email || null,
                 birthday: null,
                 totalVisits: 0,
                 totalSpent: 0,
@@ -246,7 +245,6 @@ export function usePortalAuthSecure(slug?: string) {
             const { error: updateErr } = await supabase
               .from('clients')
               .update({
-                email: email || null,
                 updatedAt: new Date().toISOString()
               })
               .eq('id', existingClient.id)
