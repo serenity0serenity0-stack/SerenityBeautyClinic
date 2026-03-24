@@ -29,11 +29,11 @@ export function usePortalSettingsWithShop(slug?: string) {
       console.log('🔍 Fetching portal settings for slug:', portalSlug)
 
       // First check if portal settings exist with this slug
-      const { data: portalData, error: portalErr } = await supabase
+      const { data: portalDataArray, error: portalErr } = await supabase
         .from('portal_settings')
         .select()
         .eq('portal_slug', portalSlug)
-        .single()
+        .limit(1)
 
       if (portalErr) {
         console.error('❌ Error fetching portal settings:', portalErr)
@@ -42,11 +42,13 @@ export function usePortalSettingsWithShop(slug?: string) {
         return null
       }
 
-      if (!portalData) {
+      if (!portalDataArray || portalDataArray.length === 0) {
         console.warn('⚠️ Port data is null for slug:', portalSlug)
         setError('البوابة غير موجودة')
         return null
       }
+
+      const portalData = portalDataArray[0]
 
       console.log('✅ Portal data found:', {
         slug: portalData.portal_slug,
