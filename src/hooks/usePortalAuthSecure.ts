@@ -118,18 +118,20 @@ export function usePortalAuthSecure(slug?: string) {
         let finalShopId = shopId
         
         if (!finalShopId && slug) {
-          // Look up shop by slug (for single shop setup)
+          // Look up shop by slug
           const { data: shops, error: shopsErr } = await supabase
             .from('shops')
             .select('id')
-            .limit(1)
+            .eq('slug', slug)
+            .single()
 
-          if (shopsErr || !shops || shops.length === 0) {
+          if (shopsErr || !shops) {
+            console.error('❌ Shop lookup error:', shopsErr)
             throw new Error('لم يتم العثور على المتجر')
           }
-          finalShopId = shops[0].id
+          finalShopId = shops.id
         } else if (!finalShopId) {
-          finalShopId = 'default'
+          throw new Error('معرف المتجر مطلوب')
         }
         
         console.log('📱 Registering with phone:', phone, 'for shop:', finalShopId)
@@ -316,28 +318,29 @@ export function usePortalAuthSecure(slug?: string) {
           return null
         }
 
-        // ⭐ SECURITY CHECK: Validate user is accessing correct shop
-        // Only validate if slug is provided
+        // ⭐ SECURITY CHECK: Validate user is accessing correct shop via slug
         if (slug) {
           // Look up shop by slug to get actual shop ID
-          const { data: shops, error: shopsErr } = await supabase
+          const { data: shop, error: shopErr } = await supabase
             .from('shops')
             .select('id')
-            .limit(1)
+            .eq('slug', slug)
+            .single()
 
-          if (shopsErr || !shops || shops.length === 0) {
-            console.warn('⚠️ Could not find shop, allowing login (single shop setup)')
-          } else {
-            const expectedShopId = shops[0].id
-            if (portalUser.shop_id !== expectedShopId) {
-              console.error('❌ SECURITY: Phone registered in different shop', {
-                phone,
-                attemptedShopId: expectedShopId,
-                actualShopId: portalUser.shop_id
-              })
-              setError('رقم الهاتف غير مسجل في هذا المتجر')
-              return null
-            }
+          if (shopErr || !shop) {
+            console.error('❌ Shop not found for slug:', slug)
+            setError('متجر غير صحيح')
+            return null
+          }
+
+          if (portalUser.shop_id !== shop.id) {
+            console.error('❌ SECURITY: Phone registered in different shop', {
+              phone,
+              attemptedShopId: shop.id,
+              actualShopId: portalUser.shop_id
+            })
+            setError('رقم الهاتف غير مسجل في هذا المتجر')
+            return null
           }
         }
 
