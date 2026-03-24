@@ -76,7 +76,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
 
       const { data: nextBookings, error: bookingErr } = await supabase
         .from('bookings')
-        .select('id, bookingtime, serviceid')
+        .select('id, bookingtime, service_id')
         .eq('shop_id', shopId)
         .eq('clientphone', customerPhone)
         .in('status', ['pending', 'confirmed'])
@@ -105,7 +105,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
         const { data: serviceData } = await supabase
           .from('services')
           .select('nameAr')
-          .eq('id', nextBookings[0].serviceid)
+          .eq('id', nextBookings[0].service_id)
           .single()
         serviceName = serviceData?.nameAr || 'خدمة'
       }
