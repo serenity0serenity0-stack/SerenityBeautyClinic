@@ -182,7 +182,6 @@ SELECT
 FROM barbers
 GROUP BY name
 HAVING COUNT(*) > 1
-ORDER BY COUNT(*) DESC
 
 UNION ALL
 
@@ -194,7 +193,7 @@ SELECT
 FROM services
 GROUP BY "nameAr"
 HAVING COUNT(*) > 1
-ORDER BY COUNT(*) DESC;
+ORDER BY occurrence_count DESC;
 
 -- ============================================================================
 -- SECTION 7: Verify Query Parameterization (check for literal strings in data)
