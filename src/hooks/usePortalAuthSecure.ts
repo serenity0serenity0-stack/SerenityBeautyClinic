@@ -238,11 +238,12 @@ export function usePortalAuthSecure(slug?: string) {
         // Step 1: Check if phone is registered at all
         const { data: phoneCheck, error: phoneCheckErr } = await supabase
           .from('portal_users')
-          .select('id, email, phone')
+          .select('id, email, phone, name')
           .eq('phone', phone)
           .maybeSingle()
 
         if (phoneCheckErr && phoneCheckErr.code !== 'PGRST116') {
+          console.error('❌ Database error:', phoneCheckErr)
           throw phoneCheckErr
         }
 
@@ -252,27 +253,42 @@ export function usePortalAuthSecure(slug?: string) {
           return false
         }
 
-        console.log('✅ Phone found, verifying email match')
+        console.log('✅ Phone found:', { phone, dbEmail: phoneCheck.email, providedEmail: email })
 
-        // Step 2: Verify that email matches this phone
-        if (phoneCheck.email !== email) {
-          console.error('❌ Email does not match phone:', { phone, providedEmail: email, dbEmail: phoneCheck.email })
-          setError('البريد الإلكتروني ورقم الهاتف غير متطابقين')
+        // Step 2: Check if email exists for this phone
+        if (!phoneCheck.email) {
+          console.error('❌ Phone registered but NO EMAIL stored')
+          setError('لم يتم تسجيل بريد إلكتروني لهذا الرقم. يرجى تحديث ملفك الشخصي أولاً')
+          return false
+        }
+
+        // Step 3: Verify that email matches this phone (case-insensitive)
+        const dbEmailLower = phoneCheck.email.toLowerCase().trim()
+        const providedEmailLower = email.toLowerCase().trim()
+
+        if (dbEmailLower !== providedEmailLower) {
+          console.error('❌ Email does not match phone:', { 
+            phone, 
+            providedEmail: providedEmailLower, 
+            dbEmail: dbEmailLower 
+          })
+          setError(`البريد الإلكتروني غير متطابق. البريد المسجل: ${phoneCheck.email}`)
           return false
         }
 
         console.log('✅ Email and phone verified, updating password')
 
-        // Step 3: Update the password
+        // Step 4: Update the password for the authenticated user
         const { error: updateErr } = await supabase.auth.updateUser({
           password: newPassword
         })
 
         if (updateErr) {
+          console.error('❌ Password update error:', updateErr)
           throw updateErr
         }
 
-        console.log('✅ Password updated successfully')
+        console.log('✅ Password updated successfully for:', phoneCheck.name)
         setError(null)
         return true
       } catch (err: any) {
