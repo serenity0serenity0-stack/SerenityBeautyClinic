@@ -44,6 +44,12 @@ CREATE POLICY "portal_users_create_self" ON portal_users
     id = auth.uid()
   );
 
+-- ⭐ ALLOW PUBLIC READ for login (find user by phone)
+-- During login, user needs to find their record by phone
+CREATE POLICY "portal_users_read_for_login" ON portal_users
+  FOR SELECT
+  USING (true);  -- Allow public read (phone lookup is safe)
+
 -- Portal users can view their own data
 CREATE POLICY "portal_users_read_own" ON portal_users
   FOR SELECT

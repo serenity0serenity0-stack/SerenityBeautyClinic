@@ -72,6 +72,10 @@ export function PortalLoginSecure() {
       const result = await loginPortalUser(phone, password)
       if (result) {
         toast.success('تم تسجيل الدخول بنجاح ✓')
+        // Redirect immediately instead of waiting for state update
+        setTimeout(() => {
+          navigate(`/shop/${slug}/dashboard`, { replace: true })
+        }, 500)
       }
     } catch (err: any) {
       console.error('Login error:', err)
