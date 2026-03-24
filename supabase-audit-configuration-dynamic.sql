@@ -16,7 +16,7 @@ SELECT
     ELSE '✅ SET'
   END as auth_status,
   CASE 
-    WHEN auth_user_id LIKE '________-____-____-____-____________' THEN '✅ VALID UUID'
+    WHEN auth_user_id::text LIKE '________-____-____-____-____________' THEN '✅ VALID UUID'
     ELSE '❌ INVALID FORMAT'
   END as uuid_format
 FROM shops
