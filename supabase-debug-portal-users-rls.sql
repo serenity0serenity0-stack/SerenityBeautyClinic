@@ -42,8 +42,8 @@ WHERE id = '73cfb82f-c3c1-432f-b6a7-932b2a3ea5ae'
 UNION ALL
 
 SELECT 
-  'N/A'::uuid,
-  'N/A'::uuid,
+  NULL::uuid,
+  NULL::uuid,
   'N/A',
   'N/A',
   'Not found',

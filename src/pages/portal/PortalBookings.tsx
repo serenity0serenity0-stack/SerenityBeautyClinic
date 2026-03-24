@@ -109,11 +109,18 @@ export function PortalBookings() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   
-  // Language state - Listen for changes in localStorage
+  // Language state - Listen for changes in localStorage (default to Arabic)
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem(`portal_lang_${slug}`)
     return (saved === 'en' ? 'en' : 'ar') as Language
   })
+
+  // Set default language to Arabic if not already set
+  useEffect(() => {
+    if (!localStorage.getItem(`portal_lang_${slug}`)) {
+      localStorage.setItem(`portal_lang_${slug}`, 'ar')
+    }
+  }, [slug])
 
   // Listen for language changes in other parts of the app
   useEffect(() => {

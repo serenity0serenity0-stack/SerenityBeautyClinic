@@ -78,11 +78,18 @@ export function PortalHistory() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
-  // Language state
+  // Language state (default to Arabic)
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem(`portal_lang_${slug}`)
     return (saved === 'en' ? 'en' : 'ar') as Language
   })
+
+  // Set default language to Arabic if not already set
+  useEffect(() => {
+    if (!localStorage.getItem(`portal_lang_${slug}`)) {
+      localStorage.setItem(`portal_lang_${slug}`, 'ar')
+    }
+  }, [slug])
 
   const t = translations[lang]
   const dir = lang === 'ar' ? 'rtl' : 'ltr'
