@@ -447,7 +447,7 @@ export const Bookings: React.FC = () => {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 bg-gold-400 text-dark px-6 py-2 rounded-lg font-semibold hover:bg-gold-500 transition"
+            className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-pink-600 hover:to-pink-700 transition shadow-lg hover:shadow-pink-500/50"
           >
             <Plus size={20} />
             حجز جديد
@@ -923,14 +923,14 @@ export const Bookings: React.FC = () => {
                 {/* Service Type (Optional) */}
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    نوع الخدمة (اختياري)
+                    💇 نوع الخدمة (اختياري)
                   </label>
                   <input
                     type="text"
-                    placeholder="مثل: حلاقة عادية، حلاقة + لحية..."
+                    placeholder="مثل: حلاقة عادية، حلاقة + لحية، عناية اللحية..."
                     value={formData.service_type}
                     onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                   />
                 </div>
 
@@ -940,9 +940,9 @@ export const Bookings: React.FC = () => {
                     type="submit"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex-1 bg-gold-400 text-dark px-6 py-3 rounded-lg font-semibold hover:bg-gold-500 transition"
+                    className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-pink-700 transition shadow-lg hover:shadow-pink-500/50"
                   >
-                    {editingId ? 'تحديث الحجز' : 'إنشاء الحجز'}
+                    {editingId ? '✅ تحديث الحجز' : '✅ إنشاء الحجز'}
                   </motion.button>
                   <motion.button
                     type="button"
