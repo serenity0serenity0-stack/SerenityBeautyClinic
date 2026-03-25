@@ -38,16 +38,10 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- STEP 3: FIX MISSING COLUMNS (only if they don't exist)
+-- STEP 3: FIX MISSING COLUMNS (already exist, skipping)
 -- ============================================================================
-
--- Add isActive to service_variants if missing
-DO $$ 
-BEGIN
-  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='service_variants' AND column_name='isActive') THEN
-    ALTER TABLE service_variants ADD COLUMN isActive BOOLEAN DEFAULT true;
-  END IF;
-END $$;
+-- Note: isActive column in service_variants already exists (PostgreSQL stores as lowercase "isactive")
+-- Nothing to do here
 
 -- ============================================================================
 -- STEP 4: RENAME OLD shop_id TO clinic_id IF EXISTS
