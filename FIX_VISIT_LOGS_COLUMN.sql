@@ -27,6 +27,6 @@ WHERE table_name = 'visit_logs'
 ORDER BY ordinal_position;
 
 -- Show sample data
-SELECT id, clinic_id, client_id, visitDate, visitTime FROM visit_logs LIMIT 3;
+SELECT id, clinic_id, client_id, visit_date FROM visit_logs LIMIT 3;
 
 COMMIT;
