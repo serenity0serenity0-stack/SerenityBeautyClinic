@@ -1,12 +1,10 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { checkSubscriptionStatus, SubscriptionStatus, getBillingInfo } from '@/utils/subscriptionChecker'
 import { AlertCircle, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 
 export const SubscriptionAlert = () => {
   const { clinicId } = useAuth()
-  const navigate = useNavigate()
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [billing, setBilling] = useState<any>(null)
   const [loading, setLoading] = useState(true)
