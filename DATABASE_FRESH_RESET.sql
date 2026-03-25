@@ -334,10 +334,10 @@ INSERT INTO portal_settings (clinic_id, portal_enabled, portal_title)
 VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', false, 'Serenity Beauty Clinic');
 
 -- ============================================================================
--- STEP 18: ENABLE RLS ON ALL TABLES
+-- STEP 18: ENABLE RLS ON ALL TABLES (EXCEPT admin_auth - no circular dependency)
 -- ============================================================================
 ALTER TABLE clinic ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admin_auth ENABLE ROW LEVEL SECURITY;
+-- Note: admin_auth should NOT have RLS (it's the authentication table)
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE barbers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
@@ -498,9 +498,6 @@ WITH CHECK (auth.uid() IN (SELECT auth_user_id FROM admin_auth WHERE clinic_id =
 -- STEP 20: INSERT SAMPLE DATA
 -- ============================================================================
 
-INSERT INTO barbers (clinic_id, name, phone, active)
-VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'أحمد الحلاق', '01001234567', true);
-
 INSERT INTO clients (clinic_id, name, phone, total_visits, total_spent, is_vip)
 VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'محمد علي', '01012345678', 0, 0, false);
 
@@ -519,13 +516,13 @@ VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'supplies', 100, CURRENT_DATE, N
 SELECT '✅ DATABASE RESET COMPLETE' as status;
 
 SELECT 
-  COUNT(*) FILTER (WHERE tablename = 'clinic') as clinic_count,
-  COUNT(*) FILTER (WHERE tablename = 'admin_auth') as admin_auth_count,
-  COUNT(*) FILTER (WHERE tablename = 'clients') as clients_count,
-  COUNT(*) FILTER (WHERE tablename = 'services') as services_count,
-  COUNT(*) FILTER (WHERE tablename = 'transactions') as transactions_count,
-  COUNT(*) FILTER (WHERE tablename = 'expenses') as expenses_count,
-  COUNT(*) FILTER (WHERE tablename = 'subscriptions') as subscriptions_count
+  COUNT(*) FILTER (WHERE table_name = 'clinic') as clinic_count,
+  COUNT(*) FILTER (WHERE table_name = 'admin_auth') as admin_auth_count,
+  COUNT(*) FILTER (WHERE table_name = 'clients') as clients_count,
+  COUNT(*) FILTER (WHERE table_name = 'services') as services_count,
+  COUNT(*) FILTER (WHERE table_name = 'transactions') as transactions_count,
+  COUNT(*) FILTER (WHERE table_name = 'expenses') as expenses_count,
+  COUNT(*) FILTER (WHERE table_name = 'subscriptions') as subscriptions_count
 FROM information_schema.tables 
 WHERE table_schema = 'public';
 
