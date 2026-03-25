@@ -38,25 +38,40 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- STEP 3: FIX MISSING COLUMNS
+-- STEP 3: FIX MISSING COLUMNS (only if they don't exist)
 -- ============================================================================
 
--- Add clinic_id to visit_logs if missing
-ALTER TABLE visit_logs ADD COLUMN clinic_id UUID DEFAULT 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID;
-ALTER TABLE visit_logs ADD CONSTRAINT fk_visit_logs_clinic FOREIGN KEY (clinic_id) REFERENCES clinic(id) ON DELETE CASCADE;
-
 -- Add isActive to service_variants if missing
-ALTER TABLE service_variants ADD COLUMN isActive BOOLEAN DEFAULT true;
+DO $$ 
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='service_variants' AND column_name='isActive') THEN
+    ALTER TABLE service_variants ADD COLUMN isActive BOOLEAN DEFAULT true;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- STEP 4: RENAME OLD shop_id TO clinic_id IF EXISTS
 -- ============================================================================
 
--- Check and rename in each table
-ALTER TABLE clients RENAME COLUMN shop_id TO clinic_id;
-ALTER TABLE barbers RENAME COLUMN shop_id TO clinic_id;
-ALTER TABLE services RENAME COLUMN shop_id TO clinic_id;
-ALTER TABLE service_variants RENAME COLUMN shop_id TO clinic_id;
+-- Check and rename in each table (only if shop_id exists and clinic_id doesn't)
+DO $$ 
+BEGIN
+  IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='clients' AND column_name='shop_id') THEN
+    ALTER TABLE clients RENAME COLUMN shop_id TO clinic_id;
+  END IF;
+  
+  IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='barbers' AND column_name='shop_id') THEN
+    ALTER TABLE barbers RENAME COLUMN shop_id TO clinic_id;
+  END IF;
+  
+  IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='services' AND column_name='shop_id') THEN
+    ALTER TABLE services RENAME COLUMN shop_id TO clinic_id;
+  END IF;
+  
+  IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='service_variants' AND column_name='shop_id') THEN
+    ALTER TABLE service_variants RENAME COLUMN shop_id TO clinic_id;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- STEP 5: UPDATE ANY NULL clinic_id VALUES
@@ -64,8 +79,14 @@ ALTER TABLE service_variants RENAME COLUMN shop_id TO clinic_id;
 UPDATE clients SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
 UPDATE barbers SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
 UPDATE services SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
-UPDATE service_variants SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE bookings SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE transactions SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE expenses SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
 UPDATE visit_logs SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE subscriptions SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE settings SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE portal_users SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
+UPDATE portal_settings SET clinic_id = 'a844c8e8-b7f2-402b-a2a1-d68cc002e8de'::UUID WHERE clinic_id IS NULL;
 
 -- ============================================================================
 -- STEP 6: VERIFY
