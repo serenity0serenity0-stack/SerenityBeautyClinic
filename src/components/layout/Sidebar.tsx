@@ -16,8 +16,6 @@ import {
   FileText,
   Calendar,
   Clock,
-  Building2,
-  Package,
   Receipt,
 } from 'lucide-react'
 
@@ -43,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath, 
 
   const isReadOnly = subscriptionStatus === 'inactive' && role === 'admin'
 
-  const shopLinks: SidebarLink[] = [
+  // Single clinic - all users (admin) see the same clinic management interface
+  const links: SidebarLink[] = [
     { icon: <Home size={20} />, label: t('navigation.dashboard'), href: '/dashboard' },
     { icon: <ShoppingCart size={20} />, label: t('navigation.pos'), href: '/pos' },
     { icon: <Users size={20} />, label: t('navigation.clients'), href: '/clients' },
@@ -57,15 +56,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath, 
     { icon: <Receipt size={20} />, label: t('navigation.billing'), href: '/billing' },
     { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings' },
   ]
-
-  const adminLinks: SidebarLink[] = [
-    { icon: <Home size={20} />, label: t('navigation.admin_dashboard'), href: '/admin' },
-    { icon: <Building2 size={20} />, label: t('navigation.admin_shops'), href: '/admin/shops' },
-    { icon: <Package size={20} />, label: t('navigation.admin_plans'), href: '/admin/plans' },
-    { icon: <Receipt size={20} />, label: t('navigation.admin_billing'), href: '/admin/billing' },
-  ]
-
-  const links = role === 'admin' ? adminLinks : shopLinks
 
   const handleNavigate = (path: string) => {
     navigate(path)
