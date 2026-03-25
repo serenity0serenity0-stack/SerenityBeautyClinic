@@ -61,9 +61,9 @@ DROP POLICY IF EXISTS "settings_admin_insert" ON settings;
 DROP POLICY IF EXISTS "settings_admin_update" ON settings;
 
 -- Step 3: Verify all RLS is disabled
-SELECT schemaname, tablename, rowsecurity 
+SELECT tablename, rowsecurity 
 FROM pg_tables 
-WHERE table_schema = 'public' 
+WHERE schemaname = 'public' 
 ORDER BY tablename;
 
 SELECT '✅ ALL RLS DISABLED' as status;
