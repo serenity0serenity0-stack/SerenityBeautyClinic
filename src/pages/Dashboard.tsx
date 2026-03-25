@@ -247,7 +247,7 @@ export const Dashboard: React.FC = () => {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold text-sm md:text-base truncate">
-                      {tx.clientName || t('dashboard.unknown_client')}
+                      {tx.client_name || t('dashboard.unknown_client')}
                     </p>
                     <p className="text-xs md:text-xs text-gray-400">
                       {tx.date} {tx.time}
