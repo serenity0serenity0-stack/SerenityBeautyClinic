@@ -76,33 +76,54 @@ BEGIN
 
 END $$;
 
--- Add missing date/time columns
+-- Add missing date/time columns with proper constraints
 DO $$ 
 BEGIN
-  -- visit_date (lowercase snake_case version if not exists)
+  -- visit_date (lowercase snake_case version - PRIMARY date column)
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name='visit_logs' AND column_name='visit_date'
   ) THEN
-    ALTER TABLE visit_logs ADD COLUMN visit_date DATE;
-    RAISE NOTICE '✅ Added visit_date column to visit_logs';
+    ALTER TABLE visit_logs ADD COLUMN visit_date DATE DEFAULT CURRENT_DATE NOT NULL;
+    RAISE NOTICE '✅ Added visit_date column to visit_logs with DEFAULT CURRENT_DATE';
+  ELSE
+    -- If column exists, update NULL values to CURRENT_DATE
+    UPDATE visit_logs SET visit_date = CURRENT_DATE WHERE visit_date IS NULL;
+    -- Add NOT NULL constraint if not already present
+    BEGIN
+      ALTER TABLE visit_logs ALTER COLUMN visit_date SET NOT NULL;
+      RAISE NOTICE '✅ Added NOT NULL constraint to visit_date';
+    EXCEPTION WHEN others THEN
+      RAISE NOTICE '✅ visit_date already has NOT NULL constraint';
+    END;
   END IF;
 
-  -- visitDate (camelCase version - already referenced in code)
+  -- visitDate (camelCase version for code compatibility)
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name='visit_logs' AND column_name='visitDate'
   ) THEN
-    ALTER TABLE visit_logs ADD COLUMN "visitDate" DATE;
-    RAISE NOTICE '✅ Added visitDate column to visit_logs';
+    ALTER TABLE visit_logs ADD COLUMN "visitDate" DATE DEFAULT CURRENT_DATE NOT NULL;
+    RAISE NOTICE '✅ Added visitDate column to visit_logs with DEFAULT CURRENT_DATE';
+  ELSE
+    -- If column exists, update NULL values to CURRENT_DATE
+    UPDATE visit_logs SET "visitDate" = CURRENT_DATE WHERE "visitDate" IS NULL;
+    -- Add NOT NULL constraint if not already present
+    BEGIN
+      ALTER TABLE visit_logs ALTER COLUMN "visitDate" SET NOT NULL;
+      RAISE NOTICE '✅ Added NOT NULL constraint to visitDate';
+    EXCEPTION WHEN others THEN
+      RAISE NOTICE '✅ visitDate already has NOT NULL constraint';
+    END;
   END IF;
 
 END $$;
 
--- Verify all columns now exist
-SELECT column_name, data_type 
+-- Verify all columns now exist with proper constraints
+SELECT column_name, data_type, is_nullable, column_default
 FROM information_schema.columns 
 WHERE table_name='visit_logs' 
+AND column_name IN ('visit_date', 'visitDate', 'clinic_id', 'client_id', 'visitTime', 'servicesCount', 'total_spent')
 ORDER BY ordinal_position;
 
 COMMIT;

@@ -6,19 +6,21 @@ import { useServices } from '../db/hooks/useServices'
 import { useServiceVariants } from '../db/hooks/useServiceVariants'
 import { useAuth } from '../hooks/useAuth'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export const Services: React.FC = () => {
   const { t } = useTranslation()
   const { services, addService, deleteService } = useServices()
-  const { addVariant, deleteVariant } = useServiceVariants()
+  const { addVariant, deleteVariant, updateVariant, getVariantsByServiceId } = useServiceVariants()
   const { clinicId } = useAuth()
   
   // Modals
   const [isAddBaseServiceOpen, setIsAddBaseServiceOpen] = useState(false)
   const [isAddVariantOpen, setIsAddVariantOpen] = useState(false)
+  const [isEditVariantOpen, setIsEditVariantOpen] = useState(false)
   const [selectedServiceForVariant, setSelectedServiceForVariant] = useState<any>(null)
+  const [editingVariant, setEditingVariant] = useState<any>(null)
   
   // States
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
@@ -32,8 +34,13 @@ export const Services: React.FC = () => {
     price: 0,
     duration: 30,
   })
+  const [editVariantForm, setEditVariantForm] = useState({
+    name: '',
+    price: 0,
+    duration: 30,
+  })
 
-  // Load all service variants on mount
+  // Load all service variants on mount and when services change
   useEffect(() => {
     const loadAllVariants = async () => {
       const variantsMap: {[key: string]: any[]} = {}
@@ -41,11 +48,11 @@ export const Services: React.FC = () => {
       for (const service of services) {
         if (!service.id) continue
         try {
-          // For now, we'd need to fetch variants from a method
-          // This is a placeholder - in real implementation, you might use getVariantsByServiceId
-          variantsMap[service.id] = []
+          const variants = await getVariantsByServiceId(service.id)
+          variantsMap[service.id] = variants || []
         } catch (err) {
           console.error(`Failed to load variants for service ${service.id}:`, err)
+          variantsMap[service.id] = []
         }
       }
       
@@ -55,7 +62,7 @@ export const Services: React.FC = () => {
     if (services.length > 0) {
       loadAllVariants()
     }
-  }, [services])
+  }, [services, getVariantsByServiceId])
 
   // Add base service
   const handleAddBaseService = async () => {
@@ -114,6 +121,17 @@ export const Services: React.FC = () => {
       setVariantForm({ name: '', price: 0, duration: 30 })
       toast.success('✅ تم إضافة التفاصيل بنجاح')
       
+      // ✅ RELOAD VARIANTS FOR THIS SERVICE IMMEDIATELY
+      try {
+        const freshVariants = await getVariantsByServiceId(selectedServiceForVariant.id)
+        setServiceVariantsMap(prev => ({
+          ...prev,
+          [selectedServiceForVariant.id]: freshVariants || []
+        }))
+      } catch (reloadErr) {
+        console.error('Error reloading variants:', reloadErr)
+      }
+      
       // Ask if they want to add another variant
       const addAnother = window.confirm('هل تريد إضافة تفصيل آخر لنفس الخدمة؟')
       if (!addAnother) {
@@ -142,6 +160,72 @@ export const Services: React.FC = () => {
       } catch (err) {
         toast.error(t('errors.database_error'))
       }
+    }
+  }
+
+  // Edit variant
+  const handleEditVariant = async () => {
+    if (!editVariantForm.name || editVariantForm.price <= 0 || editVariantForm.duration <= 0) {
+      toast.error('الرجاء تعبئة جميع البيانات')
+      return
+    }
+
+    if (!editingVariant?.id) {
+      toast.error('خطأ في البيانات')
+      return
+    }
+
+    try {
+      await updateVariant(editingVariant.id, {
+        name: editVariantForm.name,
+        price: editVariantForm.price,
+        duration: editVariantForm.duration,
+        isActive: editingVariant.isActive,
+      })
+
+      toast.success('✅ تم تحديث التفصيل')
+      setIsEditVariantOpen(false)
+      setEditingVariant(null)
+      setEditVariantForm({ name: '', price: 0, duration: 30 })
+
+      // Reload variants
+      if (selectedServiceForVariant?.id) {
+        const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
+        setServiceVariantsMap(prev => ({
+          ...prev,
+          [selectedServiceForVariant.id]: variants || []
+        }))
+      }
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+      console.error('Error updating variant:', err)
+    }
+  }
+
+  // Toggle variant active status
+  const handleToggleVariantActive = async (variant: any) => {
+    try {
+      await updateVariant(variant.id, {
+        name: variant.name,
+        price: variant.price,
+        duration: variant.duration,
+        isActive: !variant.isActive,
+      })
+
+      const status = !variant.isActive ? 'enabled' : 'disabled'
+      toast.success(`✅ تم ${status === 'enabled' ? 'تفعيل' : 'تعطيل'} التفصيل`)
+
+      // Reload variants
+      if (selectedServiceForVariant?.id) {
+        const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
+        setServiceVariantsMap(prev => ({
+          ...prev,
+          [selectedServiceForVariant.id]: variants || []
+        }))
+      }
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+      console.error('Error toggling variant:', err)
     }
   }
 
@@ -314,25 +398,53 @@ export const Services: React.FC = () => {
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 10 }}
-                                    className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/10"
+                                    className={`flex items-center justify-between p-2 bg-white/5 rounded border ${!variant.isActive ? 'border-red-400/30 opacity-60' : 'border-white/10'}`}
                                   >
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-white text-sm font-medium truncate">
+                                      <p className={`text-sm font-medium truncate ${!variant.isActive ? 'text-gray-400 line-through' : 'text-white'}`}>
                                         {variant.name}
                                       </p>
                                       <p className="text-xs text-gray-400">
                                         ⏱️ {variant.duration || 30} دقيقة
                                       </p>
                                     </div>
-                                    <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                                       <p className="text-gold-400 font-bold text-sm">
                                         {variant.price} ج.م
                                       </p>
+                                      <button
+                                        onClick={() => {
+                                          setEditingVariant(variant)
+                                          setEditVariantForm({
+                                            name: variant.name,
+                                            price: variant.price,
+                                            duration: variant.duration,
+                                          })
+                                          setSelectedServiceForVariant({ id: serviceId })
+                                          setIsEditVariantOpen(true)
+                                        }}
+                                        className="p-1 hover:bg-blue-500/20 rounded transition"
+                                        title="تعديل"
+                                      >
+                                        <Edit2 size={14} className="text-blue-400" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleToggleVariantActive(variant)}
+                                        className="p-1 hover:bg-yellow-500/20 rounded transition"
+                                        title={variant.isActive ? 'تعطيل' : 'تفعيل'}
+                                      >
+                                        {variant.isActive ? (
+                                          <Eye size={14} className="text-yellow-400" />
+                                        ) : (
+                                          <EyeOff size={14} className="text-gray-400" />
+                                        )}
+                                      </button>
                                       <button
                                         onClick={() =>
                                           handleDeleteVariant(variant.id)
                                         }
                                         className="p-1 hover:bg-red-500/10 rounded transition"
+                                        title="حذف"
                                       >
                                         <X size={14} className="text-red-400" />
                                       </button>
@@ -493,6 +605,83 @@ export const Services: React.FC = () => {
                 setIsAddVariantOpen(false)
                 setSelectedServiceForVariant(null)
                 setVariantForm({ name: '', price: 0, duration: 30 })
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 px-4 py-2 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition"
+            >
+              إلغاء
+            </motion.button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Variant Modal */}
+      <Modal
+        isOpen={isEditVariantOpen}
+        onClose={() => {
+          setIsEditVariantOpen(false)
+          setEditingVariant(null)
+          setEditVariantForm({ name: '', price: 0, duration: 30 })
+        }}
+        title={`تعديل: ${editingVariant?.name || ''}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">اسم التفصيل/الحزمة *</label>
+            <input
+              type="text"
+              placeholder="مثال: 3 جلسات + كريم، حزمة bronze، حزمة vip"
+              value={editVariantForm.name}
+              onChange={(e) => setEditVariantForm({ ...editVariantForm, name: e.target.value })}
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
+              <input
+                type="number"
+                placeholder="مثال: 150"
+                value={editVariantForm.price}
+                onChange={(e) =>
+                  setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">المدة (دقائق) *</label>
+              <input
+                type="number"
+                placeholder="30"
+                value={editVariantForm.duration}
+                onChange={(e) =>
+                  setEditVariantForm({ ...editVariantForm, duration: parseInt(e.target.value) || 30 })
+                }
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <motion.button
+              onClick={handleEditVariant}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition"
+            >
+              حفظ التعديلات
+            </motion.button>
+            <motion.button
+              onClick={() => {
+                setIsEditVariantOpen(false)
+                setEditingVariant(null)
+                setEditVariantForm({ name: '', price: 0, duration: 30 })
               }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

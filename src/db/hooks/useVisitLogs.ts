@@ -56,10 +56,22 @@ export const useVisitLogs = () => {
         throw new Error('Clinic ID is required')
       }
 
+      // Ensure visitDate is provided - this is CRITICAL
+      if (!log.visitDate) {
+        throw new Error('Visit date is required')
+      }
+
+      // Map camelCase visitDate to snake_case visit_date for database
       const { data, error } = await supabase
         .from('visit_logs')
         .insert({
-          ...log,
+          client_id: log.client_id,
+          visit_date: log.visitDate,  // Map visitDate → visit_date
+          visitDate: log.visitDate,   // Keep both for compatibility
+          visitTime: log.visitTime,
+          servicesCount: log.servicesCount,
+          total_spent: log.total_spent,
+          notes: log.notes || '',
           clinic_id: clinicId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
