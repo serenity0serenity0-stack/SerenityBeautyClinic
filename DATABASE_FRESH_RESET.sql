@@ -507,11 +507,11 @@ VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'محمد علي', '01012345678'
 INSERT INTO services (clinic_id, nameAr, nameEn, name, price, duration, category, active)
 VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'حلاقة عادية', 'Regular Haircut', 'حلاقة عادية', 50, 20, 'haircut', true);
 
-INSERT INTO transactions (clinic_id, client_name, client_phone, amount, total, payment_method, status, date, time)
-VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'محمد علي', '01012345678', 50, 50, 'cash', 'completed', CURRENT_DATE::text, CURRENT_TIME::text);
+INSERT INTO transactions (clinic_id, client_name, client_phone, amount, total, payment_method, status, date, time, created_at, updated_at)
+VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'محمد علي', '01012345678', 50, 50, 'cash', 'completed', CURRENT_DATE, CURRENT_TIME, NOW(), NOW());
 
-INSERT INTO expenses (clinic_id, category, amount, date)
-VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'supplies', 100, CURRENT_DATE::text);
+INSERT INTO expenses (clinic_id, category, amount, date, created_at, updated_at)
+VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'supplies', 100, CURRENT_DATE, NOW(), NOW());
 
 -- ============================================================================
 -- STEP 21: VERIFICATION
