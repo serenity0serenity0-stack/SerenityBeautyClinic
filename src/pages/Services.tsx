@@ -4,6 +4,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { useServices } from '../db/hooks/useServices'
 import { useServiceVariants } from '../db/hooks/useServiceVariants'
+import { useAuth } from '../hooks/useAuth'
 import { motion } from 'framer-motion'
 import { Trash2, Edit2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,6 +13,7 @@ export const Services: React.FC = () => {
   const { t } = useTranslation()
   const { services, addService, deleteService, updateService } = useServices()
   const { addVariant, deleteVariant } = useServiceVariants()
+  const { clinicId } = useAuth()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('haircut')
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
@@ -24,8 +26,8 @@ export const Services: React.FC = () => {
     duration: 0,
     category: 'haircut',
   })
-  const [variants, setVariants] = useState<Array<{nameAr: string; nameEn: string; price: number}>>([])
-  const [newVariant, setNewVariant] = useState({nameAr: '', nameEn: '', price: 0})
+  const [variants, setVariants] = useState<Array<{name: string; price: number}>>([])
+  const [newVariant, setNewVariant] = useState({name: '', price: 0})
 
   const categories = ['haircut', 'beard', 'skincare', 'kids', 'packages']
 
@@ -46,7 +48,7 @@ export const Services: React.FC = () => {
     setEditingServiceId(null)
     setFormData({ nameAr: '', nameEn: '', price: 0, duration: 0, category: 'haircut' })
     setVariants([])
-    setNewVariant({nameAr: '', nameEn: '', price: 0})
+    setNewVariant({name: '', price: 0})
     setIsModalOpen(true)
   }
 
@@ -60,17 +62,17 @@ export const Services: React.FC = () => {
       category: service.category,
     })
     setVariants([])
-    setNewVariant({nameAr: '', nameEn: '', price: 0})
+    setNewVariant({name: '', price: 0})
     setIsModalOpen(true)
   }
 
   const handleAddVariantToList = () => {
-    if (!newVariant.nameAr || !newVariant.nameEn || newVariant.price <= 0) {
+    if (!newVariant.name || newVariant.price <= 0) {
       toast.error('أضف اسم النوع والسعر')
       return
     }
     setVariants([...variants, newVariant])
-    setNewVariant({nameAr: '', nameEn: '', price: 0})
+    setNewVariant({name: '', price: 0})
   }
 
   const handleRemoveVariant = (idx: number) => {
@@ -105,9 +107,9 @@ export const Services: React.FC = () => {
         if (variants.length > 0 && service?.id) {
           for (const variant of variants) {
             await addVariant({
+              clinic_id: clinicId as string,
               service_id: service.id,
-              nameAr: variant.nameAr,
-              nameEn: variant.nameEn,
+              name: variant.name,
               price: variant.price,
               isActive: true,
             })
@@ -117,7 +119,7 @@ export const Services: React.FC = () => {
       }
       setFormData({ nameAr: '', nameEn: '', price: 0, duration: 0, category: 'haircut' })
       setVariants([])
-      setNewVariant({nameAr: '', nameEn: '', price: 0})
+      setNewVariant({name: '', price: 0})
       setIsModalOpen(false)
       setEditingServiceId(null)
     } catch (err) {
@@ -267,10 +269,7 @@ export const Services: React.FC = () => {
                             >
                               <div className="flex-1">
                                 <p className="text-white text-sm font-medium">
-                                  {variant.nameAr}
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                  {variant.nameEn}
+                                  {variant.name}
                                 </p>
                               </div>
                               <div className="flex items-center gap-3">
@@ -307,7 +306,7 @@ export const Services: React.FC = () => {
           setEditingServiceId(null)
           setFormData({ nameAr: '', nameEn: '', price: 0, duration: 0, category: 'haircut' })
           setVariants([])
-          setNewVariant({nameAr: '', nameEn: '', price: 0})
+          setNewVariant({name: '', price: 0})
         }}
         title={editingServiceId ? 'تعديل الخدمة' : t('services.add_service')}
         size="lg"
@@ -395,23 +394,11 @@ export const Services: React.FC = () => {
                   <input
                     type="text"
                     placeholder="مثال: قص عادي، قص فاخر، باقة كاملة"
-                    value={newVariant.nameAr}
-                    onChange={(e) => setNewVariant({...newVariant, nameAr: e.target.value})}
+                    value={newVariant.name}
+                    onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
                     className="w-full"
                   />
                   <p className="text-xs text-gray-500 mt-1">تفاصيل نوع الخدمة</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-300 mb-1">Service Type in English</label>
-                  <input
-                    type="text"
-                    placeholder="Example: Standard Cut, Premium, Full Package"
-                    value={newVariant.nameEn}
-                    onChange={(e) => setNewVariant({...newVariant, nameEn: e.target.value})}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Service type details for English display</p>
                 </div>
 
                 <div>
@@ -441,8 +428,8 @@ export const Services: React.FC = () => {
                   {variants.map((v, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded border border-white/10">
                       <div>
-                        <p className="text-white text-sm">{v.nameAr}</p>
-                        <p className="text-xs text-gray-400">{v.nameEn}</p>
+                        <p className="text-white text-sm">{v.name}</p>
+                        <p className="text-xs text-gray-400">{v.price}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <p className="text-gold-400 font-bold">{v.price} ج.م</p>
@@ -468,7 +455,7 @@ export const Services: React.FC = () => {
                 setEditingServiceId(null)
                 setFormData({ nameAr: '', nameEn: '', price: 0, duration: 0, category: 'haircut' })
                 setVariants([])
-                setNewVariant({nameAr: '', nameEn: '', price: 0})
+                setNewVariant({name: '', price: 0})
               }}
               className="flex-1 px-4 py-2 border border-white/20 rounded-lg hover:bg-white/5 transition"
             >

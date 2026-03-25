@@ -4,9 +4,9 @@ import toast from 'react-hot-toast'
 
 export interface ServiceVariant {
   id: string
+  clinic_id: string
   service_id: string
-  nameAr: string
-  nameEn: string
+  name: string
   price: number
   duration?: number
   isActive: boolean

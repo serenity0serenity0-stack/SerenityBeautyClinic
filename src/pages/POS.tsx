@@ -149,7 +149,7 @@ export const POS: React.FC = () => {
   }
 
   const handleAddVariant = (service: any, variant: any) => {
-    addToCart(`${service.nameAr} - ${variant.nameAr}`, variant.price)
+    addToCart(`${service.nameAr} - ${variant.name}`, variant.price)
   }
 
   const addToCart = (name: string, price: number) => {
@@ -467,7 +467,7 @@ export const POS: React.FC = () => {
                                   whileTap={{ scale: 0.95 }}
                                   className="w-full p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded text-left transition text-xs"
                                 >
-                                  <p className="text-gray-300 truncate">{variant.nameAr}</p>
+                                  <p className="text-gray-300 truncate">{variant.name}</p>
                                   <p className="text-gold-400 font-bold text-xs">
                                     {variant.price} ج.م
                                   </p>
