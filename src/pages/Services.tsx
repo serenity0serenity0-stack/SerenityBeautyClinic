@@ -323,84 +323,97 @@ export const Services: React.FC = () => {
                 >
                   <GlassCard className="hover:border-gold-400/50 transition">
                     <div className="space-y-4">
-                      {/* Base Service Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="text-white font-bold text-lg">{service.nameAr}</h3>
+                      {/* Base Service Header - CLICKABLE DROPDOWN */}
+                      <button
+                        onClick={() =>
+                          setExpandedServiceId(isExpanded ? null : serviceId)
+                        }
+                        className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition group"
+                      >
+                        <div className="flex-1 text-left">
+                          <h3 className="text-white font-bold text-lg group-hover:text-gold-400 transition">
+                            {service.nameAr}
+                          </h3>
                           <p className="text-xs text-gray-400">{service.nameEn}</p>
-                          <p className="text-xs text-gray-500 mt-1">👤 خدمة اساسية</p>
+                          {serviceVariants.length > 0 && (
+                            <p className="text-xs text-gold-400 mt-1">
+                              📦 {serviceVariants.length} خيار متاح
+                            </p>
+                          )}
                         </div>
-                        <button
-                          onClick={() => handleDeleteService(service.id!)}
-                          className="p-2 hover:bg-red-500/10 rounded transition"
-                          title="حذف الخدمة"
-                        >
-                          <Trash2 size={18} className="text-red-400" />
-                        </button>
-                      </div>
-
-                      {/* Add Variant Button */}
-                      <div className="border-t border-white/10 pt-3">
-                        <motion.button
-                          onClick={() => {
-                            setSelectedServiceForVariant(service)
-                            setIsAddVariantOpen(true)
-                          }}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-500/10 text-green-400 border border-green-400/30 rounded hover:bg-green-500/20 transition text-sm"
-                        >
-                          <Plus size={16} />
-                          أضف تفصيل + سعر + وقت
-                        </motion.button>
-                      </div>
-
-                      {/* Variants List */}
-                      {serviceVariants.length > 0 && (
-                        <div className="border-t border-white/10 pt-3">
+                        <div className="flex items-center gap-2 ml-3">
                           <button
-                            onClick={() =>
-                              setExpandedServiceId(isExpanded ? null : serviceId)
-                            }
-                            className="w-full flex items-center justify-between p-2 hover:bg-white/5 rounded transition"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteService(service.id!)
+                            }}
+                            className="p-2 hover:bg-red-500/10 rounded transition"
+                            title="حذف الخدمة"
                           >
-                            <span className="text-sm font-semibold text-white">
-                              التفاصيل ({serviceVariants.length})
-                            </span>
-                            {isExpanded ? (
-                              <ChevronUp size={16} className="text-gold-400" />
-                            ) : (
-                              <ChevronDown size={16} className="text-gray-400" />
-                            )}
+                            <Trash2 size={18} className="text-red-400" />
                           </button>
+                          {isExpanded ? (
+                            <ChevronUp size={20} className="text-gold-400" />
+                          ) : (
+                            <ChevronDown size={20} className="text-gray-400" />
+                          )}
+                        </div>
+                      </button>
 
-                          {/* Expanded Variants */}
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="mt-3 space-y-2"
-                              >
+                      {/* Expanded Content */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-3 border-t border-white/10 pt-4"
+                          >
+                            {/* Add Variant Button */}
+                            <motion.button
+                              onClick={() => {
+                                setSelectedServiceForVariant(service)
+                                setIsAddVariantOpen(true)
+                              }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-500/10 text-green-400 border border-green-400/30 rounded hover:bg-green-500/20 transition text-sm"
+                            >
+                              <Plus size={16} />
+                              أضف تفصيل جديد
+                            </motion.button>
+
+                            {/* Variants List */}
+                            {serviceVariants.length > 0 && (
+                              <div className="space-y-2">
                                 {serviceVariants.map((variant: any) => (
                                   <motion.div
                                     key={variant.id}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 10 }}
-                                    className={`flex items-center justify-between p-2 bg-white/5 rounded border ${!variant.isActive ? 'border-red-400/30 opacity-60' : 'border-white/10'}`}
+                                    className={`flex items-center justify-between p-3 bg-gradient-to-r from-white/5 to-white/0 rounded-lg border ${
+                                      !variant.isActive
+                                        ? 'border-red-400/30 opacity-60'
+                                        : 'border-gold-400/20 hover:border-gold-400/40'
+                                    } transition`}
                                   >
                                     <div className="flex-1 min-w-0">
-                                      <p className={`text-sm font-medium truncate ${!variant.isActive ? 'text-gray-400 line-through' : 'text-white'}`}>
+                                      <p
+                                        className={`text-sm font-medium truncate ${
+                                          !variant.isActive
+                                            ? 'text-gray-400 line-through'
+                                            : 'text-white'
+                                        }`}
+                                      >
                                         {variant.name}
                                       </p>
                                       <p className="text-xs text-gray-400">
                                         ⏱️ {variant.duration || 30} دقيقة
                                       </p>
                                     </div>
-                                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                                      <p className="text-gold-400 font-bold text-sm">
+                                    <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                                      <p className="text-gold-400 font-bold text-lg">
                                         {variant.price} ج.م
                                       </p>
                                       <button
@@ -417,7 +430,7 @@ export const Services: React.FC = () => {
                                         className="p-1 hover:bg-blue-500/20 rounded transition"
                                         title="تعديل"
                                       >
-                                        <Edit2 size={14} className="text-blue-400" />
+                                        <Edit2 size={16} className="text-blue-400" />
                                       </button>
                                       <button
                                         onClick={() =>
@@ -426,16 +439,16 @@ export const Services: React.FC = () => {
                                         className="p-1 hover:bg-red-500/10 rounded transition"
                                         title="حذف"
                                       >
-                                        <X size={14} className="text-red-400" />
+                                        <X size={16} className="text-red-400" />
                                       </button>
                                     </div>
                                   </motion.div>
                                 ))}
-                              </motion.div>
+                              </div>
                             )}
-                          </AnimatePresence>
-                        </div>
-                      )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </GlassCard>
                 </motion.div>
