@@ -138,12 +138,9 @@ export const Services: React.FC = () => {
         console.error('Error reloading variants:', reloadErr)
       }
       
-      // Ask if they want to add another variant
-      const addAnother = window.confirm('هل تريد إضافة تفصيل آخر لنفس الخدمة؟')
-      if (!addAnother) {
-        setIsAddVariantOpen(false)
-        setSelectedServiceForVariant(null)
-      }
+      // Auto-close modal after successful add
+      setIsAddVariantOpen(false)
+      setSelectedServiceForVariant(null)
     } catch (err) {
       toast.error(t('errors.database_error'))
       console.error('Error adding variant:', err)
@@ -152,12 +149,12 @@ export const Services: React.FC = () => {
 
   // Delete variant
   const handleDeleteVariant = async (variantId: string) => {
-    if (confirm('هل تريد حذف هذا التفصيل؟')) {
+    if (confirm('🗑️ هل تريد حذف هذا التفصيل؟')) {
       try {
         await deleteVariant(variantId)
-        toast.success('🗑️ تم حذف التفصيل', {
+        toast.success('✨ تم حذف التفصيل بنجاح', {
           duration: 2000,
-          icon: '✨'
+          icon: '🗑️'
         })
         
         // Update the variant map
@@ -216,10 +213,10 @@ export const Services: React.FC = () => {
 
   // Delete base service
   const handleDeleteService = async (id: string) => {
-    if (confirm('هل تريد حذف هذه الخدمة وجميع تفاصيلها؟')) {
+    if (confirm('⚠️ هل تريد حذف هذه الخدمة وجميع تفاصيلها؟')) {
       try {
         await deleteService(id)
-        toast.success('✅ تم حذف الخدمة', {
+        toast.success('✅ تم حذف الخدمة بنجاح', {
           duration: 2000,
           icon: '🗑️'
         })
@@ -236,7 +233,7 @@ export const Services: React.FC = () => {
       return
     }
 
-    if (confirm(`هل تريد بالفعل حذف جميع الخدمات (${services.length} خدمة)؟ هذا الإجراء لا يمكن التراجع عنه!`)) {
+    if (confirm(`⚠️ هل تريد بالفعل حذف جميع الخدمات (${services.length} خدمة)؟ هذا الإجراء لا يمكن التراجع عنه!`)) {
       try {
         let deletedCount = 0
         const errors: string[] = []
@@ -296,7 +293,7 @@ export const Services: React.FC = () => {
             onClick={() => setIsAddBaseServiceOpen(true)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-4 py-2 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg hover:bg-gold-400/30 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/20 rounded-lg hover:bg-gradient-to-r from-pink-600 to-pink-700/30 transition"
           >
             <Plus size={20} />
             خدمة جديدة
@@ -321,7 +318,7 @@ export const Services: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ delay: idx * 0.05 }}
                 >
-                  <GlassCard className="hover:border-gold-400/50 transition">
+                  <GlassCard className="hover:border-pink-500/50 transition">
                     <div className="space-y-4">
                       {/* Base Service Header - CLICKABLE DROPDOWN */}
                       <button
@@ -331,12 +328,12 @@ export const Services: React.FC = () => {
                         className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition group"
                       >
                         <div className="flex-1 text-left">
-                          <h3 className="text-white font-bold text-lg group-hover:text-gold-400 transition">
+                          <h3 className="text-white font-bold text-lg group-hover:text-pink-400 transition">
                             {service.nameAr}
                           </h3>
                           <p className="text-xs text-gray-400">{service.nameEn}</p>
                           {serviceVariants.length > 0 && (
-                            <p className="text-xs text-gold-400 mt-1">
+                            <p className="text-xs text-pink-400 mt-1">
                               📦 {serviceVariants.length} خيار متاح
                             </p>
                           )}
@@ -353,7 +350,7 @@ export const Services: React.FC = () => {
                             <Trash2 size={18} className="text-red-400" />
                           </button>
                           {isExpanded ? (
-                            <ChevronUp size={20} className="text-gold-400" />
+                            <ChevronUp size={20} className="text-pink-400" />
                           ) : (
                             <ChevronDown size={20} className="text-gray-400" />
                           )}
@@ -395,7 +392,7 @@ export const Services: React.FC = () => {
                                     className={`flex items-center justify-between p-3 bg-gradient-to-r from-white/5 to-white/0 rounded-lg border ${
                                       !variant.isActive
                                         ? 'border-red-400/30 opacity-60'
-                                        : 'border-gold-400/20 hover:border-gold-400/40'
+                                        : 'border-pink-500/20 hover:border-pink-500/40'
                                     } transition`}
                                   >
                                     <div className="flex-1 min-w-0">
@@ -413,7 +410,7 @@ export const Services: React.FC = () => {
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-3 ml-3 flex-shrink-0">
-                                      <p className="text-gold-400 font-bold text-lg">
+                                      <p className="text-pink-400 font-bold text-lg">
                                         {variant.price} ج.م
                                       </p>
                                       <button
@@ -462,7 +459,7 @@ export const Services: React.FC = () => {
                   onClick={() => setIsAddBaseServiceOpen(true)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg hover:bg-gold-400/30 transition mx-auto"
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/20 rounded-lg hover:bg-gradient-to-r from-pink-600 to-pink-700/30 transition mx-auto"
                 >
                   <Plus size={20} />
                   أضف أول خدمة
@@ -491,7 +488,7 @@ export const Services: React.FC = () => {
               placeholder="مثال: عناية البشرة، قص الشعر، تشذيب اللحية"
               value={baseServiceForm.nameAr}
               onChange={(e) => setBaseServiceForm({ ...baseServiceForm, nameAr: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               autoFocus
             />
             <p className="text-xs text-gray-500 mt-1">المّ الخدمة الرئيسية (بدون سعر)</p>
@@ -504,7 +501,7 @@ export const Services: React.FC = () => {
               placeholder="Example: Skincare, Haircut, Beard Trim"
               value={baseServiceForm.nameEn}
               onChange={(e) => setBaseServiceForm({ ...baseServiceForm, nameEn: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
             />
           </div>
 
@@ -513,9 +510,9 @@ export const Services: React.FC = () => {
               onClick={handleAddBaseService}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 px-4 py-2 bg-gold-400 text-black rounded-lg font-semibold hover:bg-gold-500 transition"
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700 text-white rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition shadow-lg"
             >
-              التالي (أضف التفاصيل)
+              ✅ التالي (أضف التفاصيل)
             </motion.button>
             <motion.button
               onClick={() => {
@@ -551,7 +548,7 @@ export const Services: React.FC = () => {
               placeholder="مثال: 3 جلسات + كريم، حزمة bronze، حزمة vip"
               value={variantForm.name}
               onChange={(e) => setVariantForm({ ...variantForm, name: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               autoFocus
             />
           </div>
@@ -566,7 +563,7 @@ export const Services: React.FC = () => {
                 onChange={(e) =>
                   setVariantForm({ ...variantForm, price: parseFloat(e.target.value) || 0 })
                 }
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
 
@@ -579,7 +576,7 @@ export const Services: React.FC = () => {
                 onChange={(e) =>
                   setVariantForm({ ...variantForm, duration: parseInt(e.target.value) || 30 })
                 }
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
           </div>
@@ -628,7 +625,7 @@ export const Services: React.FC = () => {
               placeholder="مثال: 3 جلسات + كريم، حزمة bronze، حزمة vip"
               value={editVariantForm.name}
               onChange={(e) => setEditVariantForm({ ...editVariantForm, name: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               autoFocus
             />
           </div>
@@ -643,7 +640,7 @@ export const Services: React.FC = () => {
                 onChange={(e) =>
                   setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value) || 0 })
                 }
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
 
@@ -656,7 +653,7 @@ export const Services: React.FC = () => {
                 onChange={(e) =>
                   setEditVariantForm({ ...editVariantForm, duration: parseInt(e.target.value) || 30 })
                 }
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
           </div>

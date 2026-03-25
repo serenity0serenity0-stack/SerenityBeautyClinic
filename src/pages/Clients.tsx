@@ -166,7 +166,7 @@ export const Clients: React.FC = () => {
           onClick={() => setIsModalOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-4 py-2 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/20 rounded-lg"
         >
           <Plus size={20} />
           {t('clients.add_client')}
@@ -283,7 +283,7 @@ export const Clients: React.FC = () => {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-white font-semibold hover:text-gold-400 transition">{client.name}</p>
+                  <p className="text-white font-semibold hover:text-pink-400 transition">{client.name}</p>
                   <p className="text-xs text-gray-400">{client.phone}</p>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {client.is_vip && <Badge label="VIP" variant="gold" />}
@@ -391,7 +391,7 @@ export const Clients: React.FC = () => {
             </button>
             <button
               onClick={handleAddClient}
-              className="flex-1 px-4 py-3 bg-gold-400/20 text-gold-400 border border-gold-400/30 rounded-lg hover:bg-gold-400/30 transition font-bold"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/30 rounded-lg hover:bg-gradient-to-r from-pink-600 to-pink-700/30 transition font-bold"
             >
               {t('common.save')}
             </button>
@@ -479,7 +479,7 @@ export const Clients: React.FC = () => {
             </button>
             <button
               onClick={handleUpdateClient}
-              className="flex-1 px-4 py-3 bg-gold-400/20 text-gold-400 border border-gold-400/30 rounded-lg hover:bg-gold-400/30 transition font-bold"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/30 rounded-lg hover:bg-gradient-to-r from-pink-600 to-pink-700/30 transition font-bold"
             >
               {t('common.save')}
             </button>
@@ -504,15 +504,15 @@ export const Clients: React.FC = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white/5 p-4 rounded-lg">
                 <p className="text-xs text-gray-400 mb-1">Total Visits</p>
-                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.total_visits}</p>
+                <p className="text-2xl font-bold text-pink-400">{selectedClientForDetail.total_visits}</p>
               </div>
               <div className="bg-white/5 p-4 rounded-lg">
                 <p className="text-xs text-gray-400 mb-1">Total Spent</p>
-                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.total_spent.toFixed(2)} ج.م</p>
+                <p className="text-2xl font-bold text-pink-400">{selectedClientForDetail.total_spent.toFixed(2)} ج.م</p>
               </div>
               <div className="bg-white/5 p-4 rounded-lg">
                 <p className="text-xs text-gray-400 mb-1">Status</p>
-                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.is_vip ? 'VIP ⭐' : 'Regular'}</p>
+                <p className="text-2xl font-bold text-pink-400">{selectedClientForDetail.is_vip ? 'VIP ⭐' : 'Regular'}</p>
               </div>
             </div>
 
@@ -525,11 +525,11 @@ export const Clients: React.FC = () => {
                     <div key={idx} className="bg-white/5 p-4 rounded-lg border border-white/10">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Calendar size={16} className="text-gold-400" />
+                          <Calendar size={16} className="text-pink-400" />
                           <span className="text-white font-semibold">{log.visitDate}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-gold-400" />
+                          <Clock size={16} className="text-pink-400" />
                           <span className="text-gray-300">{log.visitTime}</span>
                         </div>
                       </div>

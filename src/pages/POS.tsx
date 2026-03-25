@@ -378,7 +378,7 @@ export const POS: React.FC = () => {
         </div>
         <div className="text-right">
           <p className="text-gray-400 text-xs">الإجمالي</p>
-          <p className="text-3xl md:text-4xl font-bold text-gold-400">
+          <p className="text-3xl md:text-4xl font-bold text-pink-400">
             {total.toFixed(2)}
           </p>
           <p className="text-xs text-gray-400">ج.م</p>
@@ -395,7 +395,7 @@ export const POS: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-gold-400/10 to-yellow-500/10 border border-gold-400/30 rounded-lg"
+                className="flex items-center gap-3 p-3 bg-gradient-to-r from-gold-400/10 to-yellow-500/10 border border-pink-500/30 rounded-lg"
               >
                 <div className="flex-1">
                   <p className="text-white font-bold text-lg">{selectedClient.name}</p>
@@ -413,7 +413,7 @@ export const POS: React.FC = () => {
               <motion.button
                 onClick={() => setShowClientSearch(true)}
                 whileHover={{ scale: 1.01 }}
-                className="w-full p-4 border-2 border-dashed border-gold-400/40 hover:border-gold-400 rounded-lg transition flex items-center justify-center gap-2 text-gold-400 font-bold text-center"
+                className="w-full p-4 border-2 border-dashed border-pink-500/40 hover:border-pink-500 rounded-lg transition flex items-center justify-center gap-2 text-pink-400 font-bold text-center"
               >
                 <Search size={20} />
                 <span>اختر عميل</span>
@@ -448,21 +448,21 @@ export const POS: React.FC = () => {
                         onClick={() =>
                           setExpandedServiceId(isExpanded ? null : serviceId)
                         }
-                        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 border border-white/20 hover:border-gold-400/40 rounded-lg transition group"
+                        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 border border-white/20 hover:border-pink-500/40 rounded-lg transition group"
                       >
                         <div className="flex-1 text-right">
-                          <h3 className="text-white font-bold text-sm md:text-base group-hover:text-gold-400 transition">
+                          <h3 className="text-white font-bold text-sm md:text-base group-hover:text-pink-400 transition">
                             {service.nameAr}
                           </h3>
                           {variants.length > 0 && (
-                            <p className="text-xs text-gold-400 mt-1">
+                            <p className="text-xs text-pink-400 mt-1">
                               📦 {variants.length} خيار متاح
                             </p>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mr-3">
                           {isExpanded ? (
-                            <ChevronUp size={20} className="text-gold-400" />
+                            <ChevronUp size={20} className="text-pink-400" />
                           ) : (
                             <ChevronDown size={20} className="text-gray-400" />
                           )}
@@ -476,7 +476,7 @@ export const POS: React.FC = () => {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="space-y-1 mt-1 ml-2 border-l-2 border-gold-400/30 pl-2"
+                            className="space-y-1 mt-1 ml-2 border-l-2 border-pink-500/30 pl-2"
                           >
                             {variants.map((variant: any) => (
                               <motion.button
@@ -487,13 +487,13 @@ export const POS: React.FC = () => {
                                 onClick={() => handleAddVariant(service, variant)}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full flex items-center justify-between p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded transition text-left"
+                                className="w-full flex items-center justify-between p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-left"
                               >
                                 <div className="flex-1 min-w-0">
                                   <p className="text-white text-sm truncate">{variant.name}</p>
                                   <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
                                 </div>
-                                <p className="text-gold-400 font-bold text-sm ml-2 flex-shrink-0">
+                                <p className="text-pink-400 font-bold text-sm ml-2 flex-shrink-0">
                                   {variant.price} ج.م
                                 </p>
                               </motion.button>
@@ -508,7 +508,7 @@ export const POS: React.FC = () => {
                           onClick={() => handleAddService(service)}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.95 }}
-                          className="w-full p-2 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded transition text-sm text-white"
+                          className="w-full p-2 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-sm text-white"
                         >
                           أضف للسلة
                         </motion.button>
@@ -530,7 +530,7 @@ export const POS: React.FC = () => {
           {/* Cart Header */}
           <div className="flex items-center justify-between sticky top-0 bg-gradient-to-b from-black to-transparent -mx-4 md:-mx-6 px-4 md:px-6 py-2">
             <h2 className="text-lg md:text-xl font-bold text-white">🛒 السلة</h2>
-            <span className="text-sm font-semibold bg-gold-400/20 text-gold-400 px-3 py-1 rounded-full">
+            <span className="text-sm font-semibold bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 px-3 py-1 rounded-full">
               {cart.length} عنصر
             </span>
           </div>
@@ -557,7 +557,7 @@ export const POS: React.FC = () => {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-semibold truncate">{item.name}</p>
-                      <p className="text-gold-400 font-bold text-sm">{item.price} ج.م</p>
+                      <p className="text-pink-400 font-bold text-sm">{item.price} ج.م</p>
                     </div>
                     <motion.button
                       onClick={() => removeFromCart(idx)}
@@ -608,7 +608,7 @@ export const POS: React.FC = () => {
               {/* Final Total */}
               <div className="flex justify-between pt-2 border-t border-white/10">
                 <span className="text-white font-bold">الإجمالي</span>
-                <span className="text-2xl font-bold text-gold-400">{total.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-pink-400">{total.toFixed(2)}</span>
               </div>
 
               {/* Payment Method */}
@@ -710,11 +710,11 @@ export const POS: React.FC = () => {
                       setSearchQuery('')
                     }}
                     whileHover={{ scale: 1.02, x: 8 }}
-                    className="w-full p-4 bg-white/5 hover:bg-gold-400/10 border border-white/10 hover:border-gold-400/30 rounded-lg text-left transition"
+                    className="w-full p-4 bg-white/5 hover:bg-gradient-to-r from-pink-600 to-pink-700/10 border border-white/10 hover:border-pink-500/30 rounded-lg text-left transition"
                   >
                     <p className="text-white font-semibold">{item.name}</p>
                     <p className="text-xs text-gray-400">📞 {item.phone}</p>
-                    <p className="text-xs text-gold-400 mt-1">
+                    <p className="text-xs text-pink-400 mt-1">
                       {item.total_visits} زيارات • {item.total_spent?.toFixed(2)} ج.م
                     </p>
                   </motion.button>

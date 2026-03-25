@@ -416,7 +416,7 @@ export const Bookings: React.FC = () => {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin">
-          <Calendar className="text-gold-400" size={40} />
+          <Calendar className="text-pink-400" size={40} />
         </div>
       </div>
     )
@@ -477,7 +477,7 @@ export const Bookings: React.FC = () => {
           whileTap={{ scale: 0.95 }}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
             viewMode === 'today'
-              ? 'bg-gold-400 text-dark'
+              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
               : 'bg-white/10 text-gray-300 hover:bg-white/15'
           }`}
         >
@@ -490,7 +490,7 @@ export const Bookings: React.FC = () => {
           whileTap={{ scale: 0.95 }}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
             viewMode === 'upcoming'
-              ? 'bg-gold-400 text-dark'
+              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
               : 'bg-white/10 text-gray-300 hover:bg-white/15'
           }`}
         >
@@ -508,7 +508,7 @@ export const Bookings: React.FC = () => {
               animate={{ opacity: 1 }}
               className="text-center py-12 text-gray-400"
             >
-              <AlertCircle className="mx-auto mb-4 text-gold-400/50" size={40} />
+              <AlertCircle className="mx-auto mb-4 text-pink-400/50" size={40} />
               <p>لا توجد حجوزات في هذا الوقت</p>
             </motion.div>
           ) : (
@@ -530,8 +530,8 @@ export const Bookings: React.FC = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="flex gap-2">
-                      <div className="bg-gold-400/20 rounded-lg px-3 py-1">
-                        <span className="text-gold-400 font-bold">#{booking.queue_number}</span>
+                      <div className="bg-gradient-to-r from-pink-600 to-pink-700/20 rounded-lg px-3 py-1">
+                        <span className="text-pink-400 font-bold">#{booking.queue_number}</span>
                       </div>
                       <div
                         className={`rounded-lg px-3 py-1 text-xs font-bold ${
@@ -577,7 +577,7 @@ export const Bookings: React.FC = () => {
                           ? 'bg-green-500/20 text-green-300 border-green-500/40'
                           : booking.status === 'cancelled'
                           ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                          : 'bg-white/10 text-white border-white/20 focus:border-gold-400'
+                          : 'bg-white/10 text-white border-white/20 focus:border-pink-500'
                       }`}
                     >
                       <option value="pending">قيد الانتظار</option>
@@ -608,7 +608,7 @@ export const Bookings: React.FC = () => {
                     <p className="text-white font-semibold">
                       {formatDateEgypt(booking.booking_time, 'ar')}
                     </p>
-                    <p className="text-gold-400">
+                    <p className="text-pink-400">
                       {formatTimeEgypt(booking.booking_time, 'ar')}
                     </p>
                   </div>
@@ -633,7 +633,7 @@ export const Bookings: React.FC = () => {
 
                       <div className="bg-white/5 rounded-lg p-3">
                         <p className="text-gray-400 text-xs mb-1">الوقت المتوقع</p>
-                        <p className="text-gold-400 font-semibold text-sm">
+                        <p className="text-pink-400 font-semibold text-sm">
                           {booking.queueInfo.estimatedStartTime}
                         </p>
                       </div>
@@ -788,7 +788,7 @@ export const Bookings: React.FC = () => {
                             type="button"
                             onClick={() => selectClient(client)}
                             whileHover={{ backgroundColor: '#D4AF37' }}
-                            className="w-full text-right px-4 py-3 text-white hover:bg-gold-400 hover:text-dark transition border-b border-gray-700 last:border-b-0 font-medium"
+                            className="w-full text-right px-4 py-3 text-white hover:bg-gradient-to-r from-pink-600 to-pink-700 hover:text-dark transition border-b border-gray-700 last:border-b-0 font-medium"
                           >
                             <div className="font-semibold text-base">{client.name}</div>
                             <div className="text-xs text-gray-300">{client.phone}</div>
@@ -875,7 +875,7 @@ export const Bookings: React.FC = () => {
                               ? 'bg-green-500/40 text-green-300 border border-green-500/70 font-bold'
                               : slot.available
                               ? formData.booking_time === slot.time
-                                ? 'bg-gold-400 text-dark border-2 border-gold-400'
+                                ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark border-2 border-pink-500'
                                 : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
                               : 'bg-red-500/40 text-red-300 border border-red-500/70 cursor-not-allowed opacity-75'
                           }`}
@@ -908,7 +908,7 @@ export const Bookings: React.FC = () => {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-400">رقمك في الدور:</span>
-                          <p className="text-lg font-bold text-gold-400">#{previewInfo.queue_number}</p>
+                          <p className="text-lg font-bold text-pink-400">#{previewInfo.queue_number}</p>
                         </div>
                         <div>
                           <span className="text-gray-400">الانتظار المتوقع:</span>
@@ -1014,7 +1014,7 @@ export const Bookings: React.FC = () => {
                         start: Math.min(parseInt(e.target.value), workingHours.end),
                       })
                     }
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>
@@ -1036,7 +1036,7 @@ export const Bookings: React.FC = () => {
                         end: Math.max(parseInt(e.target.value), workingHours.start),
                       })
                     }
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>
@@ -1062,7 +1062,7 @@ export const Bookings: React.FC = () => {
                   }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-gold-400 text-dark px-6 py-3 rounded-lg font-semibold hover:bg-gold-500 transition mt-6"
+                  className="w-full bg-gradient-to-r from-pink-600 to-pink-700 text-dark px-6 py-3 rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition mt-6"
                 >
                   حفظ ساعات العمل
                 </motion.button>
