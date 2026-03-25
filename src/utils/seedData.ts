@@ -215,6 +215,7 @@ export const seedSampleData = async () => {
               duration: 30,
               queue_number: 1,
               status: 'pending',
+              created_at: new Date().toISOString(),
             },
             {
               client_id: clients[1]?.id || clients[0].id,
@@ -227,6 +228,7 @@ export const seedSampleData = async () => {
               duration: 45,
               queue_number: 2,
               status: 'pending',
+              created_at: new Date().toISOString(),
             },
             {
               client_id: clients[2]?.id || clients[0].id,
@@ -239,6 +241,7 @@ export const seedSampleData = async () => {
               duration: 30,
               queue_number: 1,
               status: 'pending',
+              created_at: new Date().toISOString(),
             },
           ]
 

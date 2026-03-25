@@ -50,11 +50,11 @@ export interface Transaction {
   amount?: number
   discount?: number
   discount_type?: 'percentage' | 'fixed'
-  total?: number
+  total: number
   payment_method?: 'cash' | 'card' | 'wallet'
   status?: 'completed' | 'pending'
   description?: string
-  date?: string
+  date: string
   time?: string
   items?: Array<{ id: string; name: string; price: number }>
   subtotal?: number
@@ -104,7 +104,7 @@ export interface Booking {
   queue_number: number
   status: 'pending' | 'ongoing' | 'completed' | 'cancelled'
   notes?: string
-  created_at?: string
+  created_at: string
   updated_at?: string
   clinic_id?: string
 }
