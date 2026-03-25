@@ -12,8 +12,8 @@ import toast from 'react-hot-toast'
 
 export const DailyLogs: React.FC = () => {
   const { t } = useTranslation()
-  const { transactions } = useTransactions()
-  const { visitLogs } = useVisitLogs()
+  const { transactions, deleteTransaction } = useTransactions()
+  const { visitLogs, deleteVisitLog } = useVisitLogs()
   const { clients } = useClients()
 
   const [selectedDate, setSelectedDate] = useState(getEgyptDateString())
@@ -26,6 +26,30 @@ export const DailyLogs: React.FC = () => {
   const getClientName = (clientId: string) => {
     const client = clients.find(c => c.id === clientId)
     return client?.name || 'العميل غير معروف'
+  }
+
+  // Delete handler for transactions
+  const handleDeleteTransaction = async (id: string) => {
+    if (window.confirm('هل تريد بالفعل حذف هذه المبيعة؟')) {
+      try {
+        await deleteTransaction(id)
+        toast.success('تم حذف المبيعة بنجاح')
+      } catch (err) {
+        toast.error('خطأ في حذف المبيعة')
+      }
+    }
+  }
+
+  // Delete handler for visit logs
+  const handleDeleteVisitLog = async (id: string) => {
+    if (window.confirm('هل تريد بالفعل حذف هذا السجل؟')) {
+      try {
+        await deleteVisitLog(id)
+        toast.success('تم حذف السجل بنجاح')
+      } catch (err) {
+        toast.error('خطأ في حذف السجل')
+      }
+    }
   }
 
   // Filter logs by selected date
@@ -154,7 +178,10 @@ export const DailyLogs: React.FC = () => {
                       >
                         <Edit2 size={18} className="text-blue-400" />
                       </button>
-                      <button className="p-2 hover:bg-red-500/10 rounded transition">
+                      <button 
+                        onClick={() => tx.id && handleDeleteTransaction(tx.id)}
+                        className="p-2 hover:bg-red-500/10 rounded transition"
+                      >
                         <Trash2 size={18} className="text-red-400" />
                       </button>
                     </div>
@@ -218,7 +245,10 @@ export const DailyLogs: React.FC = () => {
                       >
                         <Edit2 size={18} className="text-blue-400" />
                       </button>
-                      <button className="p-2 hover:bg-red-500/10 rounded transition">
+                      <button 
+                        onClick={() => visit.id && handleDeleteVisitLog(visit.id)}
+                        className="p-2 hover:bg-red-500/10 rounded transition"
+                      >
                         <Trash2 size={18} className="text-red-400" />
                       </button>
                     </div>

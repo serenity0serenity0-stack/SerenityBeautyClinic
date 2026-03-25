@@ -96,6 +96,22 @@ export const useVisitLogs = () => {
     }
   }
 
+  const deleteVisitLog = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('visit_logs')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      toast.success('تم حذف السجل بنجاح')
+      await fetchVisitLogs()
+    } catch (err: any) {
+      toast.error(err.message)
+      throw err
+    }
+  }
+
   return {
     visitLogs,
     loading,
@@ -103,5 +119,6 @@ export const useVisitLogs = () => {
     fetchVisitLogs,
     addVisitLog,
     getClientVisitLogs,
+    deleteVisitLog,
   }
 }
