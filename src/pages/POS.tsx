@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Modal } from '../components/ui/Modal'
 import { ReceiptTemplate } from '../components/receipt/ReceiptTemplate'
-import { X, Search, Trash2, Printer, Check } from 'lucide-react'
+import { X, Search, Trash2, Printer, Check, ChevronUp, ChevronDown } from 'lucide-react'
 import { useClients } from '../db/hooks/useClients'
 import { useServices } from '../db/hooks/useServices'
 import { useTransactions } from '../db/hooks/useTransactions'
@@ -84,6 +84,7 @@ export const POS: React.FC = () => {
   const [completedTransaction, setCompletedTransaction] = useState<CompletedTransaction | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [selectedBarber, setSelectedBarber] = useState<any>(null)
+  const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
   const receiptRef = useRef<HTMLDivElement>(null)
 
   // Load variants
@@ -426,71 +427,90 @@ export const POS: React.FC = () => {
               📋 الخدمات
             </h2>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="space-y-2">
               <AnimatePresence mode="popLayout">
-                {services.map((service) => {
+                {services.map((service, idx) => {
+                  const serviceId = service.id || String(idx)
                   const variants = (service.id && allVariants[service.id]) || []
+                  const isExpanded = expandedServiceId === serviceId
 
                   return (
                     <motion.div
-                      key={service.id}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
+                      key={serviceId}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: idx * 0.02 }}
                       className="group"
                     >
-                      {variants.length > 0 ? (
-                        // Show first variant as main button, others nested
-                        <div className="space-y-1.5">
-                          <motion.button
-                            onClick={() => handleAddVariant(service, variants[0])}
-                            whileHover={{ scale: 1.05, y: -2 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="w-full p-3 bg-gradient-to-br from-white/15 to-white/5 hover:from-gold-400/20 hover:to-yellow-500/15 border border-white/20 hover:border-gold-400/40 rounded-lg transition shadow-lg"
-                          >
-                            <p className="text-white font-bold text-xs md:text-sm line-clamp-2">
-                              {service.nameAr}
+                      {/* Service Header - CLICKABLE DROPDOWN */}
+                      <button
+                        onClick={() =>
+                          setExpandedServiceId(isExpanded ? null : serviceId)
+                        }
+                        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 border border-white/20 hover:border-gold-400/40 rounded-lg transition group"
+                      >
+                        <div className="flex-1 text-right">
+                          <h3 className="text-white font-bold text-sm md:text-base group-hover:text-gold-400 transition">
+                            {service.nameAr}
+                          </h3>
+                          {variants.length > 0 && (
+                            <p className="text-xs text-gold-400 mt-1">
+                              📦 {variants.length} خيار متاح
                             </p>
-                            <p className="text-gold-400 font-bold text-sm mt-1">
-                              {variants[0].price} ج.م
-                            </p>
-                          </motion.button>
-
-                          {/* Show other variants */}
-                          {variants.length > 1 && (
-                            <div className="space-y-1">
-                              {variants.slice(1, 3).map((variant: any) => (
-                                <motion.button
-                                  key={variant.id}
-                                  onClick={() => handleAddVariant(service, variant)}
-                                  whileHover={{ scale: 1.05, x: 2 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  className="w-full p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded text-left transition text-xs"
-                                >
-                                  <p className="text-gray-300 truncate">{variant.name}</p>
-                                  <p className="text-gold-400 font-bold text-xs">
-                                    {variant.price} ج.م
-                                  </p>
-                                </motion.button>
-                              ))}
-                            </div>
                           )}
                         </div>
-                      ) : (
-                        // Show default service
+                        <div className="flex items-center gap-2 mr-3">
+                          {isExpanded ? (
+                            <ChevronUp size={20} className="text-gold-400" />
+                          ) : (
+                            <ChevronDown size={20} className="text-gray-400" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded Variants List */}
+                      <AnimatePresence>
+                        {isExpanded && variants.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-1 mt-1 ml-2 border-l-2 border-gold-400/30 pl-2"
+                          >
+                            {variants.map((variant: any) => (
+                              <motion.button
+                                key={variant.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                onClick={() => handleAddVariant(service, variant)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full flex items-center justify-between p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded transition text-left"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-sm truncate">{variant.name}</p>
+                                  <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
+                                </div>
+                                <p className="text-gold-400 font-bold text-sm ml-2 flex-shrink-0">
+                                  {variant.price} ج.م
+                                </p>
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Add button for services without variants */}
+                      {variants.length === 0 && (
                         <motion.button
                           onClick={() => handleAddService(service)}
-                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.95 }}
-                          className="w-full p-3 bg-gradient-to-br from-white/15 to-white/5 hover:from-gold-400/20 hover:to-yellow-500/15 border border-white/20 hover:border-gold-400/40 rounded-lg transition shadow-lg space-y-1"
+                          className="w-full p-2 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded transition text-sm text-white"
                         >
-                          <p className="text-white font-bold text-xs md:text-sm line-clamp-2">
-                            {service.nameAr}
-                          </p>
-                          <p className="text-gold-400 font-bold text-sm">
-                            {service.price} ج.م
-                          </p>
+                          أضف للسلة
                         </motion.button>
                       )}
                     </motion.div>
