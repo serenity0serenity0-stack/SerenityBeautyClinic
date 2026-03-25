@@ -49,6 +49,7 @@ export const Bookings: React.FC = () => {
   const { loading, getTodayBookings, getUpcomingBookings, addBooking, updateBooking, deleteBooking } = useBookings()
   const { clients } = useClients()
   const { barbers } = useBarbers()
+  const isMountedRef = React.useRef(true)
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -75,8 +76,15 @@ export const Bookings: React.FC = () => {
   const todayBookings = getTodayBookings()
   const upcomingBookings = getUpcomingBookings()
 
-  // حساب الأوقات المتاحة والمشغولة لموظف محدد
-  const calculateAvailableSlots = (date: string, selectedbarber_id?: string) => {
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  // حساب الأوقات المتاحة والمشغولة لموظف محدد (Memoized)
+  const calculateAvailableSlots = React.useCallback((date: string, selectedbarber_id?: string) => {
     const slots: TimeSlot[] = []
     const intervalMinutes = 30
     const now = new Date()
@@ -140,13 +148,16 @@ export const Bookings: React.FC = () => {
     }
 
     return slots
-  }
+  }, [workingHours])
 
   // تحديث الأوقات عند تغيير التاريخ أو الموظف أو عند تحديث الحجوزات
   React.useEffect(() => {
+    if (!isMountedRef.current) return
     if (formData.booking_date) {
       const slots = calculateAvailableSlots(formData.booking_date, formData.barber_id || undefined)
-      setAvailableSlots(slots)
+      if (isMountedRef.current) {
+        setAvailableSlots(slots)
+      }
     }
   }, [formData.booking_date, formData.barber_id, todayBookings])
 
@@ -174,16 +185,19 @@ export const Bookings: React.FC = () => {
   // Listen for real-time booking status changes and refresh slots
   React.useEffect(() => {
     const handleStatusChange = () => {
+      if (!isMountedRef.current) return
       if (formData.booking_date) {
         const slots = calculateAvailableSlots(formData.booking_date, formData.barber_id || undefined)
-        setAvailableSlots(slots)
+        if (isMountedRef.current) {
+          setAvailableSlots(slots)
+        }
       }
     }
     appEmitter.on('booking:statusChanged', handleStatusChange)
     return () => {
       appEmitter.off('booking:statusChanged', handleStatusChange)
     }
-  }, [formData.booking_date, formData.barber_id])
+  }, [formData.booking_date, formData.barber_id, calculateAvailableSlots])
 
   // اختيار ذكي - إيجاد أفضل موظف متاح
   const findBestBarberOption = (date: string): { barber_id: string; barber_name: string; firstAvailableTime: string; earliestHour: number } | null => {
@@ -672,7 +686,7 @@ export const Bookings: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-dark rounded-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gold-400/20"
+              className="glass-dark rounded-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-pink-500/20"
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">
@@ -690,7 +704,7 @@ export const Bookings: React.FC = () => {
                 {/* Barber Selection - FIRST STEP */}
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    ✂️ اختر الحلاق *
+                    💼 اختر الموظف *
                   </label>
                   <div className="space-y-2">
                     <select
@@ -701,14 +715,14 @@ export const Bookings: React.FC = () => {
                           setAvailableSlots([]) // إعادة تعيين الأوقات
                         }
                       }}
-                      className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
+                      className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                     >
                       <option value="">-- اختر الموظف --</option>
                       {barbers
                         ?.filter((b) => b.active)
                         .map((barber) => (
                           <option key={barber.id} value={barber.id}>
-                            ✂️ {barber.name}
+                            💼 {barber.name}
                           </option>
                         ))}
                     </select>
@@ -761,13 +775,13 @@ export const Bookings: React.FC = () => {
                       placeholder="ابحث عن الاسم أو رقم الهاتف"
                       value={formData.searchQuery}
                       onChange={(e) => handleClientSearch(e.target.value)}
-                      className="w-full bg-white/15 text-white px-4 py-2 rounded-lg border-2 border-white/30 focus:border-gold-400 focus:outline-none focus:bg-white/20 transition placeholder-gray-300"
+                      className="w-full bg-white/15 text-white px-4 py-2 rounded-lg border-2 border-white/30 focus:border-pink-500 focus:outline-none focus:bg-white/20 transition placeholder-gray-300"
                     />
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
 
                     {/* Search Results Dropdown */}
                     {showSearchResults && searchResults.length > 0 && (
-                      <div className="absolute top-full right-0 w-full mt-1 bg-gray-900 border-2 border-gold-400 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto">
+                      <div className="absolute top-full right-0 w-full mt-1 bg-gray-900 border-2 border-pink-500 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto">
                         {searchResults.map((client) => (
                           <motion.button
                             key={client.id}
@@ -804,7 +818,7 @@ export const Bookings: React.FC = () => {
                         type="date"
                         value={formData.booking_date}
                         onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
-                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
+                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                       />
                     </div>
                     <div>
@@ -818,7 +832,7 @@ export const Bookings: React.FC = () => {
                             setFormData({ ...formData, booking_time: e.target.value })
                           }
                         }}
-                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
+                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                       >
                         {availableSlots.length === 0 ? (
                           <option value="">-- اختر التاريخ أولاً --</option>
@@ -916,7 +930,7 @@ export const Bookings: React.FC = () => {
                     step="15"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                   />
                 </div>
 
