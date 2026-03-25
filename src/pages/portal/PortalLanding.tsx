@@ -73,10 +73,10 @@ export function PortalLanding() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${t.welcome}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${t.welcome}`
     }
-  }, [settings?.shop_name, lang, t])
+  }, [settings?.clinic_name, lang, t])
 
   if (loading) {
     return (
@@ -185,7 +185,7 @@ export function PortalLanding() {
               fontWeight: 700
             }}
           >
-            {settings.shop_name}
+            {settings.clinic_name}
           </h1>
 
           {/* Welcome Message */}

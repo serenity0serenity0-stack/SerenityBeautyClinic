@@ -99,7 +99,7 @@ export function PortalHistory() {
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
 
   // History data
-  const { history, loading: historyLoading, error: historyError, getStats } = usePortalHistory(customer?.shop_id, customer?.id, slug)
+  const { history, loading: historyLoading, error: historyError, getStats } = usePortalHistory(customer?.clinic_id, customer?.id, slug)
 
   // Filters & Sorting
   const [sortBy, setSortBy] = useState<SortType>('date-desc')
@@ -114,10 +114,10 @@ export function PortalHistory() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${lang === 'ar' ? 'سجل المواعيد' : 'Transaction History'}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${lang === 'ar' ? 'سجل المواعيد' : 'Transaction History'}`
     }
-  }, [settings?.shop_name, lang])
+  }, [settings?.clinic_name, lang])
 
   useEffect(() => {
     if (!authLoading && !customer) {
@@ -195,7 +195,7 @@ export function PortalHistory() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">{t.transactionHistory}</h1>
-          <p className="text-white/60">{t.with} {settings?.shop_name}</p>
+          <p className="text-white/60">{t.with} {settings?.clinic_name}</p>
         </div>
 
         {/* Error */}

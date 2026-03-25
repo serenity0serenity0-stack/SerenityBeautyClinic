@@ -118,16 +118,16 @@ export function PortalDashboard() {
   const { settings, loading: settingsLoading } = usePortalSettingsWithShop(slug)
 
   // Stats
-  const { stats, loading: statsLoading } = usePortalDashboardStats(customer?.shop_id, customer?.id, slug)
+  const { stats, loading: statsLoading } = usePortalDashboardStats(customer?.clinic_id, customer?.id, slug)
 
   const [loggingOut, setLoggingOut] = useState(false)
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${t.myAccount}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${t.myAccount}`
     }
-  }, [settings?.shop_name, lang, t])
+  }, [settings?.clinic_name, lang, t])
 
   // Redirect to login if not authenticated (only after initial load)
   useEffect(() => {
@@ -192,7 +192,7 @@ export function PortalDashboard() {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">{t.welcome} {customer.name || customer.phone}</h1>
-          {settings && <p className="text-white/70 text-lg">{settings.shop_name}</p>}
+          {settings && <p className="text-white/70 text-lg">{settings.clinic_name}</p>}
         </div>
 
         {/* Stats Cards */}
@@ -315,7 +315,7 @@ export function PortalDashboard() {
 
         {/* Welcome Section */}
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-lg p-8">
-          <h2 className="text-2xl font-bold mb-4 text-white">{t.welcomeTo} {settings?.shop_name}</h2>
+          <h2 className="text-2xl font-bold mb-4 text-white">{t.welcomeTo} {settings?.clinic_name}</h2>
           <p className="text-white/70 mb-6">{settings?.welcome_message || t.delightedToServe}</p>
         </div>
       </div>

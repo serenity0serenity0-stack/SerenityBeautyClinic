@@ -112,10 +112,10 @@ export function PortalRegister() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${t.register}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${t.register}`
     }
-  }, [settings?.shop_name, lang, t])
+  }, [settings?.clinic_name, lang, t])
 
   const handleLanguageChange = (newLang: Language) => {
     setLang(newLang)
@@ -177,7 +177,7 @@ export function PortalRegister() {
         formData.phone,
         formData.password,
         formData.birthDate,
-        settings.shop_id
+        settings.clinic_id
       )
 
       if (error) {
@@ -242,7 +242,7 @@ export function PortalRegister() {
               className="text-3xl font-bold mb-2"
               style={{ color: settings.primary_color }}
             >
-              {settings.shop_name}
+              {settings.clinic_name}
             </h1>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <p className="text-white/70">{t.newCreateAccount}</p>
