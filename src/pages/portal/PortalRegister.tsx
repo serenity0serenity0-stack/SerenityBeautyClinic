@@ -25,7 +25,7 @@ const translations = {
     portalUnavailable: 'البوربتال غير متاح',
     back: 'العودة',
     newCreateAccount: 'إنشاء حساب جديد',
-    errorShopNotSpecified: 'خطأ: محل غير محدد',
+    errorShopNotSpecified: 'خطأ: عيادة غير محددة',
     errorPortalNotAvailable: 'البوربتال غير متاح الآن',
     errorEnterFullName: 'الرجاء إدخال الاسم الكامل',
     errorInvalidEmail: 'البريد الإلكتروني غير صحيح',

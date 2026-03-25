@@ -33,8 +33,8 @@ const translations = {
     yourBookings: 'مواعيدك',
     service: 'الخدمة المطلوبة',
     selectService: 'اختر الخدمة',
-    barber: 'الحلاق',
-    anyBarber: 'أي حلاق متاح',
+    barber: 'الموظف',
+    anyBarber: 'أي موظف متاح',
     optional: 'اختياري',
     date: 'التاريخ',
     time: 'الوقت',
@@ -394,7 +394,7 @@ export function PortalBookings() {
               <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
                 <div className="text-5xl mb-4">📋</div>
                 <h3 className="text-xl font-bold text-white/70 mb-2">{t.noServices}</h3>
-                <p className="text-white/50">{lang === 'ar' ? 'يرجى التواصل مع المتجر' : 'Please contact the shop'}</p>
+                <p className="text-white/50">{lang === 'ar' ? 'يرجى التواصل مع العيادة' : 'Please contact the clinic'}</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-8">

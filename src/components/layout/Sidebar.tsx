@@ -41,10 +41,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }
     { icon: <ShoppingCart size={20} />, label: t('navigation.pos'), href: '/pos' },
     { icon: <Users size={20} />, label: t('navigation.clients'), href: '/clients' },
     { icon: <Calendar size={20} />, label: t('navigation.bookings'), href: '/bookings' },
-    { icon: <Clock size={20} />, label: t('navigation.queue'), href: '/queue' },
     { icon: <Sparkles size={20} />, label: t('navigation.services'), href: '/services' },
+    { icon: <Users size={20} />, label: t('navigation.staff'), href: '/staff' },
     { icon: <FileText size={20} />, label: t('navigation.dailyLogs'), href: '/logs' },
     { icon: <DollarSign size={20} />, label: t('navigation.expenses'), href: '/expenses' },
+    { icon: <Clock size={20} />, label: t('navigation.queue'), href: '/queue' },
     { icon: <BarChart3 size={20} />, label: t('navigation.analytics'), href: '/analytics' },
     { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings' },
   ]

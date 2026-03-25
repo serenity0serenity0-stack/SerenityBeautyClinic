@@ -11,7 +11,7 @@ const translations = {
     unknownError: 'خطأ غير معروف',
     tryAgain: 'إعادة المحاولة',
     portalInactive: 'هذه البوابة غير نشطة حالياً',
-    contactAdmin: 'يرجى التواصل مع مدير المحل',
+    contactAdmin: 'يرجى التواصل مع مدير العيادة',
     welcome: 'مرحباً',
     defaultWelcome: 'أهلاً وسهلاً وأنت معنا',
     login: 'تسجيل الدخول',

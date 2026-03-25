@@ -98,14 +98,7 @@ export const SubscriptionAlert = () => {
         <div>
           <h3 className={`${config.textColor} font-semibold mb-1`}>{config.title}</h3>
           <p className={`${config.textColor} text-sm`}>{config.message}</p>
-          {subscription.status !== 'active' && (
-            <button
-              onClick={() => navigate('/shop-billing')}
-              className='mt-2 text-sm font-semibold text-gold-400 hover:text-gold-300 underline'
-            >
-              View Billing Details →
-            </button>
-          )}
+          {/* Billing details removed for single-clinic version */}
         </div>
       </div>
     </div>

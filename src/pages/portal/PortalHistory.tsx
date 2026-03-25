@@ -34,9 +34,9 @@ const translations = {
     dateTo: 'إلى التاريخ',
     clearFilters: 'مسح الفلاتر',
     noHistory: 'لا توجد مواعيد',
-    noVisitsYet: 'لم تزر المحل بعد',
+    noVisitsYet: 'لم تزر العيادة بعد',
     noResults: 'لا توجد نتائج تطابق الفلاتر',
-    barber: 'الحلاق',
+    barber: 'الموظف',
     date: 'التاريخ',
     amount: 'المبلغ',
     notes: 'ملاحظات'

@@ -130,7 +130,7 @@ export function PortalLoginSecure() {
       }
 
       if (!slug) {
-        toast.error('خطأ: معرف المحل غير موجود')
+        toast.error('خطأ: معرف العيادة غير موجود')
         return
       }
 
@@ -251,7 +251,7 @@ export function PortalLoginSecure() {
             <ul className="text-red-300/80 text-xs space-y-2 text-right">
               <li>• تأكد من صحة الرابط</li>
               <li>• قد تحتاج البوابة إلى تفعيل</li>
-              <li>• اتصل بمدير المحل</li>
+              <li>• اتصل بمدير العيادة</li>
             </ul>
           </div>
 

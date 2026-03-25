@@ -98,12 +98,12 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
             settingsMap[item.key] = item.value
           })
 
-          // Set shop name and phone from fetched settings
-          setShopName(settingsMap['barbershipName'] || 'محل الحلاقة')
+          // Set clinic name and phone from fetched settings
+          setShopName(settingsMap['barbershipName'] || 'اسم العيادة')
           setShopPhone(settingsMap['barbershipPhone'] || '')
         } catch (err) {
           console.error('Error fetching receipt settings:', err)
-          setShopName('محل الحلاقة')
+          setShopName('اسم العيادة')
           setShopPhone('')
         }
       }
@@ -223,14 +223,14 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
           )}
         </div>
 
-        {/* Barber Info */}
+        {/* Staff Info */}
         {barber_name && (
           <>
             <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
             <div style={{ marginBottom: '6px', fontSize: '11px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>{barber_name}</span>
-                <span style={{ fontWeight: 'bold' }}>الحلاق :</span>
+                <span style={{ fontWeight: 'bold' }}>الموظف :</span>
               </div>
             </div>
           </>

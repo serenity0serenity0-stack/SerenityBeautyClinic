@@ -74,13 +74,13 @@ export const Bookings: React.FC = () => {
   const todayBookings = getTodayBookings()
   const upcomingBookings = getUpcomingBookings()
 
-  // حساب الأوقات المتاحة والمشغولة لحلاق محدد
+  // حساب الأوقات المتاحة والمشغولة لموظف محدد
   const calculateAvailableSlots = (date: string, selectedbarber_id?: string) => {
     const slots: TimeSlot[] = []
     const intervalMinutes = 30
     const now = new Date()
 
-    // الحجوزات في هذا اليوم للحلاق المحدد (فقط pending/ongoing)
+    // الحجوزات في هذا اليوم للموظف المحدد (فقط pending/ongoing)
     const dayBookings = getTodayBookings().filter((b: any) => {
       const isCorrectDate = new Date(b.booking_time).toLocaleDateString('en-CA') === date
       const isCorrectBarber = !selectedbarber_id || b.barber_id === selectedbarber_id
@@ -141,7 +141,7 @@ export const Bookings: React.FC = () => {
     return slots
   }
 
-  // تحديث الأوقات عند تغيير التاريخ أو الحلاق أو عند تحديث الحجوزات
+  // تحديث الأوقات عند تغيير التاريخ أو الموظف أو عند تحديث الحجوزات
   React.useEffect(() => {
     if (formData.booking_date) {
       const slots = calculateAvailableSlots(formData.booking_date, formData.barber_id || undefined)
@@ -184,7 +184,7 @@ export const Bookings: React.FC = () => {
     }
   }, [formData.booking_date, formData.barber_id])
 
-  // اختيار ذكي - إيجاد أفضل حلاق متاح
+  // اختيار ذكي - إيجاد أفضل موظف متاح
   const findBestBarberOption = (date: string): { barber_id: string; barber_name: string; firstAvailableTime: string; earliestHour: number } | null => {
     if (!barbers || barbers.length === 0) return null
 
@@ -247,9 +247,9 @@ export const Bookings: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Order: Barber → Client → Date/Time
+    // Order: Staff → Client → Date/Time
     if (!formData.barber_id) {
-      toast.error('❌ الرجاء اختيار الحلاق أولاً')
+      toast.error('❌ الرجاء اختيار الموظف أولاً')
       return
     }
 
@@ -641,7 +641,7 @@ export const Bookings: React.FC = () => {
                   <div className="flex gap-4 text-sm">
                     {booking.barber_name && (
                       <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded">
-                        <span className="text-gray-400">الحلاق:</span>
+                        <span className="text-gray-400">الموظف:</span>
                         <span className="text-white font-semibold">{booking.barber_name}</span>
                       </div>
                     )}
@@ -705,7 +705,7 @@ export const Bookings: React.FC = () => {
                       }}
                       className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
                     >
-                      <option value="">-- اختر الحلاق --</option>
+                      <option value="">-- اختر الموظف --</option>
                       {barbers
                         ?.filter((b) => b.active)
                         .map((barber) => (
