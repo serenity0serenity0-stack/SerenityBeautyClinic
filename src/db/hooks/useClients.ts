@@ -46,7 +46,7 @@ export const useClients = () => {
         .from('clients')
         .insert({
           ...client,
-          shop_id: clinicId,
+          clinic_id: clinicId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

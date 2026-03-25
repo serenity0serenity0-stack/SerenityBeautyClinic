@@ -118,7 +118,7 @@ export const usePortalSettings = () => {
         const { data: freshData } = await supabase
           .from('portal_settings')
           .select('*')
-          .eq('shop_id', clinicId)
+          .eq('clinic_id', clinicId)
           .single()
         
         if (!freshData) {

@@ -33,7 +33,7 @@ export const useVisitLogs = () => {
       const { data, error } = await supabase
         .from('visit_logs')
         .select('*')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -85,7 +85,7 @@ export const useVisitLogs = () => {
       const { data, error } = await supabase
         .from('visit_logs')
         .select('*')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('client_id', client_id)
         .order('visitDate', { ascending: false })
 

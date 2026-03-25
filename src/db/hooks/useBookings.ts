@@ -313,7 +313,7 @@ export const useBookings = () => {
       })
 
       const newBooking = {
-        shop_id: clinicId,
+        clinic_id: clinicId,
         client_id: booking.client_id,
         client_name: booking.client_name,
         client_phone: booking.client_phone,

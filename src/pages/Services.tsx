@@ -105,7 +105,7 @@ export const Services: React.FC = () => {
         if (variants.length > 0 && service?.id) {
           for (const variant of variants) {
             await addVariant({
-              serviceId: service.id,
+              service_id: service.id,
               nameAr: variant.nameAr,
               nameEn: variant.nameEn,
               price: variant.price,

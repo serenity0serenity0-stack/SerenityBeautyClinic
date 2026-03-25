@@ -46,7 +46,7 @@ export const useBarbers = () => {
         .from('barbers')
         .insert({
           ...barber,
-          shop_id: clinicId,
+          clinic_id: clinicId,
           active: true,
         })
         .select()
@@ -72,7 +72,7 @@ export const useBarbers = () => {
         .from('barbers')
         .update(barber)
         .eq('id', id)
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .select()
 
       if (error) throw error
@@ -96,7 +96,7 @@ export const useBarbers = () => {
         .from('barbers')
         .delete()
         .eq('id', id)
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
 
       if (error) throw error
 

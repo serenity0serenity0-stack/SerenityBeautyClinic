@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 
 export interface ServiceVariant {
   id: string
-  serviceId: string
+  service_id: string
   nameAr: string
   nameEn: string
   price: number
@@ -49,6 +49,7 @@ export const useServiceVariants = () => {
         .from('service_variants')
         .insert({
           ...variant,
+          service_id: variant.service_id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -101,7 +102,7 @@ export const useServiceVariants = () => {
       const { data, error } = await supabase
         .from('service_variants')
         .select('*')
-        .eq('serviceId', serviceId)
+        .eq('service_id', serviceId)
         .eq('isActive', true)
         .order('price', { ascending: true })
 

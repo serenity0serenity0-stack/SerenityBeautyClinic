@@ -44,9 +44,16 @@ export const Settings: React.FC = () => {
 
       {/* About */}
       <GlassCard>
-        <div className="text-center space-y-2">
-          <p className="text-gray-400">© Serenity Beauty Clinic 2026</p>
-          <p className="text-xs text-gray-500">نظام تطوير Serenity • 01000139417</p>
+        <div className="text-center space-y-3">
+          <h3 className="text-lg font-bold text-white">Serenity Beauty Clinic</h3>
+          <div className="space-y-1 text-sm">
+            <p className="text-gray-400">📍 Bak Abu Saud Street, El Dorado, 6th District</p>
+            <p className="text-gray-400">📞 011 03032431</p>
+            <p className="text-gray-500">━━━━━━━━━━━━━━━━━</p>
+            <p className="text-gray-500">نظام تطوير: YoussefAhmed</p>
+            <p className="text-xs text-gray-600">📱 01000139417</p>
+          </div>
+          <p className="text-xs text-gray-600 pt-2">© Serenity Beauty Clinic 2026 | All Rights Reserved</p>
         </div>
       </GlassCard>
     </div>
