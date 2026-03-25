@@ -156,7 +156,7 @@ export const Barbers: React.FC = () => {
         <h1 className="text-3xl font-bold text-white">{t('pages.barbers_title')}</h1>
         <button
           onClick={openAddModal}
-          className="px-4 py-2 bg-gold-400 text-black rounded-lg font-semibold hover:bg-gold-500 transition flex items-center gap-2"
+          className="px-4 py-2 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition flex items-center gap-2"
         >
           <Plus size={20} />
           {t('common.add')} {t('pages.barbers_title')}
