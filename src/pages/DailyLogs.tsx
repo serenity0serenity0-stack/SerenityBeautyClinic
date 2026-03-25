@@ -108,7 +108,7 @@ export const DailyLogs: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{tx.clientName}</p>
+                        <p className="text-white font-bold text-lg">{tx.client_name}</p>
                         <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
                           {tx.time}
                         </p>
@@ -134,8 +134,8 @@ export const DailyLogs: React.FC = () => {
                       </div>
 
                       <div className="pt-2 border-t border-white/10 flex items-center gap-4">
-                        <p className="text-xs text-gray-400">الدفع: {tx.paymentMethod}</p>
-                        <p className="text-xs text-gray-400">رقم العملية: {tx.visitNumber}</p>
+                        <p className="text-xs text-gray-400">الدفع: {tx.payment_method}</p>
+                        <p className="text-xs text-gray-400">رقم العملية: {tx.visit_number}</p>
                       </div>
                     </div>
 
@@ -177,7 +177,7 @@ export const DailyLogs: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{visit.clientName}</p>
+                        <p className="text-white font-bold text-lg">{visit.client_name}</p>
                         <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
                           {visit.visitTime}
                         </p>
@@ -190,7 +190,7 @@ export const DailyLogs: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-gray-400 text-xs">المبلغ المنفق</p>
-                          <p className="text-gold-400 font-semibold">{visit.totalSpent?.toFixed(2)} ج.م</p>
+                          <p className="text-gold-400 font-semibold">{visit.total_spent?.toFixed(2)} ج.م</p>
                         </div>
                         <div>
                           <p className="text-gray-400 text-xs">التاريخ</p>
@@ -236,11 +236,11 @@ export const DailyLogs: React.FC = () => {
                 <label className="block text-sm text-gray-300 mb-2">اسم العميل</label>
                 <input
                   type="text"
-                  value={editFormData.clientName || ''}
+                  value={editFormData.client_name || ''}
                   onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      clientName: e.target.value,
+                      client_name: e.target.value,
                     })
                   }
                   className="w-full"
@@ -283,11 +283,11 @@ export const DailyLogs: React.FC = () => {
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">طريقة الدفع</label>
                   <select
-                    value={editFormData.paymentMethod || 'cash'}
+                    value={editFormData.payment_method || 'cash'}
                     onChange={(e) =>
                       setEditFormData({
                         ...editFormData,
-                        paymentMethod: e.target.value,
+                        payment_method: e.target.value,
                       })
                     }
                     className="w-full"
@@ -319,11 +319,11 @@ export const DailyLogs: React.FC = () => {
                 <label className="block text-sm text-gray-300 mb-2">اسم العميل</label>
                 <input
                   type="text"
-                  value={editFormData.clientName || ''}
+                  value={editFormData.client_name || ''}
                   onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      clientName: e.target.value,
+                      client_name: e.target.value,
                     })
                   }
                   className="w-full"
@@ -350,11 +350,11 @@ export const DailyLogs: React.FC = () => {
                   <label className="block text-sm text-gray-300 mb-2">المبلغ المنفق</label>
                   <input
                     type="number"
-                    value={editFormData.totalSpent || 0}
+                    value={editFormData.total_spent || 0}
                     onChange={(e) =>
                       setEditFormData({
                         ...editFormData,
-                        totalSpent: parseFloat(e.target.value),
+                        total_spent: parseFloat(e.target.value),
                       })
                     }
                     className="w-full"

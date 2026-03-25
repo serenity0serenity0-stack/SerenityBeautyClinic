@@ -24,7 +24,7 @@ export const useBookings = () => {
         .from('bookings')
         .select('*')
         .eq('clinic_id', clinicId)
-        .order('bookingtime', { ascending: true })
+        .order('booking_time', { ascending: true })
 
       if (error) throw error
       console.log('Bookings fetched:', data?.length || 0, 'records')
@@ -32,19 +32,19 @@ export const useBookings = () => {
       // Convert lowercase database field names to camelCase
       const normalizedData = (data || []).map((b: any) => ({
         id: b.id,
-        clientId: b.clientid,
-        clientName: b.clientname,
-        clientPhone: b.clientphone,
-        barberId: b.barberid,
-        barberName: b.barbername,
-        serviceType: b.servicetype,
-        bookingTime: b.bookingtime,
+        client_id: b.client_id,
+        client_name: b.client_name,
+        client_phone: b.client_phone,
+        barber_id: b.barber_id,
+        barber_name: b.barber_name,
+        service_type: b.service_type,
+        booking_time: b.booking_time,
         duration: b.duration,
-        queueNumber: b.queuenumber,
+        queue_number: b.queue_number,
         status: b.status,
         notes: b.notes,
-        createdAt: b.createdat,
-        updatedAt: b.updatedat,
+        created_at: b.created_at,
+        updated_at: b.updated_at,
       }))
 
       setBookings(normalizedData)
@@ -80,51 +80,51 @@ export const useBookings = () => {
    * ✅ Fixed: Ensures unique queue numbers even with simultaneous bookings
    */
   const calculateSmartQueue = async (
-    bookingTime: string,
-    selectedBarberId?: string
-  ): Promise<{ queueNumber: number; recommendedBarberId?: string }> => {
+    booking_time: string,
+    selectedbarber_id?: string
+  ): Promise<{ queue_number: number; recommendedbarber_id?: string }> => {
     // Get all bookings for the same day (pending/ongoing only)
-    const bookingDate = new Date(bookingTime).toLocaleDateString('en-CA')
+    const booking_date = new Date(booking_time).toLocaleDateString('en-CA')
     const dayBookings = bookings.filter((b) => {
-      const bDate = new Date(b.bookingTime).toLocaleDateString('en-CA')
+      const bDate = new Date(b.booking_time).toLocaleDateString('en-CA')
       // استبعد المكتملة والملغاة
-      return bDate === bookingDate && b.status !== 'cancelled' && b.status !== 'completed'
+      return bDate === booking_date && b.status !== 'cancelled' && b.status !== 'completed'
     })
 
     // Parse the booking time to get hour and minutes
-    const newBookingHour = parseInt(bookingTime.split('T')[1].substring(0, 2))
-    const newBookingMin = parseInt(bookingTime.split('T')[1].substring(3, 5))
-    const newBookingTime = newBookingHour * 100 + newBookingMin
+    const newBookingHour = parseInt(booking_time.split('T')[1].substring(0, 2))
+    const newBookingMin = parseInt(booking_time.split('T')[1].substring(3, 5))
+    const newbooking_time = newBookingHour * 100 + newBookingMin
 
     // If barber is specified, calculate queue for that barber
-    if (selectedBarberId) {
+    if (selectedbarber_id) {
       // Get all bookings for this barber on this day, sorted by time
       const barberBookings = dayBookings
-        .filter((b) => b.barberId === selectedBarberId)
+        .filter((b) => b.barber_id === selectedbarber_id)
         .sort((a, b) => {
-          const aTime = parseInt(a.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
-          const bTime = parseInt(b.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
+          const aTime = parseInt(a.booking_time.split('T')[1].substring(0, 5).replace(':', ''))
+          const bTime = parseInt(b.booking_time.split('T')[1].substring(0, 5).replace(':', ''))
           // If times are equal, sort by creation time (earlier first)
           if (aTime === bTime) {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           }
           return aTime - bTime
         })
 
-      // Count bookings before this time (more reliable than using queueNumber)
+      // Count bookings before this time (more reliable than using queue_number)
       const bookingsBefore = barberBookings.filter((b) => {
-        const bHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
-        const bMin = parseInt(b.bookingTime.split('T')[1].substring(3, 5))
+        const bHour = parseInt(b.booking_time.split('T')[1].substring(0, 2))
+        const bMin = parseInt(b.booking_time.split('T')[1].substring(3, 5))
         const bTime = bHour * 100 + bMin
-        return bTime < newBookingTime
+        return bTime < newbooking_time
       })
 
       // Queue number = count of bookings before + 1
       // This ensures sequential numbering even with simultaneous bookings
       const nextQueue = bookingsBefore.length + 1
-      console.log(`Queue calculation: ${bookingsBefore.length} bookings before time ${newBookingTime}, so queue #${nextQueue}`)
+      console.log(`Queue calculation: ${bookingsBefore.length} bookings before time ${newbooking_time}, so queue #${nextQueue}`)
       
-      return { queueNumber: nextQueue, recommendedBarberId: selectedBarberId }
+      return { queue_number: nextQueue, recommendedbarber_id: selectedbarber_id }
     }
 
     // Smart distribution: find the barber with least bookings today
@@ -138,13 +138,13 @@ export const useBookings = () => {
         // Fallback: use total count + 1
         const nextQueue = dayBookings.length + 1
         console.log(`Fallback queue: ${dayBookings.length} bookings today, assigning #${nextQueue}`)
-        return { queueNumber: nextQueue }
+        return { queue_number: nextQueue }
       }
 
       // Count bookings per barber
       const barberCounts = barbers.map((barber) => ({
         id: barber.id,
-        count: dayBookings.filter((b) => b.barberId === barber.id).length,
+        count: dayBookings.filter((b) => b.barber_id === barber.id).length,
       }))
 
       // Select barber with least bookings
@@ -156,65 +156,65 @@ export const useBookings = () => {
 
       // Get all bookings for the recommended barber, sorted by time
       const barberBookings = dayBookings
-        .filter((b) => b.barberId === recommendedBarber.id)
+        .filter((b) => b.barber_id === recommendedBarber.id)
         .sort((a, b) => {
-          const aTime = parseInt(a.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
-          const bTime = parseInt(b.bookingTime.split('T')[1].substring(0, 5).replace(':', ''))
+          const aTime = parseInt(a.booking_time.split('T')[1].substring(0, 5).replace(':', ''))
+          const bTime = parseInt(b.booking_time.split('T')[1].substring(0, 5).replace(':', ''))
           // If times are equal, sort by creation time
           if (aTime === bTime) {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           }
           return aTime - bTime
         })
 
       // Count bookings before this time
       const bookingsBefore = barberBookings.filter((b) => {
-        const bHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
-        const bMin = parseInt(b.bookingTime.split('T')[1].substring(3, 5))
+        const bHour = parseInt(b.booking_time.split('T')[1].substring(0, 2))
+        const bMin = parseInt(b.booking_time.split('T')[1].substring(3, 5))
         const bTime = bHour * 100 + bMin
-        return bTime < newBookingTime
+        return bTime < newbooking_time
       })
 
       const nextQueue = bookingsBefore.length + 1
 
-      console.log(`Smart queue calculated: Queue #${nextQueue} for barber ${recommendedBarber.id} at ${bookingTime}`)
-      return { queueNumber: nextQueue, recommendedBarberId: recommendedBarber.id }
+      console.log(`Smart queue calculated: Queue #${nextQueue} for barber ${recommendedBarber.id} at ${booking_time}`)
+      return { queue_number: nextQueue, recommendedbarber_id: recommendedBarber.id }
     } catch (err) {
       console.error('Error in smart queue calculation:', err)
       // Safest fallback: use total count of bookings today + 1
       const nextQueue = dayBookings.length + 1
       console.log(`Error fallback: assigning queue #${nextQueue}`)
-      return { queueNumber: nextQueue }
+      return { queue_number: nextQueue }
     }
   }
 
   /**
    * Calculate remaining time and position in queue
    */
-  const getQueueInfo = (queueNumber: number, bookingTime: string) => {
-    const bookingDate = new Date(bookingTime).toLocaleDateString('en-CA')
+  const getQueueInfo = (queue_number: number, booking_time: string) => {
+    const booking_date = new Date(booking_time).toLocaleDateString('en-CA')
     const dayBookings = bookings
       .filter((b) => {
-        const bDate = new Date(b.bookingTime).toLocaleDateString('en-CA')
+        const bDate = new Date(b.booking_time).toLocaleDateString('en-CA')
         return (
-          bDate === bookingDate &&
+          bDate === booking_date &&
           b.status !== 'cancelled' &&
           b.status !== 'completed' &&
-          b.queueNumber < queueNumber
+          b.queue_number < queue_number
         )
       })
-      .sort((a, b) => a.queueNumber - b.queueNumber)
+      .sort((a, b) => a.queue_number - b.queue_number)
 
     const totalMinutesBefore = dayBookings.reduce((sum, b) => sum + (b.duration || 30), 0)
     const remainingQueue = dayBookings.length
     const estimatedWaitTime = totalMinutesBefore + (remainingQueue * 5) // +5 min buffer per person
 
     return {
-      positionInQueue: queueNumber,
+      positionInQueue: queue_number,
       peopleAhead: remainingQueue,
       estimatedWaitMinutes: estimatedWaitTime,
       estimatedStartTime: new Date(
-        new Date(bookingTime).getTime() + estimatedWaitTime * 60000
+        new Date(booking_time).getTime() + estimatedWaitTime * 60000
       ).toLocaleTimeString('ar-EG', {
         hour: '2-digit',
         minute: '2-digit',
@@ -229,28 +229,28 @@ export const useBookings = () => {
    *   لا يمكن حجز أي وقت يتداخل معه قبل 10:30
    */
   const isTimeSlotAvailable = (
-    bookingTime: string, 
-    barberId?: string,
+    booking_time: string, 
+    barber_id?: string,
     duration: number = 30
   ): boolean => {
     const now = new Date()
 
     // Check if the time has already passed
-    if (new Date(bookingTime) <= now) {
+    if (new Date(booking_time) <= now) {
       return false
     }
 
-    const requestStart = new Date(bookingTime).getTime()
+    const requestStart = new Date(booking_time).getTime()
     const requestEnd = requestStart + duration * 60000 // Convert minutes to ms
 
     const conflictingBooking = bookings.find((b) => {
       // استبعد الحجوزات المكتملة والملغاة - لا تحجز الوقت
       if (b.status === 'cancelled' || b.status === 'completed') return false
 
-      // If barberId is specified, only check that barber
-      if (barberId && b.barberId !== barberId) return false
+      // If barber_id is specified, only check that barber
+      if (barber_id && b.barber_id !== barber_id) return false
 
-      const bookingStart = new Date(b.bookingTime).getTime()
+      const bookingStart = new Date(b.booking_time).getTime()
       const bookingEnd = bookingStart + (b.duration || 30) * 60000 // Use actual booking duration
 
       // Check for overlap: 
@@ -266,16 +266,16 @@ export const useBookings = () => {
   }
 
   const addBooking = async (
-    booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'queueNumber'>
+    booking: Omit<Booking, 'id' | 'created_at' | 'updated_at' | 'queue_number'>
   ) => {
     try {
-      // Validate bookingTime exists
-      if (!booking.bookingTime || booking.bookingTime.trim() === '') {
-        throw new Error('bookingTime is required and cannot be empty')
+      // Validate booking_time exists
+      if (!booking.booking_time || booking.booking_time.trim() === '') {
+        throw new Error('booking_time is required and cannot be empty')
       }
 
       // Check if time slot is available with correct duration
-      if (!isTimeSlotAvailable(booking.bookingTime, booking.barberId, booking.duration)) {
+      if (!isTimeSlotAvailable(booking.booking_time, booking.barber_id, booking.duration)) {
         const errorMsg = 'هذا الموعد محجوز بالفعل. اختر موعد آخر'
         toast.error(errorMsg)
         throw new Error(errorMsg)
@@ -285,13 +285,13 @@ export const useBookings = () => {
       const clientConflict = bookings.find((b) => {
         if (b.status === 'cancelled' || b.status === 'completed') return false
         
-        const requestStart = new Date(booking.bookingTime).getTime()
+        const requestStart = new Date(booking.booking_time).getTime()
         const requestEnd = requestStart + (booking.duration || 30) * 60000
-        const bookingStart = new Date(b.bookingTime).getTime()
+        const bookingStart = new Date(b.booking_time).getTime()
         const bookingEnd = bookingStart + (b.duration || 30) * 60000
 
         const hasOverlap = requestStart < bookingEnd && requestEnd > bookingStart
-        return b.clientPhone === booking.clientPhone && hasOverlap
+        return b.client_phone === booking.client_phone && hasOverlap
       })
 
       if (clientConflict) {
@@ -301,43 +301,43 @@ export const useBookings = () => {
       }
 
       // Calculate smart queue number
-      const { queueNumber, recommendedBarberId } = await calculateSmartQueue(
-        booking.bookingTime,
-        booking.barberId
+      const { queue_number, recommendedbarber_id } = await calculateSmartQueue(
+        booking.booking_time,
+        booking.barber_id
       )
 
       console.log('Adding booking with:', {
-        clientId: booking.clientId,
-        bookingTime: booking.bookingTime,
-        barberId: booking.barberId || recommendedBarberId,
+        client_id: booking.client_id,
+        booking_time: booking.booking_time,
+        barber_id: booking.barber_id || recommendedbarber_id,
       })
 
       const newBooking = {
         shop_id: clinicId,
-        clientid: booking.clientId,
-        clientname: booking.clientName,
-        clientphone: booking.clientPhone,
-        barberid: booking.barberId || recommendedBarberId,
-        barbername: booking.barberName,
-        servicetype: booking.serviceType,
-        bookingtime: booking.bookingTime,
+        client_id: booking.client_id,
+        client_name: booking.client_name,
+        client_phone: booking.client_phone,
+        barber_id: booking.barber_id || recommendedbarber_id,
+        barber_name: booking.barber_name,
+        service_type: booking.service_type,
+        booking_time: booking.booking_time,
         duration: booking.duration,
-        queuenumber: queueNumber,
+        queue_number: queue_number,
         status: 'pending',
         notes: booking.notes,
-        createdat: new Date().toISOString(),
-        updatedat: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
 
       // Generate unique ID (Supabase should do this, but we add safeguard)
-      const bookingId = crypto.randomUUID()
+      const booking_id = crypto.randomUUID()
       
       const bookingWithId = {
         ...newBooking,
-        id: bookingId,
+        id: booking_id,
       }
 
-      console.log('Inserting booking with ID:', bookingId, 'Queue:', queueNumber)
+      console.log('Inserting booking with ID:', booking_id, 'Queue:', queue_number)
 
       const { data, error } = await supabase
         .from('bookings')
@@ -384,7 +384,7 @@ export const useBookings = () => {
 
   const updateBooking = async (
     id: string,
-    updates: Partial<Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>>
+    updates: Partial<Omit<Booking, 'id' | 'created_at' | 'updated_at'>>
   ) => {
     try {
       // Get the current booking
@@ -394,23 +394,23 @@ export const useBookings = () => {
       }
 
       // If time or barber is being changed, check for conflicts
-      if (updates.bookingTime || updates.barberId) {
-        const newBookingTime = updates.bookingTime || currentBooking.bookingTime
-        const newBarberId = updates.barberId || currentBooking.barberId
+      if (updates.booking_time || updates.barber_id) {
+        const newbooking_time = updates.booking_time || currentBooking.booking_time
+        const newbarber_id = updates.barber_id || currentBooking.barber_id
         const newDuration = updates.duration || currentBooking.duration
 
         // Create a temporary list excluding the current booking being updated
         const tempBookings = bookings.filter(b => b.id !== id)
         
         // Check for conflicts with other bookings
-        const requestStart = new Date(newBookingTime).getTime()
+        const requestStart = new Date(newbooking_time).getTime()
         const requestEnd = requestStart + (newDuration || 30) * 60000
 
         const conflictingBooking = tempBookings.find((b) => {
           if (b.status === 'cancelled' || b.status === 'completed') return false
-          if (newBarberId && b.barberId !== newBarberId) return false
+          if (newbarber_id && b.barber_id !== newbarber_id) return false
 
-          const bookingStart = new Date(b.bookingTime).getTime()
+          const bookingStart = new Date(b.booking_time).getTime()
           const bookingEnd = bookingStart + (b.duration || 30) * 60000
 
           return requestStart < bookingEnd && requestEnd > bookingStart
@@ -426,7 +426,7 @@ export const useBookings = () => {
       Object.entries(updates).forEach(([key, value]) => {
         dbUpdates[key.toLowerCase()] = value
       })
-      dbUpdates['updatedat'] = new Date().toISOString()
+      dbUpdates['updated_at'] = new Date().toISOString()
 
       const { data, error } = await supabase
         .from('bookings')
@@ -477,13 +477,13 @@ export const useBookings = () => {
     const today = getEgyptDateString()
     return bookings
       .filter((b) => {
-        const bDate = new Date(b.bookingTime).toLocaleDateString('en-CA')
+        const bDate = new Date(b.booking_time).toLocaleDateString('en-CA')
         return bDate === today && b.status !== 'cancelled'
       })
-      .sort((a, b) => a.queueNumber - b.queueNumber)
+      .sort((a, b) => a.queue_number - b.queue_number)
       .map((b) => ({
         ...b,
-        queueInfo: getQueueInfo(b.queueNumber, b.bookingTime),
+        queueInfo: getQueueInfo(b.queue_number, b.booking_time),
       }))
   }
 
@@ -496,36 +496,36 @@ export const useBookings = () => {
 
     return bookings
       .filter((b) => {
-        const bookingDate = new Date(b.bookingTime)
+        const booking_date = new Date(b.booking_time)
         return (
-          bookingDate >= now &&
-          bookingDate <= in48Hours &&
+          booking_date >= now &&
+          booking_date <= in48Hours &&
           b.status !== 'cancelled'
         )
       })
-      .sort((a, b) => new Date(a.bookingTime).getTime() - new Date(b.bookingTime).getTime())
+      .sort((a, b) => new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime())
   }
 
   /**
    * Get bookings by client
    */
-  const getClientBookings = (clientId: string) => {
+  const getClientBookings = (client_id: string) => {
     return bookings
-      .filter((b) => b.clientId === clientId && b.status !== 'cancelled')
-      .sort((a, b) => new Date(b.bookingTime).getTime() - new Date(a.bookingTime).getTime())
+      .filter((b) => b.client_id === client_id && b.status !== 'cancelled')
+      .sort((a, b) => new Date(b.booking_time).getTime() - new Date(a.booking_time).getTime())
   }
 
   /**
    * Get barber's schedule for the day
    */
-  const getBarberSchedule = (barberId: string, date?: string) => {
+  const getBarberSchedule = (barber_id: string, date?: string) => {
     const targetDate = date || getEgyptDateString()
     return bookings
       .filter((b) => {
-        const bDate = new Date(b.bookingTime).toLocaleDateString('en-CA')
-        return b.barberId === barberId && bDate === targetDate && b.status !== 'cancelled'
+        const bDate = new Date(b.booking_time).toLocaleDateString('en-CA')
+        return b.barber_id === barber_id && bDate === targetDate && b.status !== 'cancelled'
       })
-      .sort((a, b) => a.queueNumber - b.queueNumber)
+      .sort((a, b) => a.queue_number - b.queue_number)
   }
 
   return {

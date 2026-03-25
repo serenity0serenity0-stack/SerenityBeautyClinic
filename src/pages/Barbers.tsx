@@ -52,7 +52,7 @@ export const Barbers: React.FC = () => {
     const stats: typeof barberStats = {}
     
     barbers.forEach(barber => {
-      const barberTransactions = transactions.filter(t => t.barberId === barber.id)
+      const barberTransactions = transactions.filter(t => t.barber_id === barber.id)
       
       // Current month transactions
       const today = new Date()
@@ -63,7 +63,7 @@ export const Barbers: React.FC = () => {
       })
       
       // All unique clients
-      const allUniqueClients = new Set(barberTransactions.map(t => t.clientId))
+      const allUniqueClients = new Set(barberTransactions.map(t => t.client_id))
       
       // Monthly revenue
       const monthlyRevenue = currentMonthTransactions.reduce((sum, t) => sum + t.total, 0)

@@ -14,10 +14,10 @@ const translations = {
     back: 'العودة للرئيسة',
     transactionHistory: 'سجل المواعيد',
     with: 'مع',
-    totalVisits: 'إجمالي الزيارات',
-    totalSpent: 'إجمالي الإنفاق',
+    total_visits: 'إجمالي الزيارات',
+    total_spent: 'إجمالي الإنفاق',
     averageSpent: 'متوسط النفقة',
-    lastVisit: 'آخر زيارة',
+    last_visit: 'آخر زيارة',
     filterSort: 'التصفية والفرز',
     sort: 'الفرز',
     newest: 'الأحدث أولاً',
@@ -45,10 +45,10 @@ const translations = {
     back: 'Back to Dashboard',
     transactionHistory: 'Transaction History',
     with: 'at',
-    totalVisits: 'Total Visits',
-    totalSpent: 'Total Spent',
+    total_visits: 'Total Visits',
+    total_spent: 'Total Spent',
     averageSpent: 'Average Per Visit',
-    lastVisit: 'Last Visit',
+    last_visit: 'Last Visit',
     filterSort: 'Filter & Sort',
     sort: 'Sort By',
     newest: 'Newest First',
@@ -146,10 +146,10 @@ export function PortalHistory() {
         filtered.sort((a, b) => new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime())
         break
       case 'amount-desc':
-        filtered.sort((a, b) => b.totalSpent - a.totalSpent)
+        filtered.sort((a, b) => b.total_spent - a.total_spent)
         break
       case 'amount-asc':
-        filtered.sort((a, b) => a.totalSpent - b.totalSpent)
+        filtered.sort((a, b) => a.total_spent - b.total_spent)
         break
     }
 
@@ -209,13 +209,13 @@ export function PortalHistory() {
         {history.length > 0 && (
           <div className="grid md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/[0.08] transition">
-              <div className="text-white/70 text-sm mb-2">{t.totalVisits}</div>
-              <div className="text-3xl font-bold text-white">{stats.totalVisits}</div>
+              <div className="text-white/70 text-sm mb-2">{t.total_visits}</div>
+              <div className="text-3xl font-bold text-white">{stats.total_visits}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/[0.08] transition">
-              <div className="text-white/70 text-sm mb-2">{t.totalSpent}</div>
+              <div className="text-white/70 text-sm mb-2">{t.total_spent}</div>
               <div className="text-3xl font-bold" style={{ color: primaryColor }}>
-                {stats.totalSpent} ج.م
+                {stats.total_spent} ج.م
               </div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/[0.08] transition">
@@ -225,9 +225,9 @@ export function PortalHistory() {
               </div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/[0.08] transition">
-              <div className="text-white/70 text-sm mb-2">{t.lastVisit}</div>
+              <div className="text-white/70 text-sm mb-2">{t.last_visit}</div>
               <div className="text-lg font-bold text-white">
-                {stats.lastVisit ? new Date(stats.lastVisit).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') : '-'}
+                {stats.last_visit ? new Date(stats.last_visit).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') : '-'}
               </div>
             </div>
           </div>
@@ -332,7 +332,7 @@ export function PortalHistory() {
                       <div>
                         <div className="text-white/50 text-xs">{t.amount}</div>
                         <div className="text-white font-semibold">
-                          {visit.totalSpent} ج.م
+                          {visit.total_spent} ج.م
                         </div>
                       </div>
                     </div>

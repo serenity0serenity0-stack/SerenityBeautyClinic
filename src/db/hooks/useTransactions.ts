@@ -23,7 +23,7 @@ export const useTransactions = () => {
         .from('transactions')
         .select('*')
         .eq('clinic_id', clinicId)
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       console.log('Transactions fetched:', data?.length || 0, 'records')
@@ -42,17 +42,17 @@ export const useTransactions = () => {
     fetchTransactions()
   }, [fetchTransactions])
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!clinicId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           ...transaction,
           clinic_id: clinicId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -63,8 +63,8 @@ export const useTransactions = () => {
 
       // 🔄 Auto-complete today's pending/confirmed bookings for this client
       try {
-        const clientPhone = transaction.clientPhone
-        if (clientPhone) {
+        const client_phone = transaction.client_phone
+        if (client_phone) {
           const today = new Date().toISOString().split('T')[0] // today's date
           
           // Find client's active bookings for today
@@ -72,11 +72,11 @@ export const useTransactions = () => {
             .from('bookings')
             .select('id')
             .eq('clinic_id', clinicId)
-            .eq('clientPhone', clientPhone)
+            .eq('client_phone', client_phone)
             .in('status', ['pending', 'confirmed'])
-            .gte('bookingDate', today + 'T00:00:00')
-            .lte('bookingDate', today + 'T23:59:59')
-            .order('bookingTime', { ascending: true })
+            .gte('booking_date', today + 'T00:00:00')
+            .lte('booking_date', today + 'T23:59:59')
+            .order('booking_time', { ascending: true })
 
           if (!bookingErr && activeBookings && activeBookings.length > 0) {
             // Update each booking to completed
@@ -85,7 +85,7 @@ export const useTransactions = () => {
                 .from('bookings')
                 .update({
                   status: 'completed',
-                  updatedAt: new Date().toISOString()
+                  updated_at: new Date().toISOString()
                 })
                 .eq('id', booking.id)
               
@@ -93,7 +93,7 @@ export const useTransactions = () => {
                 console.warn('⚠️ Warning: Failed to complete booking:', booking.id, updateErr)
               }
             }
-            console.log(`✅ Auto-completed ${activeBookings.length} booking(s) for client ${clientPhone}`)
+            console.log(`✅ Auto-completed ${activeBookings.length} booking(s) for client ${client_phone}`)
           }
         }
       } catch (bookingErr) {
@@ -140,13 +140,13 @@ export const useTransactions = () => {
     }
   }
 
-  const getTransactionsByClientId = async (clientId: string) => {
+  const getTransactionsByclient_id = async (client_id: string) => {
     try {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('clientId', clientId)
-        .order('createdAt', { ascending: false })
+        .eq('client_id', client_id)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       return data || []
@@ -197,7 +197,7 @@ export const useTransactions = () => {
     addTransaction,
     deleteTransaction,
     getTransactionsByDate,
-    getTransactionsByClientId,
+    getTransactionsByclient_id,
     getTodayRevenue,
     getRevenueForDateRange,
   }

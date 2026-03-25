@@ -48,18 +48,18 @@ interface CartItem {
 
 interface CompletedTransaction {
   transactionId: string
-  clientName: string
-  clientPhone: string
-  barberName?: string
+  client_name: string
+  client_phone: string
+  barber_name?: string
   barberPhone?: string
   date: string
   time: string
   items: CartItem[]
   subtotal: number
   discount: number
-  discountType: 'percentage' | 'fixed'
+  discount_type: 'percentage' | 'fixed'
   total: number
-  paymentMethod: string
+  payment_method: string
 }
 
 export const POS: React.FC = () => {
@@ -76,9 +76,9 @@ export const POS: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [discount, setDiscount] = useState(0)
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed')
+  const [discount_type, setdiscount_type] = useState<'percentage' | 'fixed'>('fixed')
   const [allVariants, setAllVariants] = useState<{[key: string]: any[]}>({})
-  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [payment_method, setpayment_method] = useState('cash')
   const [showClientSearch, setShowClientSearch] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
   const [completedTransaction, setCompletedTransaction] = useState<CompletedTransaction | null>(null)
@@ -164,7 +164,7 @@ export const POS: React.FC = () => {
 
   const calculateSubtotal = () => cart.reduce((sum, item) => sum + item.price, 0)
   const calculateDiscount = () =>
-    discountType === 'percentage'
+    discount_type === 'percentage'
       ? (calculateSubtotal() * discount) / 100
       : discount
 
@@ -208,46 +208,46 @@ export const POS: React.FC = () => {
 
       // Create transaction
       const newTransaction = await addTransaction({
-        clientId: selectedClient.id,
-        clientName: selectedClient.name,
-        clientPhone: selectedClient.phone,
-        visitNumber: (selectedClient.totalVisits || 0) + 1,
+        client_id: selectedClient.id,
+        client_name: selectedClient.name,
+        client_phone: selectedClient.phone,
+        visit_number: (selectedClient.total_visits || 0) + 1,
         date: dateStr,
         time: timeStr,
         items: cart,
         subtotal,
         discount: discountAmount,
-        discountType,
+        discount_type,
         total,
-        paymentMethod: paymentMethod as 'cash' | 'card' | 'wallet',
-        barberId: selectedBarber?.id || undefined,
+        payment_method: payment_method as 'cash' | 'card' | 'wallet',
+        barber_id: selectedBarber?.id || undefined,
       })
 
       const transactionId = newTransaction?.id || 'unknown'
 
       // Update client
       await updateClient(selectedClient.id, {
-        totalVisits: (selectedClient.totalVisits || 0) + 1,
-        totalSpent: (selectedClient.totalSpent || 0) + total,
-        lastVisit: dateStr,
+        total_visits: (selectedClient.total_visits || 0) + 1,
+        total_spent: (selectedClient.total_spent || 0) + total,
+        last_visit: dateStr,
       })
 
       // Create visit log
       await addVisitLog({
-        clientId: selectedClient.id,
-        clientName: selectedClient.name,
+        client_id: selectedClient.id,
+        client_name: selectedClient.name,
         visitDate: dateStr,
         visitTime: timeStr,
         servicesCount: cart.length,
-        totalSpent: total,
-        notes: `${cart.length} services - ${paymentMethod}`,
+        total_spent: total,
+        notes: `${cart.length} services - ${payment_method}`,
       })
 
       // Auto-complete bookings: Update today's pending/ongoing bookings for this client to "completed"
       try {
         const todayBookings = getTodayBookings()
         const clientBookingsToday = todayBookings.filter((b: any) => 
-          b.clientId === selectedClient.id && 
+          b.client_id === selectedClient.id && 
           (b.status === 'pending' || b.status === 'ongoing')
         )
 
@@ -269,18 +269,18 @@ export const POS: React.FC = () => {
       // Show receipt
       setCompletedTransaction({
         transactionId,
-        clientName: selectedClient.name,
-        clientPhone: selectedClient.phone,
-        barberName: selectedBarber?.name || '',
+        client_name: selectedClient.name,
+        client_phone: selectedClient.phone,
+        barber_name: selectedBarber?.name || '',
         barberPhone: selectedBarber?.phone || '',
         date: dateStr,
         time: timeStr,
         items: cart,
         subtotal,
         discount: discountAmount,
-        discountType,
+        discount_type,
         total,
-        paymentMethod,
+        payment_method,
       })
       setShowReceipt(true)
       toast.success('✅ تمت العملية بنجاح!')
@@ -575,8 +575,8 @@ export const POS: React.FC = () => {
                   className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500"
                 />
                 <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
+                  value={discount_type}
+                  onChange={(e) => setdiscount_type(e.target.value as 'percentage' | 'fixed')}
                   className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                 >
                   <option value="fixed">ج.م</option>
@@ -592,8 +592,8 @@ export const POS: React.FC = () => {
 
               {/* Payment Method */}
               <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
+                value={payment_method}
+                onChange={(e) => setpayment_method(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
               >
                 <option value="cash">💵 نقد</option>
@@ -694,7 +694,7 @@ export const POS: React.FC = () => {
                     <p className="text-white font-semibold">{item.name}</p>
                     <p className="text-xs text-gray-400">📞 {item.phone}</p>
                     <p className="text-xs text-gold-400 mt-1">
-                      {item.totalVisits} زيارات • {item.totalSpent?.toFixed(2)} ج.م
+                      {item.total_visits} زيارات • {item.total_spent?.toFixed(2)} ج.م
                     </p>
                   </motion.button>
                 ))
@@ -737,17 +737,17 @@ export const POS: React.FC = () => {
               <ReceiptTemplate
                 ref={receiptRef}
                 transactionId={completedTransaction.transactionId}
-                clientName={completedTransaction.clientName}
-                clientPhone={completedTransaction.clientPhone}
-                barberName={completedTransaction.barberName}
+                client_name={completedTransaction.client_name}
+                client_phone={completedTransaction.client_phone}
+                barber_name={completedTransaction.barber_name}
                 date={completedTransaction.date}
                 time={completedTransaction.time}
                 items={completedTransaction.items}
                 subtotal={completedTransaction.subtotal}
                 discount={completedTransaction.discount}
-                discountType={completedTransaction.discountType}
+                discount_type={completedTransaction.discount_type}
                 total={completedTransaction.total}
-                paymentMethod={completedTransaction.paymentMethod}
+                payment_method={completedTransaction.payment_method}
               />
             </div>
 

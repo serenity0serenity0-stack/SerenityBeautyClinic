@@ -58,7 +58,7 @@ export const Analytics: React.FC = () => {
     const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0)
     const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
     const netProfit = totalRevenue - totalExpenses
-    const uniqueClientsCount = new Set(filteredTransactions.map((t) => t.clientId)).size
+    const uniqueClientsCount = new Set(filteredTransactions.map((t) => t.client_id)).size
 
     setAnalyticsData({
       totalRevenue,

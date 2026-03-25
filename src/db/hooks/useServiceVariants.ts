@@ -10,8 +10,8 @@ export interface ServiceVariant {
   price: number
   duration?: number
   isActive: boolean
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export const useServiceVariants = () => {
@@ -26,7 +26,7 @@ export const useServiceVariants = () => {
         .from('service_variants')
         .select('*')
         .eq('isActive', true)
-        .order('createdAt', { ascending: true })
+        .order('created_at', { ascending: true })
 
       if (error) throw error
       setVariants(data || [])
@@ -43,14 +43,14 @@ export const useServiceVariants = () => {
     fetchVariants()
   }, [])
 
-  const addVariant = async (variant: Omit<ServiceVariant, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addVariant = async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('service_variants')
         .insert({
           ...variant,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -69,7 +69,7 @@ export const useServiceVariants = () => {
         .from('service_variants')
         .update({
           ...updates,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
 

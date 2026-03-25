@@ -243,12 +243,12 @@ export function usePortalAuthSecure(slug?: string) {
                 name: name || phone, // use phone as name if no name provided
                 phone: phone,
                 birthday: null,
-                "totalVisits": 0,
-                "totalSpent": 0,
-                "isVIP": false,
+                "total_visits": 0,
+                "total_spent": 0,
+                "is_vip": false,
                 notes: 'مسجل عبر البوابة الإلكترونية',
-                "createdAt": new Date().toISOString(),
-                "updatedAt": new Date().toISOString()
+                "created_at": new Date().toISOString(),
+                "updated_at": new Date().toISOString()
               })
 
             if (insertErr) {
@@ -262,7 +262,7 @@ export function usePortalAuthSecure(slug?: string) {
             const { error: updateErr } = await supabase
               .from('clients')
               .update({
-                "updatedAt": new Date().toISOString()
+                "updated_at": new Date().toISOString()
               })
               .eq('id', existingClient.id)
 

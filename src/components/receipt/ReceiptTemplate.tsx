@@ -8,18 +8,18 @@ interface ReceiptItem {
 }
 
 interface ReceiptProps {
-  clientName: string
-  clientPhone?: string
-  barberName?: string
+  client_name: string
+  client_phone?: string
+  barber_name?: string
   transactionId: string
   date: string
   time: string
   items: ReceiptItem[]
   subtotal: number
   discount: number
-  discountType: 'percentage' | 'fixed'
+  discount_type: 'percentage' | 'fixed'
   total: number
-  paymentMethod: string
+  payment_method: string
 }
 
 // Convert numbers to Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩)
@@ -50,7 +50,7 @@ const formatEgyptTime = (time: string): string => {
 }
 
 // Map payment methods to Arabic
-const paymentMethodMap: Record<string, string> = {
+const payment_methodMap: Record<string, string> = {
   cash: 'نقداً',
   card: 'بطاقة بنكية',
   wallet: 'محفظة إلكترونية',
@@ -59,18 +59,18 @@ const paymentMethodMap: Record<string, string> = {
 export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
   (
     {
-      clientName,
-      clientPhone,
-      barberName,
+      client_name,
+      client_phone,
+      barber_name,
       transactionId,
       date,
       time,
       items,
       subtotal,
       discount,
-      discountType,
+      discount_type,
       total,
-      paymentMethod,
+      payment_method,
     },
     ref
   ) => {
@@ -121,13 +121,13 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
 
     // Calculate actual discount amount for display
     const discountAmount =
-      discountType === 'percentage'
+      discount_type === 'percentage'
         ? (subtotal * discount) / 100
         : discount
 
     // Format discount label
     const discountLabel =
-      discountType === 'percentage'
+      discount_type === 'percentage'
         ? `${toArabicNumerals(discount.toFixed(0))}%`
         : `ج.م`
 
@@ -212,24 +212,24 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Client Info */}
         <div style={{ marginBottom: '6px', fontSize: '11px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-            <span>{clientName}</span>
+            <span>{client_name}</span>
             <span style={{ fontWeight: 'bold' }}>العميل :</span>
           </div>
-          {clientPhone && (
+          {client_phone && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <span>{clientPhone}</span>
+              <span>{client_phone}</span>
               <span style={{ fontWeight: 'bold' }}>الهاتف :</span>
             </div>
           )}
         </div>
 
         {/* Barber Info */}
-        {barberName && (
+        {barber_name && (
           <>
             <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
             <div style={{ marginBottom: '6px', fontSize: '11px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{barberName}</span>
+                <span>{barber_name}</span>
                 <span style={{ fontWeight: 'bold' }}>الحلاق :</span>
               </div>
             </div>
@@ -302,7 +302,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Payment Method */}
         <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '10px' }}>
           <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>طريقة الدفع:</div>
-          <div>{paymentMethodMap[paymentMethod] || paymentMethod}</div>
+          <div>{payment_methodMap[payment_method] || payment_method}</div>
         </div>
 
         {/* Divider */}

@@ -42,7 +42,7 @@ export const useExpenses = () => {
     fetchExpenses()
   }, [fetchExpenses])
 
-  const addExpense = async (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addExpense = async (expense: Omit<Expense, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) throw new Error('Shop ID is required')
 
@@ -51,8 +51,8 @@ export const useExpenses = () => {
         .insert({
           ...expense,
           shop_id: clinicId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 

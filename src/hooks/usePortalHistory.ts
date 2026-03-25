@@ -5,7 +5,7 @@ export interface VisitHistory {
   id: string
   visitDate: string
   servicesCount: number
-  totalSpent: number
+  total_spent: number
   notes?: string
 }
 
@@ -27,7 +27,7 @@ export function usePortalHistory(clinicId?: string, _customerId?: string, slug?:
         throw new Error('Customer phone not found in session')
       }
 
-      // Step 2: Find clientId from clients table using phone
+      // Step 2: Find client_id from clients table using phone
       const { data: clientData, error: clientErr } = await supabase
         .from('clients')
         .select('id')
@@ -45,9 +45,9 @@ export function usePortalHistory(clinicId?: string, _customerId?: string, slug?:
       // Step 3: Fetch visit logs using correct columns
       const { data: visitLogs, error: err } = await supabase
         .from('visit_logs')
-        .select('id, visitDate, servicesCount, totalSpent, notes')
+        .select('id, visitDate, servicesCount, total_spent, notes')
         .eq('shop_id', clinicId)
-        .eq('clientId', clientData.id)
+        .eq('client_id', clientData.id)
         .order('visitDate', { ascending: false })
 
       if (err) throw err
@@ -57,7 +57,7 @@ export function usePortalHistory(clinicId?: string, _customerId?: string, slug?:
           id: log.id,
           visitDate: log.visitDate,
           servicesCount: log.servicesCount || 0,
-          totalSpent: log.totalSpent || 0,
+          total_spent: log.total_spent || 0,
           notes: log.notes
         })) || []
       )
@@ -75,10 +75,10 @@ export function usePortalHistory(clinicId?: string, _customerId?: string, slug?:
   // Get stats
   const getStats = useCallback(() => {
     return {
-      totalVisits: history.length,
-      totalSpent: history.reduce((sum, log) => sum + log.totalSpent, 0),
-      averageSpent: history.length > 0 ? history.reduce((sum, log) => sum + log.totalSpent, 0) / history.length : 0,
-      lastVisit: history[0]?.visitDate || null
+      total_visits: history.length,
+      total_spent: history.reduce((sum, log) => sum + log.total_spent, 0),
+      averageSpent: history.length > 0 ? history.reduce((sum, log) => sum + log.total_spent, 0) / history.length : 0,
+      last_visit: history[0]?.visitDate || null
     }
   }, [history])
 

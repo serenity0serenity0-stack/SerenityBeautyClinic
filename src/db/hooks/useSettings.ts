@@ -66,7 +66,7 @@ export const useSettings = () => {
           key,
           value,
           shop_id: clinicId,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
 
       if (error) throw error

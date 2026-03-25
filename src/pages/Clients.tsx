@@ -21,10 +21,10 @@ export const Clients: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<any>(null)
   const [clientVisitLogs, setClientVisitLogs] = useState<VisitLog[]>([])
-  const [editingClientId, setEditingClientId] = useState<string | null>(null)
+  const [editingclient_id, setEditingclient_id] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', birthday: '', isVIP: false })
-  const [editFormData, setEditFormData] = useState({ name: '', phone: '', email: '', birthday: '', isVIP: false })
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', birthday: '', is_vip: false })
+  const [editFormData, setEditFormData] = useState({ name: '', phone: '', email: '', birthday: '', is_vip: false })
 
   // Filter states
   const [vipFilter, setVipFilter] = useState<'all' | 'vip' | 'regular'>('all')
@@ -58,12 +58,12 @@ export const Clients: React.FC = () => {
         phone: formData.phone,
         email: formData.email || null,
         birthday: formData.birthday,
-        totalVisits: 0,
-        totalSpent: 0,
-        isVIP: formData.isVIP,
+        total_visits: 0,
+        total_spent: 0,
+        is_vip: formData.is_vip,
       })
       toast.success(t('notifications.client_added'))
-      setFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
+      setFormData({ name: '', phone: '', email: '', birthday: '', is_vip: false })
       setIsModalOpen(false)
     } catch (err: any) {
       // Check if error is due to duplicate phone number
@@ -76,13 +76,13 @@ export const Clients: React.FC = () => {
   }
 
   const handleEditClick = (client: Client) => {
-    setEditingClientId(client.id!)
+    setEditingclient_id(client.id!)
     setEditFormData({
       name: client.name,
       phone: client.phone,
       email: client.email || '',
       birthday: client.birthday || '',
-      isVIP: client.isVIP || false,
+      is_vip: client.is_vip || false,
     })
     setIsEditModalOpen(true)
   }
@@ -94,16 +94,16 @@ export const Clients: React.FC = () => {
     }
 
     try {
-      await updateClient(editingClientId!, {
+      await updateClient(editingclient_id!, {
         name: editFormData.name,
         phone: editFormData.phone,
         email: editFormData.email || null,
         birthday: editFormData.birthday,
-        isVIP: editFormData.isVIP,
+        is_vip: editFormData.is_vip,
       })
       toast.success(t('notifications.client_updated'))
-      setEditingClientId(null)
-      setEditFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
+      setEditingclient_id(null)
+      setEditFormData({ name: '', phone: '', email: '', birthday: '', is_vip: false })
       setIsEditModalOpen(false)
     } catch (err) {
       toast.error(t('errors.database_error'))
@@ -133,8 +133,8 @@ export const Clients: React.FC = () => {
       }
 
       // VIP filter
-      if (vipFilter === 'vip' && !c.isVIP) return false
-      if (vipFilter === 'regular' && c.isVIP) return false
+      if (vipFilter === 'vip' && !c.is_vip) return false
+      if (vipFilter === 'regular' && c.is_vip) return false
 
       // Birthday month filter
       if (birthdayMonth) {
@@ -150,9 +150,9 @@ export const Clients: React.FC = () => {
         case 'name':
           return a.name.localeCompare(b.name)
         case 'visits':
-          return b.totalVisits - a.totalVisits
+          return b.total_visits - a.total_visits
         case 'spent':
-          return b.totalSpent - a.totalSpent
+          return b.total_spent - a.total_spent
         case 'recent':
           return 0 // Keep original order
       }
@@ -286,9 +286,9 @@ export const Clients: React.FC = () => {
                   <p className="text-white font-semibold hover:text-gold-400 transition">{client.name}</p>
                   <p className="text-xs text-gray-400">{client.phone}</p>
                   <div className="flex gap-2 mt-2 flex-wrap">
-                    {client.isVIP && <Badge label="VIP" variant="gold" />}
-                    <Badge label={`${client.totalVisits} visits`} variant="info" />
-                    <Badge label={`${client.totalSpent.toFixed(2)} ج.م`} variant="success" />
+                    {client.is_vip && <Badge label="VIP" variant="gold" />}
+                    <Badge label={`${client.total_visits} visits`} variant="info" />
+                    <Badge label={`${client.total_spent.toFixed(2)} ج.م`} variant="success" />
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -353,7 +353,7 @@ export const Clients: React.FC = () => {
             <label className="text-white text-sm font-medium">VIP عميل</label>
             <button
               type="button"
-              onClick={() => setFormData({ ...formData, isVIP: !formData.isVIP })}
+              onClick={() => setFormData({ ...formData, is_vip: !formData.is_vip })}
               style={{
                 position: 'relative',
                 display: 'inline-flex',
@@ -364,7 +364,7 @@ export const Clients: React.FC = () => {
                 cursor: 'pointer',
                 padding: '0',
                 overflow: 'hidden',
-                backgroundColor: formData.isVIP ? '#22c55e' : '#4b5563',
+                backgroundColor: formData.is_vip ? '#22c55e' : '#4b5563',
                 transition: 'background-color 0.2s',
                 flexShrink: 0
               }}
@@ -372,7 +372,7 @@ export const Clients: React.FC = () => {
               <span style={{
                 position: 'absolute',
                 top: '3px',
-                left: formData.isVIP ? '23px' : '3px',
+                left: formData.is_vip ? '23px' : '3px',
                 height: '18px',
                 width: '18px',
                 borderRadius: '50%',
@@ -404,8 +404,8 @@ export const Clients: React.FC = () => {
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false)
-          setEditingClientId(null)
-          setEditFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
+          setEditingclient_id(null)
+          setEditFormData({ name: '', phone: '', email: '', birthday: '', is_vip: false })
         }}
         title={t('clients.edit_client')}
       >
@@ -437,7 +437,7 @@ export const Clients: React.FC = () => {
             <label className="text-white text-sm font-medium">VIP عميل</label>
             <button
               type="button"
-              onClick={() => setEditFormData({ ...editFormData, isVIP: !editFormData.isVIP })}
+              onClick={() => setEditFormData({ ...editFormData, is_vip: !editFormData.is_vip })}
               style={{
                 position: 'relative',
                 display: 'inline-flex',
@@ -448,7 +448,7 @@ export const Clients: React.FC = () => {
                 cursor: 'pointer',
                 padding: '0',
                 overflow: 'hidden',
-                backgroundColor: editFormData.isVIP ? '#22c55e' : '#4b5563',
+                backgroundColor: editFormData.is_vip ? '#22c55e' : '#4b5563',
                 transition: 'background-color 0.2s',
                 flexShrink: 0
               }}
@@ -456,7 +456,7 @@ export const Clients: React.FC = () => {
               <span style={{
                 position: 'absolute',
                 top: '3px',
-                left: editFormData.isVIP ? '23px' : '3px',
+                left: editFormData.is_vip ? '23px' : '3px',
                 height: '18px',
                 width: '18px',
                 borderRadius: '50%',
@@ -470,8 +470,8 @@ export const Clients: React.FC = () => {
             <button
               onClick={() => {
                 setIsEditModalOpen(false)
-                setEditingClientId(null)
-                setEditFormData({ name: '', phone: '', email: '', birthday: '', isVIP: false })
+                setEditingclient_id(null)
+                setEditFormData({ name: '', phone: '', email: '', birthday: '', is_vip: false })
               }}
               className="flex-1 px-4 py-3 border border-white/20 rounded-lg hover:bg-white/5 transition font-medium text-gray-300"
             >
@@ -504,15 +504,15 @@ export const Clients: React.FC = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white/5 p-4 rounded-lg">
                 <p className="text-xs text-gray-400 mb-1">Total Visits</p>
-                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.totalVisits}</p>
+                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.total_visits}</p>
               </div>
               <div className="bg-white/5 p-4 rounded-lg">
                 <p className="text-xs text-gray-400 mb-1">Total Spent</p>
-                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.totalSpent.toFixed(2)} ج.م</p>
+                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.total_spent.toFixed(2)} ج.م</p>
               </div>
               <div className="bg-white/5 p-4 rounded-lg">
                 <p className="text-xs text-gray-400 mb-1">Status</p>
-                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.isVIP ? 'VIP ⭐' : 'Regular'}</p>
+                <p className="text-2xl font-bold text-gold-400">{selectedClientForDetail.is_vip ? 'VIP ⭐' : 'Regular'}</p>
               </div>
             </div>
 
@@ -533,7 +533,7 @@ export const Clients: React.FC = () => {
                           <span className="text-gray-300">{log.visitTime}</span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-400 mb-2">{log.servicesCount} services • {log.totalSpent.toFixed(2)} ج.م</p>
+                      <p className="text-sm text-gray-400 mb-2">{log.servicesCount} services • {log.total_spent.toFixed(2)} ج.م</p>
                       {log.notes && <p className="text-xs text-gray-500">{log.notes}</p>}
                     </div>
                   ))}

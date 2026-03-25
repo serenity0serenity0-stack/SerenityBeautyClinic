@@ -16,9 +16,9 @@ const translations = {
     logoutError: 'خطأ في تسجيل الخروج',
     loading: 'جاري التحميل...',
     welcome: 'مرحباً',
-    totalVisits: 'إجمالي الزيارات',
+    total_visits: 'إجمالي الزيارات',
     noVisitsYet: 'لا توجد زيارات بعد',
-    totalSpent: 'إجمالي الإنفاق',
+    total_spent: 'إجمالي الإنفاق',
     average: 'متوسط',
     upcomingAppointments: 'المواعيد القادمة',
     pendingAppointments: 'مواعيد معلقة',
@@ -44,9 +44,9 @@ const translations = {
     logoutError: 'Error logging out',
     loading: 'Loading...',
     welcome: 'Welcome',
-    totalVisits: 'Total Visits',
+    total_visits: 'Total Visits',
     noVisitsYet: 'No visits yet',
-    totalSpent: 'Total Spent',
+    total_spent: 'Total Spent',
     average: 'Average',
     upcomingAppointments: 'Upcoming Appointments',
     pendingAppointments: 'Pending Appointments',
@@ -200,10 +200,10 @@ export function PortalDashboard() {
           <div className="bg-white/5 border border-white/10 rounded-lg p-6 hover:border-white/20 transition">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-white/70 text-sm mb-2">{t.totalVisits}</div>
-                <div className="text-3xl font-bold text-white">{stats.totalVisits}</div>
+                <div className="text-white/70 text-sm mb-2">{t.total_visits}</div>
+                <div className="text-3xl font-bold text-white">{stats.total_visits}</div>
                 <p className="text-white/40 text-xs mt-2">
-                  {stats.lastVisit ? `${lang === 'ar' ? 'آخر زيارة' : 'Last visit'}: ${new Date(stats.lastVisit).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}` : t.noVisitsYet}
+                  {stats.last_visit ? `${lang === 'ar' ? 'آخر زيارة' : 'Last visit'}: ${new Date(stats.last_visit).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}` : t.noVisitsYet}
                 </p>
               </div>
               <TrendingUp size={24} className="text-white/30" />
@@ -213,11 +213,11 @@ export function PortalDashboard() {
           <div className="bg-white/5 border border-white/10 rounded-lg p-6 hover:border-white/20 transition">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-white/70 text-sm mb-2">{t.totalSpent}</div>
+                <div className="text-white/70 text-sm mb-2">{t.total_spent}</div>
                 <div className="text-3xl font-bold" style={{ color: primaryColor }}>
-                  {stats.totalSpent}ج
+                  {stats.total_spent}ج
                 </div>
-                <p className="text-white/40 text-xs mt-2">{t.average}: {stats.totalVisits > 0 ? (stats.totalSpent / stats.totalVisits).toFixed(0) : 0}ج</p>
+                <p className="text-white/40 text-xs mt-2">{t.average}: {stats.total_visits > 0 ? (stats.total_spent / stats.total_visits).toFixed(0) : 0}ج</p>
               </div>
               <TrendingUp size={24} className="text-white/30" />
             </div>
@@ -264,13 +264,13 @@ export function PortalDashboard() {
               <div>
                 <div className="text-green-400/70 text-sm mb-1">{t.date}</div>
                 <div className="text-xl font-bold text-white">
-                  {new Date(stats.nextBooking.bookingDate).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                  {new Date(stats.nextBooking.booking_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
                 </div>
               </div>
               <div>
                 <div className="text-green-400/70 text-sm mb-1">{t.time}</div>
                 <div className="text-xl font-bold text-white" dir="ltr">
-                  {stats.nextBooking.bookingTime}
+                  {stats.nextBooking.booking_time}
                 </div>
               </div>
               <div>

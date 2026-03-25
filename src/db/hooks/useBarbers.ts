@@ -21,7 +21,7 @@ export const useBarbers = () => {
         .from('barbers')
         .select('*')
         .eq('clinic_id', clinicId)
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       setBarbers(data || [])
@@ -38,7 +38,7 @@ export const useBarbers = () => {
     fetchBarbers()
   }, [clinicId])
 
-  const addBarber = async (barber: Omit<Barber, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addBarber = async (barber: Omit<Barber, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) throw new Error('Shop ID is required')
 

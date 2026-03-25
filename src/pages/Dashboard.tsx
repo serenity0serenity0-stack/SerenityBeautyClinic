@@ -83,12 +83,12 @@ export const Dashboard: React.FC = () => {
     })
 
     const revenue = todayTx.reduce((sum, t) => sum + (Number(t.total) || 0), 0)
-    const todayClientIds = new Set(todayTx.map((t) => t.clientId).filter(Boolean))
+    const todayClientIds = new Set(todayTx.map((t) => t.client_id).filter(Boolean))
     const monthTx = transactions.filter((t) => {
       if (!t || !t.date) return false
       return String(t.date).slice(0, 10).startsWith(currentMonth)
     })
-    const monthlyClientIds = new Set(monthTx.map((t) => t.clientId).filter(Boolean))
+    const monthlyClientIds = new Set(monthTx.map((t) => t.client_id).filter(Boolean))
 
     setTodayRevenue(revenue)
     setTodayClients(todayClientIds.size)

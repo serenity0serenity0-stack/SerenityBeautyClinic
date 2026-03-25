@@ -21,7 +21,7 @@ export const useClients = () => {
         .from('clients')
         .select('*')
         .eq('clinic_id', clinicId)
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       setClients(data || [])
@@ -38,7 +38,7 @@ export const useClients = () => {
     fetchClients()
   }, [clinicId])
 
-  const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addClient = async (client: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) throw new Error('Shop ID is required')
       
@@ -47,8 +47,8 @@ export const useClients = () => {
         .insert({
           ...client,
           shop_id: clinicId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -67,7 +67,7 @@ export const useClients = () => {
         .from('clients')
         .update({
           ...updates,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
 

@@ -41,16 +41,16 @@ export const useQueueStatus = () => {
       // Get all pending and ongoing bookings for today, sorted by time
       const todayBookings = bookings
         .filter((b: Booking) => {
-          const bookingDate = new Date(b.bookingTime).toLocaleDateString('en-CA')
+          const booking_date = new Date(b.booking_time).toLocaleDateString('en-CA')
           const todayDate = new Date(today).toLocaleDateString('en-CA')
           return (
-            bookingDate === todayDate &&
+            booking_date === todayDate &&
             (b.status === 'pending' || b.status === 'ongoing')
           )
         })
         .sort(
           (a: Booking, b: Booking) =>
-            new Date(a.bookingTime).getTime() - new Date(b.bookingTime).getTime()
+            new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime()
         )
 
       if (todayBookings.length === 0) {
@@ -79,7 +79,7 @@ export const useQueueStatus = () => {
       let remainingTimeForCurrent = 0
 
       todayBookings.forEach((booking: Booking) => {
-        const bookingStartTime = new Date(booking.bookingTime)
+        const bookingStartTime = new Date(booking.booking_time)
         const duration = booking.duration || 30
 
         if (booking.status === 'ongoing') {
@@ -115,7 +115,7 @@ export const useQueueStatus = () => {
       if (currentBooking !== null && currentBooking !== undefined) {
         const duration = (currentBooking as Booking).duration || 30
         const bookingStart = new Date(
-          (currentBooking as Booking).bookingTime
+          (currentBooking as Booking).booking_time
         ).getTime()
         const elapsed = currentTime.getTime() - bookingStart
         percentageWaited = Math.min(100, Math.max(0, (elapsed / (duration * 60000)) * 100))

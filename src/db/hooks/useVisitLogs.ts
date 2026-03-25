@@ -5,15 +5,15 @@ import toast from 'react-hot-toast'
 
 export interface VisitLog {
   id: string
-  clientId: string
-  clientName: string
+  client_id: string
+  client_name: string
   visitDate: string
   visitTime: string
   servicesCount: number
-  totalSpent: number
+  total_spent: number
   notes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export const useVisitLogs = () => {
@@ -34,7 +34,7 @@ export const useVisitLogs = () => {
         .from('visit_logs')
         .select('*')
         .eq('shop_id', clinicId)
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       setVisitLogs(data || [])
@@ -51,7 +51,7 @@ export const useVisitLogs = () => {
     fetchVisitLogs()
   }, [clinicId])
 
-  const addVisitLog = async (log: Omit<VisitLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addVisitLog = async (log: Omit<VisitLog, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) {
         throw new Error('Shop ID is required')
@@ -62,8 +62,8 @@ export const useVisitLogs = () => {
         .insert({
           ...log,
           shop_id: clinicId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -76,7 +76,7 @@ export const useVisitLogs = () => {
     }
   }
 
-  const getClientVisitLogs = async (clientId: string) => {
+  const getClientVisitLogs = async (client_id: string) => {
     try {
       if (!clinicId) {
         return []
@@ -86,7 +86,7 @@ export const useVisitLogs = () => {
         .from('visit_logs')
         .select('*')
         .eq('shop_id', clinicId)
-        .eq('clientId', clientId)
+        .eq('client_id', client_id)
         .order('visitDate', { ascending: false })
 
       if (error) throw error

@@ -39,7 +39,7 @@ export const useServices = () => {
     fetchServices()
   }, [clinicId])
 
-  const addService = async (service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addService = async (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) throw new Error('Shop ID is required')
 
@@ -48,8 +48,8 @@ export const useServices = () => {
         .insert({
           ...service,
           shop_id: clinicId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -68,7 +68,7 @@ export const useServices = () => {
         .from('services')
         .update({
           ...updates,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
 
