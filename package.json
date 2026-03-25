@@ -12,6 +12,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.99.1",
+    "@vercel/speed-insights": "^2.0.0",
     "date-fns": "^3.0.0",
     "framer-motion": "^11.0.0",
     "fuse.js": "^7.0.0",
