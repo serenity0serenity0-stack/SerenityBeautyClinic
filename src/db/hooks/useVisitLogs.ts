@@ -6,7 +6,6 @@ import toast from 'react-hot-toast'
 export interface VisitLog {
   id: string
   client_id: string
-  client_name: string
   visitDate: string
   visitTime: string
   servicesCount: number

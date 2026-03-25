@@ -137,19 +137,21 @@ export const POS: React.FC = () => {
 
   const handleAddService = async (service: any) => {
     const variants = allVariants[service.id]
+    const serviceName = service.nameAr || service.name || 'خدمة'
 
     if (variants && variants.length > 0) {
       // Show variant picker
       const variantPrice = variants[0].price
-      addToCart(service.nameAr, variantPrice)
+      addToCart(serviceName, variantPrice)
     } else {
       // Add with default price
-      addToCart(service.nameAr, service.price)
+      addToCart(serviceName, service.price)
     }
   }
 
   const handleAddVariant = (service: any, variant: any) => {
-    addToCart(`${service.nameAr} - ${variant.name}`, variant.price)
+    const variantName = variant.name || 'خدمة'
+    addToCart(`${service.nameAr} - ${variantName}`, variant.price)
   }
 
   const addToCart = (name: string, price: number) => {
@@ -235,7 +237,6 @@ export const POS: React.FC = () => {
       // Create visit log
       await addVisitLog({
         client_id: selectedClient.id,
-        client_name: selectedClient.name,
         visitDate: dateStr,
         visitTime: timeStr,
         servicesCount: cart.length,
@@ -624,7 +625,7 @@ export const POS: React.FC = () => {
                 disabled={isCheckingOut || !selectedClient || cart.length === 0}
                 whileHover={!isCheckingOut && selectedClient ? { scale: 1.02, y: -2 } : {}}
                 whileTap={!isCheckingOut && selectedClient ? { scale: 0.98 } : {}}
-                className="w-full p-4 bg-gradient-to-r from-gold-400 to-yellow-400 text-black font-bold text-base md:text-lg rounded-xl hover:shadow-2xl hover:shadow-gold-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition transform"
+                className="w-full p-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold text-base md:text-lg rounded-xl hover:shadow-2xl hover:shadow-pink-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition transform"
               >
                 {isCheckingOut ? (
                   <span className="flex items-center justify-center gap-2">

@@ -5,6 +5,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useVisitLogs } from '../db/hooks/useVisitLogs'
+import { useClients } from '../db/hooks/useClients'
 import { getEgyptDateString } from '../utils/egyptTime'
 import { Edit2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -13,12 +14,19 @@ export const DailyLogs: React.FC = () => {
   const { t } = useTranslation()
   const { transactions } = useTransactions()
   const { visitLogs } = useVisitLogs()
+  const { clients } = useClients()
 
   const [selectedDate, setSelectedDate] = useState(getEgyptDateString())
   const [activeTab, setActiveTab] = useState<'transactions' | 'visits'>('transactions')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [editFormData, setEditFormData] = useState<any>(null)
+
+  // Helper function to get client name by client_id
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    return client?.name || 'العميل غير معروف'
+  }
 
   // Filter logs by selected date
   const todayTransactions = transactions.filter((t) => t.date === selectedDate)
@@ -177,7 +185,7 @@ export const DailyLogs: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{visit.client_name}</p>
+                        <p className="text-white font-bold text-lg">{getClientName(visit.client_id)}</p>
                         <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
                           {visit.visitTime}
                         </p>
