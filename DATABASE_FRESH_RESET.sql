@@ -519,13 +519,13 @@ VALUES ('a844c8e8-b7f2-402b-a2a1-d68cc002e8de', 'supplies', 100, CURRENT_DATE, N
 SELECT '✅ DATABASE RESET COMPLETE' as status;
 
 SELECT 
-  COUNT(*) FILTER (WHERE name = 'clinic') as clinic_count,
-  COUNT(*) FILTER (WHERE name = 'admin_auth') as admin_auth_count,
-  COUNT(*) FILTER (WHERE name = 'clients') as clients_count,
-  COUNT(*) FILTER (WHERE name = 'services') as services_count,
-  COUNT(*) FILTER (WHERE name = 'transactions') as transactions_count,
-  COUNT(*) FILTER (WHERE name = 'expenses') as expenses_count,
-  COUNT(*) FILTER (WHERE name = 'subscriptions') as subscriptions_count
+  COUNT(*) FILTER (WHERE tablename = 'clinic') as clinic_count,
+  COUNT(*) FILTER (WHERE tablename = 'admin_auth') as admin_auth_count,
+  COUNT(*) FILTER (WHERE tablename = 'clients') as clients_count,
+  COUNT(*) FILTER (WHERE tablename = 'services') as services_count,
+  COUNT(*) FILTER (WHERE tablename = 'transactions') as transactions_count,
+  COUNT(*) FILTER (WHERE tablename = 'expenses') as expenses_count,
+  COUNT(*) FILTER (WHERE tablename = 'subscriptions') as subscriptions_count
 FROM information_schema.tables 
 WHERE table_schema = 'public';
 
