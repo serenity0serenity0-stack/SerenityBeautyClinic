@@ -16,7 +16,6 @@ import {
   FileText,
   Calendar,
   Clock,
-  Receipt,
 } from 'lucide-react'
 
 interface SidebarLink {
@@ -53,7 +52,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath, 
     { icon: <FileText size={20} />, label: t('navigation.dailyLogs'), href: '/logs' },
     { icon: <DollarSign size={20} />, label: t('navigation.expenses'), href: '/expenses' },
     { icon: <BarChart3 size={20} />, label: t('navigation.analytics'), href: '/analytics' },
-    { icon: <Receipt size={20} />, label: t('navigation.billing'), href: '/billing' },
     { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings' },
   ]
 
