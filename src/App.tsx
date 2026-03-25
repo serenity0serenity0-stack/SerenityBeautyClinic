@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useTheme } from './hooks/useTheme'
 import { useLanguage } from './hooks/useLanguage'
 import { useAuth } from './hooks/useAuth'
-import { checkSubscriptionStatus } from './utils/subscriptionChecker'
 
 // Pages
 import Login from './pages/Login'
@@ -17,39 +16,25 @@ import { Expenses } from './pages/Expenses'
 import { Analytics } from './pages/Analytics'
 import { Settings } from './pages/Settings'
 import { DailyLogs } from './pages/DailyLogs'
-import { Barbers } from './pages/Barbers'
+import { Barbers as Therapists } from './pages/Barbers' // Renamed from Barbers to Therapists
 import { Bookings } from './pages/Bookings'
 import { QueueDisplay } from './pages/QueueDisplay'
-import { AdminDashboard } from './pages/AdminDashboard'
-import { AdminShops } from './pages/AdminShops'
-import { AdminPlans } from './pages/AdminPlans'
-import { AdminBilling } from './pages/AdminBilling'
-import { ShopBilling } from './pages/ShopBilling'
-
-// Portal Pages
-import { PortalLoginSecure } from './pages/portal/PortalLoginSecure'
-import { PortalRegister } from './pages/portal/PortalRegister'
-import { PortalDashboard } from './pages/portal/PortalDashboard'
-import { PortalBookings } from './pages/portal/PortalBookings'
-import { PortalHistory } from './pages/portal/PortalHistory'
-import { PortalProfile } from './pages/portal/PortalProfile'
 
 /**
- * AdminRoute Component
+ * ProtectedRoute Component
  * 
- * Wraps admin-only routes
- * - Redirects to /dashboard if user is shop owner
- * - Redirects to /login if not authenticated
+ * Single admin only - if admin is logged in, allow access
+ * Otherwise redirect to login
  */
-function AdminRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { loading, role } = useAuth()
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-rose-900 via-pink-900 to-rose-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gold-400/20 border-t-gold-400 animate-spin mx-auto mb-4"></div>
-          <p className="text-white/60">Loading...</p>
+          <div className="w-12 h-12 rounded-full border-4 border-hot-pink/20 border-t-hot-pink animate-spin mx-auto mb-4"></div>
+          <p className="text-white/60">جاري التحميل...</p>
         </div>
       </div>
     )
@@ -57,73 +42,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   if (!role) {
     return <Navigate to="/login" replace />
-  }
-
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  return <>{children}</>
-}
-
-/**
- * ShopRoute Component
- * 
- * Wraps shop-owner routes with subscription enforcement:
- * - ACTIVE: full access
- * - INACTIVE: view-only access
- * - SUSPENDED/EXPIRED: blocked, redirect to /billing
- */
-function ShopRoute({ children }: { children: React.ReactNode }) {
-  const { loading, role, shopId } = useAuth()
-  const navigate = useNavigate()
-  const [checkLoading, setCheckLoading] = useState(true)
-  const location = useLocation()
-
-  // Always allow /billing route regardless of subscription status
-  const isBillingRoute = location.pathname === '/billing' || location.pathname === '/shop-billing'
-
-  useEffect(() => {
-    const checkSub = async () => {
-      if (role !== 'shop' || !shopId || isBillingRoute) {
-        setCheckLoading(false)
-        return
-      }
-
-      try {
-        const status = await checkSubscriptionStatus(shopId)
-
-        // Redirect suspended/expired users to billing
-        if (status.status === 'suspended' || status.status === 'expired') {
-          navigate('/billing', { replace: true })
-        }
-      } catch (error) {
-        console.error('Error checking subscription:', error)
-      } finally {
-        setCheckLoading(false)
-      }
-    }
-
-    checkSub()
-  }, [shopId, role, isBillingRoute, navigate])
-
-  if (loading || checkLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-gold-400/20 border-t-gold-400 animate-spin mx-auto mb-4"></div>
-          <p className="text-white/60">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!role) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (role !== 'shop') {
-    return <Navigate to="/admin" replace />
   }
 
   return <>{children}</>
@@ -151,178 +69,117 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
 
-          {/* Shop Routes - Protected */}
+          {/* Protected Clinic Routes */}
           <Route
             path="/dashboard"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Dashboard />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/pos"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <POS />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/clients"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Clients />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
-            path="/barbers"
+            path="/therapists"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
-                  <Barbers />
+                  <Therapists />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/bookings"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Bookings />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/queue"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <QueueDisplay />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/services"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Services />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/logs"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <DailyLogs />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/expenses"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Expenses />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/analytics"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Analytics />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/settings"
             element={
-              <ShopRoute>
+              <ProtectedRoute>
                 <Layout>
                   <Settings />
                 </Layout>
-              </ShopRoute>
+              </ProtectedRoute>
             }
           />
-          <Route
-            path="/billing"
-            element={
-              <ShopRoute>
-                <Layout>
-                  <ShopBilling />
-                </Layout>
-              </ShopRoute>
-            }
-          />
-
-          {/* Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <Layout>
-                  <AdminDashboard />
-                </Layout>
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/shops"
-            element={
-              <AdminRoute>
-                <Layout>
-                  <AdminShops />
-                </Layout>
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/plans"
-            element={
-              <AdminRoute>
-                <Layout>
-                  <AdminPlans />
-                </Layout>
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/billing"
-            element={
-              <AdminRoute>
-                <Layout>
-                  <AdminBilling />
-                </Layout>
-              </AdminRoute>
-            }
-          />
-
-          {/* Portal Routes - Public, Slug-based, Secure Auth */}
-          <Route path="/shop/:slug" element={<PortalLoginSecure />} />
-          <Route path="/shop/:slug/login" element={<PortalLoginSecure />} />
-          <Route path="/shop/:slug/register" element={<PortalRegister />} />
-          <Route path="/shop/:slug/dashboard" element={<PortalDashboard />} />
-          <Route path="/shop/:slug/bookings" element={<PortalBookings />} />
-          <Route path="/shop/:slug/history" element={<PortalHistory />} />
-          <Route path="/shop/:slug/profile" element={<PortalProfile />} />
 
           {/* Default Route */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

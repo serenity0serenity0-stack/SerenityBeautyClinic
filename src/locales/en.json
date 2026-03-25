@@ -1,7 +1,8 @@
 {
   "common": {
-    "appName": "Barber Shop Management System",
-    "barbershop": "Barbershop",
+    "appName": "Serenity Beauty Clinic",
+    "clinic": "Clinic",
+    "barbershop": "Clinic",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -60,7 +61,7 @@
     "dashboard": "Dashboard",
     "pos": "Cashier",
     "clients": "Clients",
-    "barbers": "Barbers",
+    "barbers": "Beauty Specialists",
     "bookings": "Bookings",
     "queue": "Queue Status",
     "dailyLogs": "Daily Logs",
@@ -68,11 +69,7 @@
     "expenses": "Expenses",
     "analytics": "Analytics",
     "billing": "Billing",
-    "settings": "Settings",
-    "admin_dashboard": "Admin Dashboard",
-    "admin_shops": "Manage Shops",
-    "admin_plans": "Pricing Plans",
-    "admin_billing": "Admin Billing"
+    "settings": "Settings"
   },
   "pages": {
     "barbers_title": "Barbers",
@@ -118,10 +115,10 @@
     "select_type": "Select Service Type",
     "services": "Services",
     "categories": {
-      "haircut": "Haircut",
-      "beard": "Beard & Shave",
+      "hair": "Hair",
+      "nails": "Nails",
       "skincare": "Skincare",
-      "kids": "Kids",
+      "makeup": "Makeup",
       "packages": "Packages"
     },
     "cart": "Cart",
@@ -143,7 +140,7 @@
     "discount_applied": "Discount applied successfully",
     "product_added": "Service added",
     "product_removed": "Service removed",
-    "barber": "Barber",
+    "barber": "Beauty Specialist",
     "vip_badge_earned": "VIP Status Reached!"
   },
   "clients": {
@@ -288,7 +285,7 @@
     "delete_booking": "Delete Booking",
     "booking_date": "Booking Date",
     "booking_time": "Booking Time",
-    "barber": "Barber",
+    "barber": "Beauty Specialist",
     "service": "Service",
     "duration": "Duration",
     "status": "Status",
@@ -307,12 +304,13 @@
   },
   "receipt": {
     "title": "Receipt",
-    "barbershop": "Barbershop",
+    "clinic": "Serenity Beauty Clinic",
+    "barbershop": "Clinic",
     "thank_you": "Thank you {{name}}!",
     "visit_us_again": "We look forward to seeing you again",
     "vip_client": "VIP Client",
     "payment_method": "Payment Method",
-    "barber": "Barber",
+    "barber": "Beauty Specialist",
     "date_time": "Date & Time"
   },
   "admin": {

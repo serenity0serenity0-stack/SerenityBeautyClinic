@@ -11,10 +11,13 @@
 }
 
 :root {
-  --primary: #D4AF37;
+  --primary: #E91E63;           /* Hot Pink - Main Color */
+  --primary-dark: #C2185B;      /* Deep Pink */
+  --primary-light: #F06292;     /* Light Pink */
+  --secondary: #CE93D8;         /* Purple Accent */
   --dark-bg: #0A0F1E;
   --dark-secondary: #111827;
-  --light-bg: #F8F5F0;
+  --light-bg: #FDF2F8;          /* Soft pink background */
   --glass-light: rgba(255, 255, 255, 0.1);
   --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -112,15 +115,15 @@ html.light .text-gray-500 {
 }
 
 html.light .text-gold-400 {
-  color: #d97706 !important;
+  color: #E91E63 !important;
 }
 
 html.light .text-gold-300 {
-  color: #fcd34d !important;
+  color: #F06292 !important;
 }
 
 html.light .text-gold-500 {
-  color: #b45309 !important;
+  color: #C2185B !important;
 }
 
 /* ===== BACKGROUNDS - LIGHT MODE ===== */
@@ -154,11 +157,11 @@ html.light .bg-dark-bg {
 }
 
 html.light .bg-gold-400 {
-  background-color: #fbbf24 !important;
+  background-color: #F06292 !important;
 }
 
 html.light [class*='bg-gold-400/'] {
-  background-color: rgba(251, 191, 36, 0.2) !important;
+  background-color: rgba(224, 30, 99, 0.2) !important;
 }
 
 /* ===== BORDERS - LIGHT MODE ===== */
@@ -183,11 +186,11 @@ html.light .border-gray-300 {
 }
 
 html.light .border-gold-400 {
-  border-color: #d97706 !important;
+  border-color: #E91E63 !important;
 }
 
 html.light [class*='border-gold-400/'] {
-  border-color: rgba(217, 119, 6, 0.2) !important;
+  border-color: rgba(233, 30, 99, 0.2) !important;
 }
 
 /* ===== GLASSMORPHISM - LIGHT MODE ===== */

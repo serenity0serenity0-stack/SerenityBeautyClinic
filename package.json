@@ -1,5 +1,6 @@
 {
-  "name": "barber-shop",
+  "name": "serenity-beauty-clinic",
+  "description": "Serenity Beauty Clinic - Professional Beauty & Wellness Management System",
   "private": true,
   "version": "1.0.0",
   "type": "module",

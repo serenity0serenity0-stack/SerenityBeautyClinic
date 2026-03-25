@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/db/supabase'
 
-export type UserRole = 'admin' | 'shop' | null
+export type UserRole = 'admin' | null
 
 export interface AuthUser {
   user: User | null
   session: Session | null
   role: UserRole
-  shopId: string | null
+  clinicId: string | null
   loading: boolean
   error: string | null
 }
@@ -18,30 +18,19 @@ export function useAuth() {
     user: null,
     session: null,
     role: null,
-    shopId: null,
+    clinicId: null,
     loading: true,
     error: null,
   })
 
-  const checkIfAdmin = useCallback(async (userId: string): Promise<boolean> => {
+  const checkIfAdmin = useCallback(async (userId: string): Promise<string | null> => {
     try {
       const { data } = await supabase
-        .from('admin_users')
-        .select('id')
+        .from('admin_auth')
+        .select('clinic_id')
         .eq('auth_user_id', userId)
         .maybeSingle()
-      return !!data
-    } catch { return false }
-  }, [])
-
-  const getShopId = useCallback(async (userId: string): Promise<string | null> => {
-    try {
-      const { data } = await supabase
-        .from('shops')
-        .select('id')
-        .eq('auth_user_id', userId)
-        .maybeSingle()
-      return data?.id || null
+      return data?.clinic_id || null
     } catch { return null }
   }, [])
 
@@ -50,26 +39,20 @@ export function useAuth() {
 
     const resolveUser = async (session: Session | null) => {
       if (!session) {
-        if (mounted) setState({ user: null, session: null, role: null, shopId: null, loading: false, error: null })
+        if (mounted) setState({ user: null, session: null, role: null, clinicId: null, loading: false, error: null })
         return
       }
 
       const userId = session.user.id
-      const isAdmin = await checkIfAdmin(userId)
+      const clinicId = await checkIfAdmin(userId)
 
-      if (isAdmin) {
-        if (mounted) setState({ user: session.user, session, role: 'admin', shopId: null, loading: false, error: null })
-        return
-      }
-
-      const shopId = await getShopId(userId)
-      if (shopId) {
-        if (mounted) setState({ user: session.user, session, role: 'shop', shopId, loading: false, error: null })
+      if (clinicId) {
+        if (mounted) setState({ user: session.user, session, role: 'admin', clinicId, loading: false, error: null })
         return
       }
 
       await supabase.auth.signOut()
-      if (mounted) setState({ user: null, session: null, role: null, shopId: null, loading: false, error: 'User not found in system' })
+      if (mounted) setState({ user: null, session: null, role: null, clinicId: null, loading: false, error: 'Not authorized' })
     }
 
     // ✅ Step 1: Check existing session immediately
@@ -92,7 +75,7 @@ export function useAuth() {
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
-  }, [checkIfAdmin, getShopId])
+  }, [checkIfAdmin])
 
   const signIn = useCallback(async (email: string, password: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }))
@@ -107,7 +90,7 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true }))
     await supabase.auth.signOut()
-    setState({ user: null, session: null, role: null, shopId: null, loading: false, error: null })
+    setState({ user: null, session: null, role: null, clinicId: null, loading: false, error: null })
     return { error: null }
   }, [])
 

@@ -1,7 +1,8 @@
 {
   "common": {
-    "appName": "نظام إدارة محل حلاقة",
-    "barbershop": "المحل",
+    "appName": "عيادة سيرينيتي للتجميل والعناية",
+    "clinic": "العيادة",
+    "barbershop": "العيادة",
     "save": "حفظ",
     "cancel": "إلغاء",
     "delete": "حذف",
@@ -60,19 +61,15 @@
     "dashboard": "لوحة التحكم",
     "pos": "الكاشير",
     "clients": "العملاء",
-    "barbers": "الحلاقين",
+    "barbers": "متخصصات التجميل",
     "bookings": "الحجوزات",
-    "queue": "حالة الطابور",
+    "queue": "حالة الانتظار",
     "dailyLogs": "السجلات اليومية",
     "services": "الخدمات",
     "expenses": "المصروفات",
     "analytics": "التحليلات",
     "billing": "الفاتورة",
-    "settings": "الإعدادات",
-    "admin_dashboard": "لوحة تحكم الإدارة",
-    "admin_shops": "إدارة المحلات",
-    "admin_plans": "الخطط",
-    "admin_billing": "فواتير الإدارة"
+    "settings": "الإعدادات"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -101,17 +98,17 @@
   },
   "pos": {
     "title": "الكاشير",
-    "client_search": "ابحث عن العميل بالتليفون أو الاسم",
-    "new_client": "عميل جديد؟",
-    "walk_in": "زبون عابر",
-    "select_services": "اختر الخدمات",
-    "select_type": "اختر نوع الخدمة",
+    "client_search": "ابحثي عن العميلة بالتليفون أو الاسم",
+    "new_client": "عميلة جديدة؟",
+    "walk_in": "عميلة عابرة",
+    "select_services": "اختاري الخدمات",
+    "select_type": "اختاري نوع الخدمة",
     "services": "الخدمات",
     "categories": {
-      "haircut": "حلاقة الشعر",
-      "beard": "لحية وحلاقة",
-      "skincare": "عناية بالبشرة",
-      "kids": "أطفال",
+      "hair": "الشعر",
+      "nails": "الأظافر",
+      "skincare": "عناية البشرة",
+      "makeup": "المكياج",
       "packages": "باقات خاصة"
     },
     "cart": "السلة",
@@ -133,8 +130,8 @@
     "discount_applied": "تم تطبيق خصم بنجاح",
     "product_added": "تمت إضافة الخدمة",
     "product_removed": "تم إزالة الخدمة",
-    "barber": "الحلاق",
-    "vip_badge_earned": "وصلت لحالة عميل مميز!"
+    "barber": "خبيرة التجميل",
+    "vip_badge_earned": "وصلتِ لحالة عميلة مميزة!"
   },
   "clients": {
     "title": "العملاء",
