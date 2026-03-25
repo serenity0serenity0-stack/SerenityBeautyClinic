@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useTheme } from './hooks/useTheme'
 import { useLanguage } from './hooks/useLanguage'
 import { useAuth } from './hooks/useAuth'
@@ -187,6 +188,7 @@ function App() {
         </Routes>
       </Router>
       <Toaster position="bottom-center" />
+      <SpeedInsights />
     </div>
   )
 }
