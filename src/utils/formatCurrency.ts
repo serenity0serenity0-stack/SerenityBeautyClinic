@@ -62,3 +62,49 @@ export const fromArabicIndic = (num: string): string => {
   }
   return num.replace(/[٠-٩]/g, (d) => arabicToWestern[d as keyof typeof arabicToWestern])
 }
+
+// ============================================
+// Egypt Timezone Formatting
+// ============================================
+
+/**
+ * Format date with Egypt timezone
+ */
+export const formatDateEgypt = (date: string | Date, locale: 'ar' | 'en' = 'ar'): string => {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Africa/Cairo',
+  }).format(d)
+}
+
+/**
+ * Format time with Egypt timezone
+ */
+export const formatTimeEgypt = (date: string | Date, locale: 'ar' | 'en' = 'ar'): string => {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Africa/Cairo',
+  }).format(d)
+}
+
+/**
+ * Format date and time together with Egypt timezone
+ */
+export const formatDateTimeEgypt = (date: string | Date, locale: 'ar' | 'en' = 'ar'): string => {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Africa/Cairo',
+  }).format(d)
+}

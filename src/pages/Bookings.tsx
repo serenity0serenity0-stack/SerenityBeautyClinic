@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Zap,
 } from 'lucide-react'
+import { formatDateEgypt, formatTimeEgypt } from '../utils/formatCurrency'
 import toast from 'react-hot-toast'
 import { QueueStatus } from '../components/ui/QueueStatus'
 
@@ -591,13 +592,10 @@ export const Bookings: React.FC = () => {
                   <div className="bg-white/5 rounded-lg p-3">
                     <p className="text-gray-400 text-xs mb-1">الموعد</p>
                     <p className="text-white font-semibold">
-                      {new Date(booking.booking_time).toLocaleDateString('ar-EG')}
+                      {formatDateEgypt(booking.booking_time, 'ar')}
                     </p>
                     <p className="text-gold-400">
-                      {new Date(booking.booking_time).toLocaleTimeString('ar-EG', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatTimeEgypt(booking.booking_time, 'ar')}
                     </p>
                   </div>
 

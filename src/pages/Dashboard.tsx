@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 import { Badge } from '../components/ui/Badge'
+import { EgyptClock } from '../components/ui/EgyptClock'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
 import { appEmitter } from '../utils/eventEmitter'
@@ -185,10 +186,13 @@ export const Dashboard: React.FC = () => {
         </motion.button>
       </motion.div>
 
-      {/* Info */}
-      <div className="text-xs text-gray-400 flex justify-between items-center">
-        <span>{t('dashboard.transactions')}: {transactions?.length || 0} | {t('dashboard.expenses')}: {expenses?.length || 0}</span>
-        {lastUpdated && <span>{t('dashboard.last_updated')}: {lastUpdated}</span>}
+      {/* Info with Egypt Clock */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="text-xs text-gray-400">
+          <span>{t('dashboard.transactions')}: {transactions?.length || 0} | {t('dashboard.expenses')}: {expenses?.length || 0}</span>
+          {lastUpdated && <span className="ml-2">{t('dashboard.last_updated')}: {lastUpdated}</span>}
+        </div>
+        <EgyptClock locale="ar" />
       </div>
 
       {/* KPI Cards - Grid Responsive */}
