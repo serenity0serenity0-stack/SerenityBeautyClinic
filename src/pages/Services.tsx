@@ -157,6 +157,41 @@ export const Services: React.FC = () => {
     }
   }
 
+  // Delete all services
+  const handleDeleteAllServices = async () => {
+    if (services.length === 0) {
+      toast.error('لا توجد خدمات للحذف')
+      return
+    }
+
+    if (confirm(`هل تريد بالفعل حذف جميع الخدمات (${services.length} خدمة)؟ هذا الإجراء لا يمكن التراجع عنه!`)) {
+      try {
+        let deletedCount = 0
+        const errors: string[] = []
+
+        for (const service of services) {
+          if (service.id) {
+            try {
+              await deleteService(service.id)
+              deletedCount++
+            } catch (err) {
+              errors.push(`فشل حذف: ${service.nameAr}`)
+              console.error('Error deleting service:', err)
+            }
+          }
+        }
+
+        if (errors.length === 0) {
+          toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`)
+        } else {
+          toast.error(`تم حذف ${deletedCount} خدمة. فشل: ${errors.length}`)
+        }
+      } catch (err) {
+        toast.error(t('errors.database_error'))
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -169,15 +204,29 @@ export const Services: React.FC = () => {
           <h1 className="text-3xl font-bold text-white">الخدمات والأسعار</h1>
           <p className="text-sm text-gray-400 mt-1">أضف خدمة اساسية ثم أضف التفاصيل والأسعار</p>
         </div>
-        <motion.button
-          onClick={() => setIsAddBaseServiceOpen(true)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-4 py-2 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg hover:bg-gold-400/30 transition"
-        >
-          <Plus size={20} />
-          خدمة جديدة
-        </motion.button>
+        <div className="flex items-center gap-3">
+          {services.length > 0 && (
+            <motion.button
+              onClick={handleDeleteAllServices}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 border border-red-400/20 rounded-lg hover:bg-red-500/30 transition"
+              title="حذف جميع الخدمات"
+            >
+              <Trash2 size={20} />
+              حذف الكل
+            </motion.button>
+          )}
+          <motion.button
+            onClick={() => setIsAddBaseServiceOpen(true)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 px-4 py-2 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg hover:bg-gold-400/30 transition"
+          >
+            <Plus size={20} />
+            خدمة جديدة
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Services List  */}

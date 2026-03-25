@@ -96,13 +96,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }
 
           {/* Navigation Links */}
           {links.map((link, index) => {
+            const isStaff = link.href === '/staff'
             return (
               <motion.button
                 key={link.href}
                 onClick={() => handleNavigate(link.href)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium group relative ${
                   isActive(link.href)
-                    ? 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
+                    ? isStaff
+                      ? 'bg-pink-500/15 text-pink-400 border border-pink-400/30'
+                      : 'bg-gold-400/15 text-gold-400 border border-gold-400/30'
+                    : isStaff
+                    ? 'text-pink-300 hover:text-pink-400 hover:bg-pink-500/5'
                     : 'text-gray-300 hover:text-white hover:bg-white/5'
                 }`}
                 whileHover={{ x: language === 'ar' ? -4 : 4 }}
