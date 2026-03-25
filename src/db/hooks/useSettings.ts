@@ -87,8 +87,8 @@ export const useSettings = () => {
     return settings[key] ?? defaultValue
   }
 
-  const getBarbershipName = () => {
-    return getSetting('barbershipName', 'My Barbershop')
+  const getClinicName = () => {
+    return getSetting('clinicName', 'Serenity Beauty Clinic')
   }
 
   const getVIPThreshold = () => {
@@ -107,9 +107,9 @@ export const useSettings = () => {
     if (!clinicId) return
 
     const defaultSettings = {
-      barbershipName: 'My Barbershop',
-      barbershipAddress: '',
-      barbershipPhone: '',
+      clinicName: 'Serenity Beauty Clinic',
+      clinicAddress: '',
+      clinicPhone: '',
       language: localStorage.getItem('language') || 'ar',
       theme: localStorage.getItem('theme') || 'dark',
       vipThreshold: { type: 'visits', value: 10 },
@@ -141,7 +141,7 @@ export const useSettings = () => {
     fetchSettings,
     updateSetting,
     getSetting,
-    getBarbershipName,
+    getClinicName,
     getVIPThreshold,
     getTheme,
     getLanguage,

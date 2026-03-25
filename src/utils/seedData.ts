@@ -167,9 +167,9 @@ export const seedSampleData = async () => {
 
     // Insert sample settings
     const defaultSettings = [
-      { key: 'barbershipName', value: 'محل حلاقة الملاك' },
-      { key: 'barbershipNameEn', value: 'Angel Barbershop' },
-      { key: 'barbershipPhone', value: '01012345678' },
+      { key: 'clinicName', value: 'عيادة سيرينيتي للتجميل' },
+      { key: 'clinicNameEn', value: 'Serenity Beauty Clinic' },
+      { key: 'clinicPhone', value: '01012345678' },
       { key: 'language', value: 'ar' },
       { key: 'theme', value: 'dark' },
       { key: 'vipThreshold', value: { type: 'visits', value: 10 } },

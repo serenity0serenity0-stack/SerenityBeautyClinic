@@ -99,8 +99,8 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
           })
 
           // Set clinic name and phone from fetched settings
-          setShopName(settingsMap['barbershipName'] || 'اسم العيادة')
-          setShopPhone(settingsMap['barbershipPhone'] || '')
+          setShopName(settingsMap['clinicName'] || 'اسم العيادة')
+          setShopPhone(settingsMap['clinicPhone'] || '')
         } catch (err) {
           console.error('Error fetching receipt settings:', err)
           setShopName('اسم العيادة')
