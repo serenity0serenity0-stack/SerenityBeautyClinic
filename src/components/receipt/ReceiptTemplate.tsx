@@ -22,13 +22,6 @@ interface ReceiptProps {
   payment_method: string
 }
 
-// Convert numbers to Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) - NO LONGER USED
-// Now keeping numbers in English as per requirements
-const toArabicNumerals = (n: number | string): string => {
-  // Return as English numbers instead
-  return String(n)
-}
-
 // Format time with Egypt timezone and AM/PM in Arabic
 const formatEgyptTime = (time: string): string => {
   try {
