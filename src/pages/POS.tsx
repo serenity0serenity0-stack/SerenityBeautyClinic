@@ -773,7 +773,7 @@ export const POS: React.FC = () => {
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold-400 to-yellow-400 text-black font-bold rounded-lg hover:shadow-lg hover:shadow-gold-400/40 transition"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-pink-500/40 transition"
               >
                 <Check size={20} />
                 <span>معاملة جديدة</span>

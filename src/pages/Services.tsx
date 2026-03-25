@@ -6,7 +6,7 @@ import { useServices } from '../db/hooks/useServices'
 import { useServiceVariants } from '../db/hooks/useServiceVariants'
 import { useAuth } from '../hooks/useAuth'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Eye, EyeOff } from 'lucide-react'
+import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export const Services: React.FC = () => {
@@ -87,7 +87,10 @@ export const Services: React.FC = () => {
         setIsAddBaseServiceOpen(false)
         setBaseServiceForm({ nameAr: '', nameEn: '' })
         setIsAddVariantOpen(true)
-        toast.success('✅ تم إضافة الخدمة الأساسية. الآن أضف التفاصيل!')
+      toast.success('✅ الخدمة الأساسية جاهزة - الآن أضف التفاصيل!', {
+        duration: 3000,
+        icon: '🎯'
+      })
       }
     } catch (err) {
       toast.error(t('errors.database_error'))
@@ -119,7 +122,10 @@ export const Services: React.FC = () => {
 
       // Reset form
       setVariantForm({ name: '', price: 0, duration: 30 })
-      toast.success('✅ تم إضافة التفاصيل بنجاح')
+      toast.success('✨ تم إضافة التفاصيل بنجاح!', {
+        duration: 2500,
+        icon: '💚'
+      })
       
       // ✅ RELOAD VARIANTS FOR THIS SERVICE IMMEDIATELY
       try {
@@ -149,7 +155,10 @@ export const Services: React.FC = () => {
     if (confirm('هل تريد حذف هذا التفصيل؟')) {
       try {
         await deleteVariant(variantId)
-        toast.success('تم حذف التفصيل')
+        toast.success('🗑️ تم حذف التفصيل', {
+          duration: 2000,
+          icon: '✨'
+        })
         
         // Update the variant map
         const updated = { ...serviceVariantsMap }
@@ -183,7 +192,10 @@ export const Services: React.FC = () => {
         isActive: editingVariant.isActive,
       })
 
-      toast.success('✅ تم تحديث التفصيل')
+      toast.success('✅ تم تحديث التفصيل بنجاح!', {
+        duration: 2500,
+        icon: '📝'
+      })
       setIsEditVariantOpen(false)
       setEditingVariant(null)
       setEditVariantForm({ name: '', price: 0, duration: 30 })
@@ -202,39 +214,15 @@ export const Services: React.FC = () => {
     }
   }
 
-  // Toggle variant active status
-  const handleToggleVariantActive = async (variant: any) => {
-    try {
-      await updateVariant(variant.id, {
-        name: variant.name,
-        price: variant.price,
-        duration: variant.duration,
-        isActive: !variant.isActive,
-      })
-
-      const status = !variant.isActive ? 'enabled' : 'disabled'
-      toast.success(`✅ تم ${status === 'enabled' ? 'تفعيل' : 'تعطيل'} التفصيل`)
-
-      // Reload variants
-      if (selectedServiceForVariant?.id) {
-        const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
-        setServiceVariantsMap(prev => ({
-          ...prev,
-          [selectedServiceForVariant.id]: variants || []
-        }))
-      }
-    } catch (err) {
-      toast.error(t('errors.database_error'))
-      console.error('Error toggling variant:', err)
-    }
-  }
-
   // Delete base service
   const handleDeleteService = async (id: string) => {
     if (confirm('هل تريد حذف هذه الخدمة وجميع تفاصيلها؟')) {
       try {
         await deleteService(id)
-        toast.success('تم حذف الخدمة')
+        toast.success('✅ تم حذف الخدمة', {
+          duration: 2000,
+          icon: '🗑️'
+        })
       } catch (err) {
         toast.error(t('errors.database_error'))
       }
@@ -266,7 +254,10 @@ export const Services: React.FC = () => {
         }
 
         if (errors.length === 0) {
-          toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`)
+          toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`, {
+            duration: 3000,
+            icon: '🎉'
+          })
         } else {
           toast.error(`تم حذف ${deletedCount} خدمة. فشل: ${errors.length}`)
         }
@@ -427,17 +418,6 @@ export const Services: React.FC = () => {
                                         title="تعديل"
                                       >
                                         <Edit2 size={14} className="text-blue-400" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleToggleVariantActive(variant)}
-                                        className="p-1 hover:bg-yellow-500/20 rounded transition"
-                                        title={variant.isActive ? 'تعطيل' : 'تفعيل'}
-                                      >
-                                        {variant.isActive ? (
-                                          <Eye size={14} className="text-yellow-400" />
-                                        ) : (
-                                          <EyeOff size={14} className="text-gray-400" />
-                                        )}
                                       </button>
                                       <button
                                         onClick={() =>
