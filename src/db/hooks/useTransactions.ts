@@ -22,7 +22,7 @@ export const useTransactions = () => {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .order('createdAt', { ascending: false })
 
       if (error) throw error
@@ -50,7 +50,7 @@ export const useTransactions = () => {
         .from('transactions')
         .insert({
           ...transaction,
-          shop_id: clinicId,
+          clinic_id: clinicId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -71,7 +71,7 @@ export const useTransactions = () => {
           const { data: activeBookings, error: bookingErr } = await supabase
             .from('bookings')
             .select('id')
-            .eq('shop_id', clinicId)
+            .eq('clinic_id', clinicId)
             .eq('clientPhone', clientPhone)
             .in('status', ['pending', 'confirmed'])
             .gte('bookingDate', today + 'T00:00:00')
