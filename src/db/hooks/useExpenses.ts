@@ -5,7 +5,7 @@ import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
 export const useExpenses = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +13,7 @@ export const useExpenses = () => {
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setExpenses([])
         return
       }
@@ -22,7 +22,7 @@ export const useExpenses = () => {
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
         .order('date', { ascending: false })
 
       if (error) throw error
@@ -36,7 +36,7 @@ export const useExpenses = () => {
     } finally {
       setLoading(false)
     }
-  }, [shopId])
+  }, [clinicId])
 
   useEffect(() => {
     fetchExpenses()
@@ -44,13 +44,13 @@ export const useExpenses = () => {
 
   const addExpense = async (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Shop ID is required')
 
       const { data, error } = await supabase
         .from('expenses')
         .insert({
           ...expense,
-          shop_id: shopId,
+          shop_id: clinicId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })

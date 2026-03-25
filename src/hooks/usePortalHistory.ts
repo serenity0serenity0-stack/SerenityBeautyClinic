@@ -9,13 +9,13 @@ export interface VisitHistory {
   notes?: string
 }
 
-export function usePortalHistory(shopId?: string, _customerId?: string, slug?: string) {
+export function usePortalHistory(clinicId?: string, _customerId?: string, slug?: string) {
   const [history, setHistory] = useState<VisitHistory[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchHistory = useCallback(async () => {
-    if (!shopId || !slug) return
+    if (!clinicId || !slug) return
 
     setLoading(true)
     try {
@@ -31,7 +31,7 @@ export function usePortalHistory(shopId?: string, _customerId?: string, slug?: s
       const { data: clientData, error: clientErr } = await supabase
         .from('clients')
         .select('id')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('phone', customerPhone)
         .maybeSingle()
 
@@ -46,7 +46,7 @@ export function usePortalHistory(shopId?: string, _customerId?: string, slug?: s
       const { data: visitLogs, error: err } = await supabase
         .from('visit_logs')
         .select('id, visitDate, servicesCount, totalSpent, notes')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('clientId', clientData.id)
         .order('visitDate', { ascending: false })
 
@@ -67,7 +67,7 @@ export function usePortalHistory(shopId?: string, _customerId?: string, slug?: s
     } finally {
       setLoading(false)
     }
-  }, [shopId, slug])
+  }, [clinicId, slug])
   useEffect(() => {
     fetchHistory()
   }, [fetchHistory])

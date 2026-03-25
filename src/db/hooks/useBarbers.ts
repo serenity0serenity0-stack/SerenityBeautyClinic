@@ -4,7 +4,7 @@ import { supabase, Barber } from '../supabase'
 import toast from 'react-hot-toast'
 
 export const useBarbers = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +12,7 @@ export const useBarbers = () => {
   const fetchBarbers = async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setBarbers([])
         return
       }
@@ -20,7 +20,7 @@ export const useBarbers = () => {
       const { data, error } = await supabase
         .from('barbers')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
         .order('createdAt', { ascending: false })
 
       if (error) throw error
@@ -36,17 +36,17 @@ export const useBarbers = () => {
 
   useEffect(() => {
     fetchBarbers()
-  }, [shopId])
+  }, [clinicId])
 
   const addBarber = async (barber: Omit<Barber, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Shop ID is required')
 
       const { data, error } = await supabase
         .from('barbers')
         .insert({
           ...barber,
-          shop_id: shopId,
+          shop_id: clinicId,
           active: true,
         })
         .select()
@@ -66,13 +66,13 @@ export const useBarbers = () => {
 
   const updateBarber = async (id: string, barber: Partial<Barber>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Shop ID is required')
 
       const { data, error } = await supabase
         .from('barbers')
         .update(barber)
         .eq('id', id)
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .select()
 
       if (error) throw error
@@ -90,13 +90,13 @@ export const useBarbers = () => {
 
   const deleteBarber = async (id: string) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Shop ID is required')
 
       const { error } = await supabase
         .from('barbers')
         .delete()
         .eq('id', id)
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
 
       if (error) throw error
 

@@ -5,7 +5,7 @@ const PORTAL_SESSION_KEY = 'portal_session'
 
 export interface PortalCustomer {
   id: string
-  shopId: string
+  clinicId: string
   slug: string
   fullName: string
   email: string
@@ -38,7 +38,7 @@ export function usePortalAuth(slug: string) {
   }, [slug])
 
   // Sign in - verify against customer_users table
-  const signIn = async (email: string, password: string, shopId: string) => {
+  const signIn = async (email: string, password: string, clinicId: string) => {
     try {
       setError(null)
 
@@ -64,7 +64,7 @@ export function usePortalAuth(slug: string) {
         .from('customer_users')
         .select('id, shop_id, full_name, email, phone, auth_user_id')
         .eq('auth_user_id', authData.user.id)
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .maybeSingle()
 
       if (customerError || !customerData) {
@@ -78,7 +78,7 @@ export function usePortalAuth(slug: string) {
       // Save to localStorage - this is the local portal session
       const session: PortalCustomer = {
         id: customerData.id,
-        shopId: customerData.shop_id,
+        clinicId: customerData.shop_id,
         slug,
         fullName: customerData.full_name,
         email: customerData.email,
@@ -105,7 +105,7 @@ export function usePortalAuth(slug: string) {
     phone: string,
     password: string,
     birthday: string,
-    shopId: string
+    clinicId: string
   ) => {
     try {
       setError(null)
@@ -114,7 +114,7 @@ export function usePortalAuth(slug: string) {
       const { data: existingEmail, error: emailCheckError } = await supabase
         .from('customer_users')
         .select('id')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('email', email)
         .maybeSingle()
 
@@ -132,7 +132,7 @@ export function usePortalAuth(slug: string) {
       const { data: existingPhone, error: phoneCheckError } = await supabase
         .from('customer_users')
         .select('id')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('phone', phone)
         .maybeSingle()
 
@@ -152,7 +152,7 @@ export function usePortalAuth(slug: string) {
         password,
         options: {
           data: {
-            shop_id: shopId,
+            shop_id: clinicId,
             role: 'customer',
             full_name: name,
           },
@@ -175,7 +175,7 @@ export function usePortalAuth(slug: string) {
       const { data: newCustomer, error: insertError } = await supabase
         .from('customer_users')
         .insert({
-          shop_id: shopId,
+          shop_id: clinicId,
           auth_user_id: authData.user.id,
           full_name: name,
           email,
@@ -196,7 +196,7 @@ export function usePortalAuth(slug: string) {
       const { data: existingClient, error: clientCheckError } = await supabase
         .from('clients')
         .select('id')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('phone', phone)
         .maybeSingle()
 
@@ -207,7 +207,7 @@ export function usePortalAuth(slug: string) {
       // If no existing client, create one
       if (!existingClient) {
         const { error: createClientError } = await supabase.from('clients').insert({
-          shop_id: shopId,
+          shop_id: clinicId,
           name,
           phone,
           email,
@@ -226,7 +226,7 @@ export function usePortalAuth(slug: string) {
       // Save to localStorage
       const session: PortalCustomer = {
         id: newCustomer.id,
-        shopId,
+        clinicId,
         slug: '', // Will be set by caller if needed
         fullName: name,
         email,

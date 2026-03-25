@@ -109,13 +109,13 @@ export function usePortalAuthSecure(slug?: string) {
 
   // Register new portal user
   const registerPortalUser = useCallback(
-    async (phone: string, password: string, name?: string, email?: string, shopId?: string) => {
+    async (phone: string, password: string, name?: string, email?: string, clinicId?: string) => {
       try {
         setLoading(true)
         setError(null)
 
         // Determine shop ID
-        let finalShopId = shopId
+        let finalShopId = clinicId
         
         if (!finalShopId && slug) {
           // Look up shop by slug
@@ -177,7 +177,7 @@ export function usePortalAuthSecure(slug?: string) {
           }
         }
 
-        // 3. Create auth email with correct format: phone@shopId.portal
+        // 3. Create auth email with correct format: phone@clinicId.portal
         const authEmail = email?.trim() || `${phone}@${finalShopId}.portal`
         console.log('📧 Auth email:', authEmail)
 

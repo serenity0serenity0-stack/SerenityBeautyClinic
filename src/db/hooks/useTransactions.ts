@@ -5,7 +5,7 @@ import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
 export const useTransactions = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +13,7 @@ export const useTransactions = () => {
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setTransactions([])
         return
       }
@@ -22,7 +22,7 @@ export const useTransactions = () => {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .order('createdAt', { ascending: false })
 
       if (error) throw error
@@ -36,7 +36,7 @@ export const useTransactions = () => {
     } finally {
       setLoading(false)
     }
-  }, [shopId])
+  }, [clinicId])
 
   useEffect(() => {
     fetchTransactions()
@@ -44,13 +44,13 @@ export const useTransactions = () => {
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Shop ID is required')
 
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           ...transaction,
-          shop_id: shopId,
+          shop_id: clinicId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -71,7 +71,7 @@ export const useTransactions = () => {
           const { data: activeBookings, error: bookingErr } = await supabase
             .from('bookings')
             .select('id')
-            .eq('shop_id', shopId)
+            .eq('shop_id', clinicId)
             .eq('clientPhone', clientPhone)
             .in('status', ['pending', 'confirmed'])
             .gte('bookingDate', today + 'T00:00:00')

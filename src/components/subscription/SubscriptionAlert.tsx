@@ -5,7 +5,7 @@ import { checkSubscriptionStatus, SubscriptionStatus, getBillingInfo } from '@/u
 import { AlertCircle, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 
 export const SubscriptionAlert = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const navigate = useNavigate()
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [billing, setBilling] = useState<any>(null)
@@ -13,10 +13,10 @@ export const SubscriptionAlert = () => {
 
   useEffect(() => {
     const fetchInfo = async () => {
-      if (!shopId) return
+      if (!clinicId) return
       try {
-        const sub = await checkSubscriptionStatus(shopId)
-        const bill = await getBillingInfo(shopId)
+        const sub = await checkSubscriptionStatus(clinicId)
+        const bill = await getBillingInfo(clinicId)
         setSubscription(sub)
         setBilling(bill)
       } catch (error) {
@@ -29,7 +29,7 @@ export const SubscriptionAlert = () => {
     fetchInfo()
     const interval = setInterval(fetchInfo, 60000) // Check every minute
     return () => clearInterval(interval)
-  }, [shopId])
+  }, [clinicId])
 
   if (loading || !subscription) return null
 
@@ -113,14 +113,14 @@ export const SubscriptionAlert = () => {
 }
 
 export const SubscriptionStatusBadge = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
 
   useEffect(() => {
     const fetchInfo = async () => {
-      if (!shopId) return
+      if (!clinicId) return
       try {
-        const sub = await checkSubscriptionStatus(shopId)
+        const sub = await checkSubscriptionStatus(clinicId)
         setSubscription(sub)
       } catch (error) {
         console.error('Error fetching subscription:', error)
@@ -128,7 +128,7 @@ export const SubscriptionStatusBadge = () => {
     }
 
     fetchInfo()
-  }, [shopId])
+  }, [clinicId])
 
   if (!subscription) return null
 

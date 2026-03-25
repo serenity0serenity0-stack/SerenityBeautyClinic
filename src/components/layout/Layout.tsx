@@ -14,19 +14,19 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentPath, onNavigate }) => {
   const location = useLocation()
-  const { shopId, role } = useAuth()
+  const { clinicId, role } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [subscriptionStatus, setSubscriptionStatus] = useState<'active' | 'inactive' | 'suspended' | 'expired'>()
 
   // Use react-router's location if not provided as props
   const activePath = currentPath || location.pathname
 
-  // Check subscription status for shop users
+  // Check subscription status for admin users
   useEffect(() => {
     const checkStatus = async () => {
-      if (role !== 'shop' || !shopId) return
+      if (role !== 'admin' || !clinicId) return
       try {
-        const status = await checkSubscriptionStatus(shopId)
+        const status = await checkSubscriptionStatus(clinicId)
         setSubscriptionStatus(status.status)
       } catch (error) {
         console.error('Error checking subscription:', error)
@@ -34,7 +34,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPath, onNavigat
     }
 
     checkStatus()
-  }, [shopId, role])
+  }, [clinicId, role])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-midnight via-[#0D1225] to-midnight dark:from-midnight dark:via-[#0D1225] dark:to-midnight">

@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import { appEmitter } from '../../utils/eventEmitter'
 
 export const useBookings = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -14,7 +14,7 @@ export const useBookings = () => {
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setBookings([])
         return
       }
@@ -23,7 +23,7 @@ export const useBookings = () => {
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
         .order('bookingtime', { ascending: true })
 
       if (error) throw error
@@ -56,7 +56,7 @@ export const useBookings = () => {
     } finally {
       setLoading(false)
     }
-  }, [shopId])
+  }, [clinicId])
 
   useEffect(() => {
     fetchBookings()
@@ -313,7 +313,7 @@ export const useBookings = () => {
       })
 
       const newBooking = {
-        shop_id: shopId,
+        shop_id: clinicId,
         clientid: booking.clientId,
         clientname: booking.clientName,
         clientphone: booking.clientPhone,

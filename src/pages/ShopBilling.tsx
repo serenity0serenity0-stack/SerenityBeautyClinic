@@ -33,7 +33,7 @@ interface UsageData {
 
 export const ShopBilling = () => {
   const { t } = useTranslation()
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
 
   const [shopData, setShopData] = useState<ShopData | null>(null)
   const [usageData, setUsageData] = useState<UsageData[]>([])
@@ -42,10 +42,10 @@ export const ShopBilling = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (shopId) {
+    if (clinicId) {
       fetchShopBillingData()
     }
-  }, [shopId])
+  }, [clinicId])
 
   const fetchShopBillingData = async () => {
     try {
@@ -55,7 +55,7 @@ export const ShopBilling = () => {
       const { data: shop, error: shopError } = await supabase
         .from('shops')
         .select('id, name, subscription_status, subscription_end_date, plan_id')
-        .eq('id', shopId!)
+        .eq('id', clinicId!)
         .single()
 
       if (shopError) throw shopError
@@ -92,7 +92,7 @@ export const ShopBilling = () => {
       const { data: currentMonthLogs } = await supabase
         .from('usage_logs')
         .select('quantity')
-        .eq('shop_id', shopId!)
+        .eq('shop_id', clinicId!)
         .eq('year_month', currentYearMonth)
 
       const monthUsage = currentMonthLogs?.reduce((sum, log) => sum + (log.quantity || 0), 0) || 0
@@ -122,7 +122,7 @@ export const ShopBilling = () => {
         const { data: logs } = await supabase
           .from('usage_logs')
           .select('quantity')
-          .eq('shop_id', shopId!)
+          .eq('shop_id', clinicId!)
           .eq('year_month', targetYearMonth)
 
         const usage = logs?.reduce((sum, log) => sum + (log.quantity || 0), 0) || 0

@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath, 
   const { role } = useAuth()
   const navigate = useNavigate()
 
-  const isReadOnly = subscriptionStatus === 'inactive' && role === 'shop'
+  const isReadOnly = subscriptionStatus === 'inactive' && role === 'admin'
 
   const shopLinks: SidebarLink[] = [
     { icon: <Home size={20} />, label: t('navigation.dashboard'), href: '/dashboard' },

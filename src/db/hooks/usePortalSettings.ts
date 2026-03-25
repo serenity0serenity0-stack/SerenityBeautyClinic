@@ -14,7 +14,7 @@ interface PortalSettings {
 }
 
 export const usePortalSettings = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [portalSettings, setPortalSettings] = useState<PortalSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -22,19 +22,19 @@ export const usePortalSettings = () => {
   const fetchPortalSettings = useCallback(async () => {
     try {
       setLoading(true)
-      if (!shopId) {
-        console.log('⏭️ No shopId available, skipping portal settings fetch')
+      if (!clinicId) {
+        console.log('⏭️ No clinicId available, skipping portal settings fetch')
         setPortalSettings(null)
         return
       }
 
-      console.log('🔍 Fetching portal settings for shop:', shopId)
+      console.log('🔍 Fetching portal settings for shop:', clinicId)
 
       // Use limit(1) instead of single() to avoid 406 errors
       const { data, error } = await supabase
         .from('portal_settings')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .limit(1)
 
       if (error) {
@@ -59,10 +59,10 @@ export const usePortalSettings = () => {
     } finally {
       setLoading(false)
     }
-  }, [shopId])
+  }, [clinicId])
 
   const createDefaultPortalSettings = async () => {
-    if (!shopId) return
+    if (!clinicId) return
 
     try {
       // Generate slug from shop ID - will be updated when slug is provided
@@ -72,7 +72,7 @@ export const usePortalSettings = () => {
       const { data, error } = await supabase
         .from('portal_settings')
         .insert({
-          shop_id: shopId,
+          shop_id: clinicId,
           is_active: false,
           portal_slug: slug,
           template_id: 1,
@@ -100,7 +100,7 @@ export const usePortalSettings = () => {
 
   const updatePortalSettings = async (updates: Partial<PortalSettings>) => {
     try {
-      if (!shopId) {
+      if (!clinicId) {
         throw new Error('معرّف المحل غير متوفر')
       }
 
@@ -118,7 +118,7 @@ export const usePortalSettings = () => {
         const { data: freshData } = await supabase
           .from('portal_settings')
           .select('*')
-          .eq('shop_id', shopId)
+          .eq('shop_id', clinicId)
           .single()
         
         if (!freshData) {

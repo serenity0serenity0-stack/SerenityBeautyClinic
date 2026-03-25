@@ -15,12 +15,12 @@ export interface SubscriptionStatus {
 /**
  * Auto-expire subscriptions that have passed their end date (using Egypt timezone)
  */
-export const autoExpireSubscriptions = async (shopId: string): Promise<void> => {
+export const autoExpireSubscriptions = async (clinicId: string): Promise<void> => {
   try {
     const { data: shop, error: fetchError } = await supabase
       .from('shops')
       .select('subscription_status, subscription_end_date')
-      .eq('id', shopId)
+      .eq('id', clinicId)
       .single()
 
     if (fetchError) throw fetchError
@@ -36,10 +36,10 @@ export const autoExpireSubscriptions = async (shopId: string): Promise<void> => 
       const { error: updateError } = await supabase
         .from('shops')
         .update({ subscription_status: 'expired' })
-        .eq('id', shopId)
+        .eq('id', clinicId)
 
       if (updateError) throw updateError
-      console.log(`✅ Shop ${shopId} automatically expired`)
+      console.log(`✅ Shop ${clinicId} automatically expired`)
     }
   } catch (error) {
     console.error('Error auto-expiring subscription:', error)
@@ -51,11 +51,11 @@ export const autoExpireSubscriptions = async (shopId: string): Promise<void> => 
  * Check subscription status for a shop
  */
 export const checkSubscriptionStatus = async (
-  shopId: string
+  clinicId: string
 ): Promise<SubscriptionStatus> => {
   try {
     // First, auto-expire if needed
-    await autoExpireSubscriptions(shopId)
+    await autoExpireSubscriptions(clinicId)
 
     // Get shop details
     const { data: shop, error: shopError } = await supabase
@@ -73,7 +73,7 @@ export const checkSubscriptionStatus = async (
           monthly_price
         )
       `)
-      .eq('id', shopId)
+      .eq('id', clinicId)
       .single()
 
     if (shopError) throw shopError
@@ -106,7 +106,7 @@ export const checkSubscriptionStatus = async (
       const { data: usageLogs, error: usageError } = await supabase
         .from('usage_logs')
         .select('quantity')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('year_month', yearMonth)
 
       if (!usageError && usageLogs) {
@@ -148,7 +148,7 @@ export const checkSubscriptionStatus = async (
 /**
  * Get billing info for a shop
  */
-export const getBillingInfo = async (shopId: string) => {
+export const getBillingInfo = async (clinicId: string) => {
   try {
     const { data: shop } = await supabase
       .from('shops')
@@ -166,7 +166,7 @@ export const getBillingInfo = async (shopId: string) => {
           monthly_price
         )
       `)
-      .eq('id', shopId)
+      .eq('id', clinicId)
       .single()
 
     if (!shop) throw new Error('Shop not found')
@@ -181,7 +181,7 @@ export const getBillingInfo = async (shopId: string) => {
     const { data: usageLogs } = await supabase
       .from('usage_logs')
       .select('quantity, billable_amount, action_type')
-      .eq('shop_id', shopId)
+      .eq('shop_id', clinicId)
       .eq('year_month', yearMonth)
 
     const totalTransactions = usageLogs?.filter(log => log.action_type === 'transaction').length || 0

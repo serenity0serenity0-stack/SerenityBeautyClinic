@@ -17,7 +17,7 @@ export interface VisitLog {
 }
 
 export const useVisitLogs = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [visitLogs, setVisitLogs] = useState<VisitLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +25,7 @@ export const useVisitLogs = () => {
   const fetchVisitLogs = async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setVisitLogs([])
         return
       }
@@ -33,7 +33,7 @@ export const useVisitLogs = () => {
       const { data, error } = await supabase
         .from('visit_logs')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .order('createdAt', { ascending: false })
 
       if (error) throw error
@@ -49,11 +49,11 @@ export const useVisitLogs = () => {
 
   useEffect(() => {
     fetchVisitLogs()
-  }, [shopId])
+  }, [clinicId])
 
   const addVisitLog = async (log: Omit<VisitLog, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (!shopId) {
+      if (!clinicId) {
         throw new Error('Shop ID is required')
       }
 
@@ -61,7 +61,7 @@ export const useVisitLogs = () => {
         .from('visit_logs')
         .insert({
           ...log,
-          shop_id: shopId,
+          shop_id: clinicId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -78,14 +78,14 @@ export const useVisitLogs = () => {
 
   const getClientVisitLogs = async (clientId: string) => {
     try {
-      if (!shopId) {
+      if (!clinicId) {
         return []
       }
       
       const { data, error } = await supabase
         .from('visit_logs')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('clientId', clientId)
         .order('visitDate', { ascending: false })
 

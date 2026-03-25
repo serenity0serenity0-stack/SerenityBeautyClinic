@@ -70,7 +70,7 @@ export const POS: React.FC = () => {
   const { getVariantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
   const { getTodayBookings, updateBooking } = useBookings()
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState<any>(null)
@@ -185,7 +185,7 @@ export const POS: React.FC = () => {
 
     // Check subscription status before allowing transaction
     try {
-      const subStatus = await checkSubscriptionStatus(shopId || '')
+      const subStatus = await checkSubscriptionStatus(clinicId || '')
       if (!subStatus.isActive) {
         const messages: Record<string, string> = {
           'inactive': 'اشتراكك غير نشط. يرجى تفعيل الاشتراك',

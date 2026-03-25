@@ -14,7 +14,7 @@ export interface DashboardStats {
   upcomingBookingsCount: number
 }
 
-export function usePortalDashboardStats(shopId?: string, customerId?: string, slug?: string) {
+export function usePortalDashboardStats(clinicId?: string, customerId?: string, slug?: string) {
   const [stats, setStats] = useState<DashboardStats>({
     totalVisits: 0,
     totalSpent: 0,
@@ -24,7 +24,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
   const [error, setError] = useState<string | null>(null)
 
   const fetchStats = useCallback(async () => {
-    if (!customerId || !shopId || !slug) return
+    if (!customerId || !clinicId || !slug) return
 
     setLoading(true)
     try {
@@ -40,7 +40,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const { data: clientData, error: clientErr } = await supabase
         .from('clients')
         .select('id, totalVisits, totalSpent')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('phone', customerPhone)
         .maybeSingle()
 
@@ -59,7 +59,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const { data: visitLogs, error: visitErr } = await supabase
         .from('visit_logs')
         .select('totalSpent, visitDate')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('clientId', clientData.id)
         .order('visitDate', { ascending: false })
 
@@ -77,7 +77,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const { data: nextBookings, error: bookingErr } = await supabase
         .from('bookings')
         .select('id, booking_date, booking_time, service_name, status')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('clientphone', customerPhone)
         .in('status', ['pending', 'confirmed'])
         .gte('booking_date', dateStart.split('T')[0])
@@ -92,7 +92,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const { count: upcomingCount, error: countErr } = await supabase
         .from('bookings')
         .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('clientphone', customerPhone)
         .in('status', ['pending', 'confirmed'])
         .gte('booking_date', dateStart.split('T')[0])
@@ -127,7 +127,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
     } finally {
       setLoading(false)
     }
-  }, [customerId, shopId, slug])
+  }, [customerId, clinicId, slug])
 
   useEffect(() => {
     fetchStats()
