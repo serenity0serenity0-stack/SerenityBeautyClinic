@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 import { Badge } from '../components/ui/Badge'
-import { SubscriptionAlert } from '../components/subscription/SubscriptionAlert'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
 import { appEmitter } from '../utils/eventEmitter'
@@ -167,9 +166,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 px-3 md:px-0">
-      {/* Subscription Alert */}
-      <SubscriptionAlert />
-
       {/* Page Title with Refresh Button */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}

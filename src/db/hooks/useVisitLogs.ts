@@ -54,14 +54,14 @@ export const useVisitLogs = () => {
   const addVisitLog = async (log: Omit<VisitLog, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) {
-        throw new Error('Shop ID is required')
+        throw new Error('Clinic ID is required')
       }
 
       const { data, error } = await supabase
         .from('visit_logs')
         .insert({
           ...log,
-          shop_id: clinicId,
+          clinic_id: clinicId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

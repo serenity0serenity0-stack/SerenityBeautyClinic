@@ -23,7 +23,7 @@ export const useSettings = () => {
       const { data, error } = await supabase
         .from('settings')
         .select('*')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
 
       if (error) throw error
       
@@ -52,12 +52,12 @@ export const useSettings = () => {
         throw new Error('No shop ID available')
       }
 
-      // First, try to delete existing record with this key and shop_id
+      // First, try to delete existing record with this key and clinic_id
       await supabase
         .from('settings')
         .delete()
         .eq('key', key)
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
 
       // Then insert the new record
       const { error } = await supabase
@@ -65,7 +65,7 @@ export const useSettings = () => {
         .insert({
           key,
           value,
-          shop_id: clinicId,
+          clinic_id: clinicId,
           updated_at: new Date().toISOString(),
         })
 
@@ -121,7 +121,7 @@ export const useSettings = () => {
         const existing = await supabase
           .from('settings')
           .select('key')
-          .eq('shop_id', clinicId)
+          .eq('clinic_id', clinicId)
           .eq('key', key)
           .maybeSingle()
 

@@ -88,7 +88,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
           const { data, error } = await supabase
             .from('settings')
             .select('key, value')
-            .eq('shop_id', clinicId)
+            .eq('clinic_id', clinicId)
 
           if (error) throw error
 

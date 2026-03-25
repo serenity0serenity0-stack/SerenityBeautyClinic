@@ -50,7 +50,7 @@ export const useExpenses = () => {
         .from('expenses')
         .insert({
           ...expense,
-          shop_id: clinicId,
+          clinic_id: clinicId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

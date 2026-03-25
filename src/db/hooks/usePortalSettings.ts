@@ -34,7 +34,7 @@ export const usePortalSettings = () => {
       const { data, error } = await supabase
         .from('portal_settings')
         .select('*')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .limit(1)
 
       if (error) {
@@ -72,13 +72,13 @@ export const usePortalSettings = () => {
       const { data, error } = await supabase
         .from('portal_settings')
         .insert({
-          shop_id: clinicId,
+          clinic_id: clinicId,
           is_active: false,
           portal_slug: slug,
           template_id: 1,
-          primary_color: '#3B82F6',
-          secondary_color: '#1E40AF',
-          accent_color: '#0EA5E9',
+          primary_color: '#E91E63',
+          secondary_color: '#C2185B',
+          accent_color: '#F06292',
           text_color: '#FFFFFF',
         })
         .select()
