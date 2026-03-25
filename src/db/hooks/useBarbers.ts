@@ -40,7 +40,7 @@ export const useBarbers = () => {
 
   const addBarber = async (barber: Omit<Barber, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!clinicId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('barbers')
@@ -66,7 +66,7 @@ export const useBarbers = () => {
 
   const updateBarber = async (id: string, barber: Partial<Barber>) => {
     try {
-      if (!clinicId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('barbers')
@@ -90,7 +90,7 @@ export const useBarbers = () => {
 
   const deleteBarber = async (id: string) => {
     try {
-      if (!clinicId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { error } = await supabase
         .from('barbers')

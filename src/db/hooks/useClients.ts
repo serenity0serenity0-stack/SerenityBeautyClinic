@@ -40,7 +40,7 @@ export const useClients = () => {
 
   const addClient = async (client: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!clinicId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
       
       const { data, error } = await supabase
         .from('clients')
