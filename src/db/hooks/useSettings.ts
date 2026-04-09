@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 
 export const useSettings = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [settings, setSettings] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -14,7 +14,7 @@ export const useSettings = () => {
       setLoading(true)
       
       // Only fetch if we have a shop ID
-      if (!shopId) {
+      if (!clinicId) {
         setSettings({})
         setError(null)
         return
@@ -23,7 +23,7 @@ export const useSettings = () => {
       const { data, error } = await supabase
         .from('settings')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
 
       if (error) throw error
       
@@ -44,20 +44,20 @@ export const useSettings = () => {
 
   useEffect(() => {
     fetchSettings()
-  }, [shopId])
+  }, [clinicId])
 
   const updateSetting = async (key: string, value: any) => {
     try {
-      if (!shopId) {
+      if (!clinicId) {
         throw new Error('No shop ID available')
       }
 
-      // First, try to delete existing record with this key and shop_id
+      // First, try to delete existing record with this key and clinic_id
       await supabase
         .from('settings')
         .delete()
         .eq('key', key)
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
 
       // Then insert the new record
       const { error } = await supabase
@@ -65,8 +65,8 @@ export const useSettings = () => {
         .insert({
           key,
           value,
-          shop_id: shopId,
-          updatedAt: new Date().toISOString(),
+          clinic_id: clinicId,
+          updated_at: new Date().toISOString(),
         })
 
       if (error) throw error
@@ -87,8 +87,8 @@ export const useSettings = () => {
     return settings[key] ?? defaultValue
   }
 
-  const getBarbershipName = () => {
-    return getSetting('barbershipName', 'My Barbershop')
+  const getClinicName = () => {
+    return getSetting('clinicName', 'Serenity Beauty Clinic')
   }
 
   const getVIPThreshold = () => {
@@ -104,12 +104,12 @@ export const useSettings = () => {
   }
 
   const initializeSettings = async () => {
-    if (!shopId) return
+    if (!clinicId) return
 
     const defaultSettings = {
-      barbershipName: 'My Barbershop',
-      barbershipAddress: '',
-      barbershipPhone: '',
+      clinicName: 'Serenity Beauty Clinic',
+      clinicAddress: '',
+      clinicPhone: '',
       language: localStorage.getItem('language') || 'ar',
       theme: localStorage.getItem('theme') || 'dark',
       vipThreshold: { type: 'visits', value: 10 },
@@ -121,7 +121,7 @@ export const useSettings = () => {
         const existing = await supabase
           .from('settings')
           .select('key')
-          .eq('shop_id', shopId)
+          .eq('clinic_id', clinicId)
           .eq('key', key)
           .maybeSingle()
 
@@ -141,7 +141,7 @@ export const useSettings = () => {
     fetchSettings,
     updateSetting,
     getSetting,
-    getBarbershipName,
+    getClinicName,
     getVIPThreshold,
     getTheme,
     getLanguage,

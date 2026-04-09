@@ -5,7 +5,7 @@ import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
 export const useTransactions = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +13,7 @@ export const useTransactions = () => {
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setTransactions([])
         return
       }
@@ -22,8 +22,8 @@ export const useTransactions = () => {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('shop_id', shopId)
-        .order('createdAt', { ascending: false })
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       console.log('Transactions fetched:', data?.length || 0, 'records')
@@ -36,23 +36,23 @@ export const useTransactions = () => {
     } finally {
       setLoading(false)
     }
-  }, [shopId])
+  }, [clinicId])
 
   useEffect(() => {
     fetchTransactions()
   }, [fetchTransactions])
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           ...transaction,
-          shop_id: shopId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          clinic_id: clinicId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -63,20 +63,20 @@ export const useTransactions = () => {
 
       // 🔄 Auto-complete today's pending/confirmed bookings for this client
       try {
-        const clientPhone = transaction.clientPhone
-        if (clientPhone) {
+        const client_phone = transaction.client_phone
+        if (client_phone) {
           const today = new Date().toISOString().split('T')[0] // today's date
           
           // Find client's active bookings for today
           const { data: activeBookings, error: bookingErr } = await supabase
             .from('bookings')
             .select('id')
-            .eq('shop_id', shopId)
-            .eq('clientPhone', clientPhone)
+            .eq('clinic_id', clinicId)
+            .eq('client_phone', client_phone)
             .in('status', ['pending', 'confirmed'])
-            .gte('bookingDate', today + 'T00:00:00')
-            .lte('bookingDate', today + 'T23:59:59')
-            .order('bookingTime', { ascending: true })
+            .gte('booking_date', today + 'T00:00:00')
+            .lte('booking_date', today + 'T23:59:59')
+            .order('booking_time', { ascending: true })
 
           if (!bookingErr && activeBookings && activeBookings.length > 0) {
             // Update each booking to completed
@@ -85,7 +85,7 @@ export const useTransactions = () => {
                 .from('bookings')
                 .update({
                   status: 'completed',
-                  updatedAt: new Date().toISOString()
+                  updated_at: new Date().toISOString()
                 })
                 .eq('id', booking.id)
               
@@ -93,7 +93,7 @@ export const useTransactions = () => {
                 console.warn('⚠️ Warning: Failed to complete booking:', booking.id, updateErr)
               }
             }
-            console.log(`✅ Auto-completed ${activeBookings.length} booking(s) for client ${clientPhone}`)
+            console.log(`✅ Auto-completed ${activeBookings.length} booking(s) for client ${client_phone}`)
           }
         }
       } catch (bookingErr) {
@@ -140,13 +140,13 @@ export const useTransactions = () => {
     }
   }
 
-  const getTransactionsByClientId = async (clientId: string) => {
+  const getTransactionsByclient_id = async (client_id: string) => {
     try {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('clientId', clientId)
-        .order('createdAt', { ascending: false })
+        .eq('client_id', client_id)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       return data || []
@@ -197,7 +197,7 @@ export const useTransactions = () => {
     addTransaction,
     deleteTransaction,
     getTransactionsByDate,
-    getTransactionsByClientId,
+    getTransactionsByclient_id,
     getTodayRevenue,
     getRevenueForDateRange,
   }

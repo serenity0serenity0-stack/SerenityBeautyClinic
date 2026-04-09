@@ -2,29 +2,29 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/db/supabase'
 
 export interface DashboardStats {
-  totalVisits: number
-  totalSpent: number
+  total_visits: number
+  total_spent: number
   nextBooking?: {
     id: string
-    bookingDate: string
-    bookingTime: string
+    booking_date: string
+    booking_time: string
     serviceName: string
   }
-  lastVisit?: string
+  last_visit?: string
   upcomingBookingsCount: number
 }
 
-export function usePortalDashboardStats(shopId?: string, customerId?: string, slug?: string) {
+export function usePortalDashboardStats(clinicId?: string, customerId?: string, slug?: string) {
   const [stats, setStats] = useState<DashboardStats>({
-    totalVisits: 0,
-    totalSpent: 0,
+    total_visits: 0,
+    total_spent: 0,
     upcomingBookingsCount: 0
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchStats = useCallback(async () => {
-    if (!customerId || !shopId || !slug) return
+    if (!customerId || !clinicId || !slug) return
 
     setLoading(true)
     try {
@@ -36,11 +36,11 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
         throw new Error('Customer phone not found in session')
       }
 
-      // Step 2: Find clientId from clients table using phone
+      // Step 2: Find client_id from clients table using phone
       const { data: clientData, error: clientErr } = await supabase
         .from('clients')
-        .select('id, totalVisits, totalSpent')
-        .eq('shop_id', shopId)
+        .select('id, total_visits, total_spent')
+        .eq('shop_id', clinicId)
         .eq('phone', customerPhone)
         .maybeSingle()
 
@@ -48,8 +48,8 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       if (!clientData) {
         // Client not registered yet
         setStats({
-          totalVisits: 0,
-          totalSpent: 0,
+          total_visits: 0,
+          total_spent: 0,
           upcomingBookingsCount: 0
         })
         return
@@ -58,16 +58,16 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       // Step 3: Get visit logs using correct columns
       const { data: visitLogs, error: visitErr } = await supabase
         .from('visit_logs')
-        .select('totalSpent, visitDate')
-        .eq('shop_id', shopId)
-        .eq('clientId', clientData.id)
+        .select('total_spent, visitDate')
+        .eq('shop_id', clinicId)
+        .eq('client_id', clientData.id)
         .order('visitDate', { ascending: false })
 
       if (visitErr) throw visitErr
 
-      const totalVisits = visitLogs?.length || clientData.totalVisits || 0
-      const totalSpent = visitLogs?.reduce((sum, v) => sum + (v.totalSpent || 0), 0) || clientData.totalSpent || 0
-      const lastVisit = visitLogs && visitLogs.length > 0 ? visitLogs[0]?.visitDate : undefined
+      const total_visits = visitLogs?.length || clientData.total_visits || 0
+      const total_spent = visitLogs?.reduce((sum, v) => sum + (v.total_spent || 0), 0) || clientData.total_spent || 0
+      const last_visit = visitLogs && visitLogs.length > 0 ? visitLogs[0]?.visitDate : undefined
 
       // Step 4: Get next upcoming booking using correct column name and date filtering
       const now = new Date()
@@ -77,8 +77,8 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const { data: nextBookings, error: bookingErr } = await supabase
         .from('bookings')
         .select('id, booking_date, booking_time, service_name, status')
-        .eq('shop_id', shopId)
-        .eq('clientphone', customerPhone)
+        .eq('shop_id', clinicId)
+        .eq('client_phone', customerPhone)
         .in('status', ['pending', 'confirmed'])
         .gte('booking_date', dateStart.split('T')[0])
         .lte('booking_date', dateEnd.split('T')[0])
@@ -92,8 +92,8 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const { count: upcomingCount, error: countErr } = await supabase
         .from('bookings')
         .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shopId)
-        .eq('clientphone', customerPhone)
+        .eq('shop_id', clinicId)
+        .eq('client_phone', customerPhone)
         .in('status', ['pending', 'confirmed'])
         .gte('booking_date', dateStart.split('T')[0])
         .lte('booking_date', dateEnd.split('T')[0])
@@ -108,17 +108,17 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
       const nextBooking = nextBookings && nextBookings.length > 0 
         ? {
             id: nextBookings[0].id,
-            bookingDate: nextBookings[0].booking_date,
-            bookingTime: nextBookings[0].booking_time,
+            booking_date: nextBookings[0].booking_date,
+            booking_time: nextBookings[0].booking_time,
             serviceName
           }
         : undefined
 
       setStats({
-        totalVisits,
-        totalSpent,
+        total_visits,
+        total_spent,
         nextBooking,
-        lastVisit,
+        last_visit,
         upcomingBookingsCount: upcomingCount || 0
       })
     } catch (err) {
@@ -127,7 +127,7 @@ export function usePortalDashboardStats(shopId?: string, customerId?: string, sl
     } finally {
       setLoading(false)
     }
-  }, [customerId, shopId, slug])
+  }, [customerId, clinicId, slug])
 
   useEffect(() => {
     fetchStats()

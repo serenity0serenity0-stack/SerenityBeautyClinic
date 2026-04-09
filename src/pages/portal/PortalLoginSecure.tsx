@@ -57,10 +57,10 @@ export function PortalLoginSecure() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - تسجيل الدخول`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - تسجيل الدخول`
     }
-  }, [settings?.shop_name])
+  }, [settings?.clinic_name])
 
   // Handle login
   const handleLogin = async (e: React.FormEvent) => {
@@ -130,7 +130,7 @@ export function PortalLoginSecure() {
       }
 
       if (!slug) {
-        toast.error('خطأ: معرف المحل غير موجود')
+        toast.error('خطأ: معرف العيادة غير موجود')
         return
       }
 
@@ -139,7 +139,7 @@ export function PortalLoginSecure() {
         password,
         name || undefined,
         email || undefined,
-        settings?.shop_id || slug?.split('-')[0]
+        settings?.clinic_id || slug?.split('-')[0]
       )
 
       if (result) {
@@ -251,7 +251,7 @@ export function PortalLoginSecure() {
             <ul className="text-red-300/80 text-xs space-y-2 text-right">
               <li>• تأكد من صحة الرابط</li>
               <li>• قد تحتاج البوابة إلى تفعيل</li>
-              <li>• اتصل بمدير المحل</li>
+              <li>• اتصل بمدير العيادة</li>
             </ul>
           </div>
 
@@ -287,7 +287,7 @@ export function PortalLoginSecure() {
             ✂️
           </h1>
           <h2 className="text-3xl font-bold text-white drop-shadow-lg">
-            {settings.shop_name}
+            {settings.clinic_name}
           </h2>
           <p className="text-cyan-300 font-medium text-sm">
             {mode === 'login' && 'تسجيل الدخول إلى حسابك'}

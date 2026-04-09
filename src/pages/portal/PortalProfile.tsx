@@ -87,10 +87,10 @@ export function PortalProfile() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${t.accountSettings}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${t.accountSettings}`
     }
-  }, [settings?.shop_name, lang, t])
+  }, [settings?.clinic_name, lang, t])
 
   useEffect(() => {
     if (!authLoading && !customer) {
@@ -182,7 +182,7 @@ export function PortalProfile() {
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">{t.accountSettings}</h1>
-          <p className="text-white/60">{t.with} {settings?.shop_name}</p>
+          <p className="text-white/60">{t.with} {settings?.clinic_name}</p>
         </div>
 
         {/* Profile Card */}

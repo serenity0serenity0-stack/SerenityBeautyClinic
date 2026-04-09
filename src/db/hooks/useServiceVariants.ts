@@ -4,14 +4,14 @@ import toast from 'react-hot-toast'
 
 export interface ServiceVariant {
   id: string
-  serviceId: string
-  nameAr: string
-  nameEn: string
+  clinic_id: string
+  service_id: string
+  name: string
   price: number
   duration?: number
   isActive: boolean
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export const useServiceVariants = () => {
@@ -26,7 +26,7 @@ export const useServiceVariants = () => {
         .from('service_variants')
         .select('*')
         .eq('isActive', true)
-        .order('createdAt', { ascending: true })
+        .order('created_at', { ascending: true })
 
       if (error) throw error
       setVariants(data || [])
@@ -43,14 +43,15 @@ export const useServiceVariants = () => {
     fetchVariants()
   }, [])
 
-  const addVariant = async (variant: Omit<ServiceVariant, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addVariant = async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('service_variants')
         .insert({
           ...variant,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          service_id: variant.service_id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -69,7 +70,7 @@ export const useServiceVariants = () => {
         .from('service_variants')
         .update({
           ...updates,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
 
@@ -101,7 +102,7 @@ export const useServiceVariants = () => {
       const { data, error } = await supabase
         .from('service_variants')
         .select('*')
-        .eq('serviceId', serviceId)
+        .eq('service_id', serviceId)
         .eq('isActive', true)
         .order('price', { ascending: true })
 

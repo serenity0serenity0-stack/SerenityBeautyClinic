@@ -4,7 +4,7 @@ import { supabase, Client } from '../supabase'
 import toast from 'react-hot-toast'
 
 export const useClients = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +12,7 @@ export const useClients = () => {
   const fetchClients = async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setClients([])
         return
       }
@@ -20,8 +20,8 @@ export const useClients = () => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('shop_id', shopId)
-        .order('createdAt', { ascending: false })
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       setClients(data || [])
@@ -36,19 +36,19 @@ export const useClients = () => {
 
   useEffect(() => {
     fetchClients()
-  }, [shopId])
+  }, [clinicId])
 
-  const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addClient = async (client: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
       
       const { data, error } = await supabase
         .from('clients')
         .insert({
           ...client,
-          shop_id: shopId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          clinic_id: clinicId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -67,7 +67,7 @@ export const useClients = () => {
         .from('clients')
         .update({
           ...updates,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
 

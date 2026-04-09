@@ -5,20 +5,52 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useVisitLogs } from '../db/hooks/useVisitLogs'
+import { useClients } from '../db/hooks/useClients'
 import { getEgyptDateString } from '../utils/egyptTime'
 import { Edit2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export const DailyLogs: React.FC = () => {
   const { t } = useTranslation()
-  const { transactions } = useTransactions()
-  const { visitLogs } = useVisitLogs()
+  const { transactions, deleteTransaction } = useTransactions()
+  const { visitLogs, deleteVisitLog } = useVisitLogs()
+  const { clients } = useClients()
 
   const [selectedDate, setSelectedDate] = useState(getEgyptDateString())
   const [activeTab, setActiveTab] = useState<'transactions' | 'visits'>('transactions')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [editFormData, setEditFormData] = useState<any>(null)
+
+  // Helper function to get client name by client_id
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    return client?.name || 'العميل غير معروف'
+  }
+
+  // Delete handler for transactions
+  const handleDeleteTransaction = async (id: string) => {
+    if (window.confirm('هل تريد بالفعل حذف هذه المبيعة؟')) {
+      try {
+        await deleteTransaction(id)
+        toast.success('تم حذف المبيعة بنجاح')
+      } catch (err) {
+        toast.error('خطأ في حذف المبيعة')
+      }
+    }
+  }
+
+  // Delete handler for visit logs
+  const handleDeleteVisitLog = async (id: string) => {
+    if (window.confirm('هل تريد بالفعل حذف هذا السجل؟')) {
+      try {
+        await deleteVisitLog(id)
+        toast.success('تم حذف السجل بنجاح')
+      } catch (err) {
+        toast.error('خطأ في حذف السجل')
+      }
+    }
+  }
 
   // Filter logs by selected date
   const todayTransactions = transactions.filter((t) => t.date === selectedDate)
@@ -108,7 +140,7 @@ export const DailyLogs: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{tx.clientName}</p>
+                        <p className="text-white font-bold text-lg">{tx.client_name}</p>
                         <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
                           {tx.time}
                         </p>
@@ -134,8 +166,8 @@ export const DailyLogs: React.FC = () => {
                       </div>
 
                       <div className="pt-2 border-t border-white/10 flex items-center gap-4">
-                        <p className="text-xs text-gray-400">الدفع: {tx.paymentMethod}</p>
-                        <p className="text-xs text-gray-400">رقم العملية: {tx.visitNumber}</p>
+                        <p className="text-xs text-gray-400">الدفع: {tx.payment_method}</p>
+                        <p className="text-xs text-gray-400">رقم العملية: {tx.visit_number}</p>
                       </div>
                     </div>
 
@@ -146,7 +178,10 @@ export const DailyLogs: React.FC = () => {
                       >
                         <Edit2 size={18} className="text-blue-400" />
                       </button>
-                      <button className="p-2 hover:bg-red-500/10 rounded transition">
+                      <button 
+                        onClick={() => tx.id && handleDeleteTransaction(tx.id)}
+                        className="p-2 hover:bg-red-500/10 rounded transition"
+                      >
                         <Trash2 size={18} className="text-red-400" />
                       </button>
                     </div>
@@ -177,7 +212,7 @@ export const DailyLogs: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{visit.clientName}</p>
+                        <p className="text-white font-bold text-lg">{getClientName(visit.client_id)}</p>
                         <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
                           {visit.visitTime}
                         </p>
@@ -190,7 +225,7 @@ export const DailyLogs: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-gray-400 text-xs">المبلغ المنفق</p>
-                          <p className="text-gold-400 font-semibold">{visit.totalSpent?.toFixed(2)} ج.م</p>
+                          <p className="text-gold-400 font-semibold">{visit.total_spent?.toFixed(2)} ج.م</p>
                         </div>
                         <div>
                           <p className="text-gray-400 text-xs">التاريخ</p>
@@ -210,7 +245,10 @@ export const DailyLogs: React.FC = () => {
                       >
                         <Edit2 size={18} className="text-blue-400" />
                       </button>
-                      <button className="p-2 hover:bg-red-500/10 rounded transition">
+                      <button 
+                        onClick={() => visit.id && handleDeleteVisitLog(visit.id)}
+                        className="p-2 hover:bg-red-500/10 rounded transition"
+                      >
                         <Trash2 size={18} className="text-red-400" />
                       </button>
                     </div>
@@ -236,11 +274,11 @@ export const DailyLogs: React.FC = () => {
                 <label className="block text-sm text-gray-300 mb-2">اسم العميل</label>
                 <input
                   type="text"
-                  value={editFormData.clientName || ''}
+                  value={editFormData.client_name || ''}
                   onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      clientName: e.target.value,
+                      client_name: e.target.value,
                     })
                   }
                   className="w-full"
@@ -283,11 +321,11 @@ export const DailyLogs: React.FC = () => {
                 <div>
                   <label className="block text-sm text-gray-300 mb-2">طريقة الدفع</label>
                   <select
-                    value={editFormData.paymentMethod || 'cash'}
+                    value={editFormData.payment_method || 'cash'}
                     onChange={(e) =>
                       setEditFormData({
                         ...editFormData,
-                        paymentMethod: e.target.value,
+                        payment_method: e.target.value,
                       })
                     }
                     className="w-full"
@@ -319,11 +357,11 @@ export const DailyLogs: React.FC = () => {
                 <label className="block text-sm text-gray-300 mb-2">اسم العميل</label>
                 <input
                   type="text"
-                  value={editFormData.clientName || ''}
+                  value={editFormData.client_name || ''}
                   onChange={(e) =>
                     setEditFormData({
                       ...editFormData,
-                      clientName: e.target.value,
+                      client_name: e.target.value,
                     })
                   }
                   className="w-full"
@@ -350,11 +388,11 @@ export const DailyLogs: React.FC = () => {
                   <label className="block text-sm text-gray-300 mb-2">المبلغ المنفق</label>
                   <input
                     type="number"
-                    value={editFormData.totalSpent || 0}
+                    value={editFormData.total_spent || 0}
                     onChange={(e) =>
                       setEditFormData({
                         ...editFormData,
-                        totalSpent: parseFloat(e.target.value),
+                        total_spent: parseFloat(e.target.value),
                       })
                     }
                     className="w-full"

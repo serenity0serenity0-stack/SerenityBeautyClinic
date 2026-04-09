@@ -52,7 +52,7 @@ export const Barbers: React.FC = () => {
     const stats: typeof barberStats = {}
     
     barbers.forEach(barber => {
-      const barberTransactions = transactions.filter(t => t.barberId === barber.id)
+      const barberTransactions = transactions.filter(t => t.barber_id === barber.id)
       
       // Current month transactions
       const today = new Date()
@@ -63,7 +63,7 @@ export const Barbers: React.FC = () => {
       })
       
       // All unique clients
-      const allUniqueClients = new Set(barberTransactions.map(t => t.clientId))
+      const allUniqueClients = new Set(barberTransactions.map(t => t.client_id))
       
       // Monthly revenue
       const monthlyRevenue = currentMonthTransactions.reduce((sum, t) => sum + t.total, 0)
@@ -156,7 +156,7 @@ export const Barbers: React.FC = () => {
         <h1 className="text-3xl font-bold text-white">{t('pages.barbers_title')}</h1>
         <button
           onClick={openAddModal}
-          className="px-4 py-2 bg-gold-400 text-black rounded-lg font-semibold hover:bg-gold-500 transition flex items-center gap-2"
+          className="px-4 py-2 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition flex items-center gap-2"
         >
           <Plus size={20} />
           {t('common.add')} {t('pages.barbers_title')}
@@ -171,7 +171,7 @@ export const Barbers: React.FC = () => {
               <p className="text-gray-400 text-sm">{t('pages.barbers_count')}</p>
               <p className="text-3xl font-bold text-white mt-2">{barbers.length}</p>
             </div>
-            <Users size={40} className="text-gold-400" />
+            <Users size={40} className="text-pink-400" />
           </div>
         </GlassCard>
 
@@ -209,7 +209,7 @@ export const Barbers: React.FC = () => {
             <p className="text-gray-400">لا توجد حلاقين بعد</p>
             <button
               onClick={openAddModal}
-              className="mt-4 px-4 py-2 bg-gold-400 text-black rounded-lg font-semibold hover:bg-gold-500 transition"
+              className="mt-4 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700 text-black rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition"
             >
               إضافة حلاق الآن
             </button>
@@ -321,7 +321,7 @@ export const Barbers: React.FC = () => {
               placeholder="مثال: أحمد"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
             />
           </div>
 
@@ -332,14 +332,14 @@ export const Barbers: React.FC = () => {
               placeholder="مثال: 01012345678"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-400"
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
             />
           </div>
 
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleSaveBarber}
-              className="flex-1 px-4 py-2 bg-gold-400 text-black rounded-lg font-semibold hover:bg-gold-500 transition"
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700 text-black rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition"
             >
               {editingBarberId ? 'حفظ التعديلات' : 'إضافة'}
             </button>

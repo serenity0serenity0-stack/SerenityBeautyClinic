@@ -12,7 +12,7 @@ type Language = 'ar' | 'en'
 
 interface BookingForm {
   serviceId: string
-  barberId: string | null
+  barber_id: string | null
   date: string
   time: string
 }
@@ -33,8 +33,8 @@ const translations = {
     yourBookings: 'مواعيدك',
     service: 'الخدمة المطلوبة',
     selectService: 'اختر الخدمة',
-    barber: 'الحلاق',
-    anyBarber: 'أي حلاق متاح',
+    barber: 'الموظف',
+    anyBarber: 'أي موظف متاح',
     optional: 'اختياري',
     date: 'التاريخ',
     time: 'الوقت',
@@ -158,7 +158,7 @@ export function PortalBookings() {
     createBooking,
     cancelBooking,
     getAvailableSlots
-  } = usePortalBookings(customer?.shop_id, customer?.id)
+  } = usePortalBookings(customer?.clinic_id, customer?.id)
 
   // Data isolation: Filter bookings by customer phone
   const bookings = useMemo(() => {
@@ -174,7 +174,7 @@ export function PortalBookings() {
 
   // UI State
   const [activeTab, setActiveTab] = useState<TabType>('new')
-  const [form, setForm] = useState<BookingForm>({ serviceId: '', barberId: null, date: '', time: '' })
+  const [form, setForm] = useState<BookingForm>({ serviceId: '', barber_id: null, date: '', time: '' })
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [confirmation, setConfirmation] = useState<BookingConfirmation>({ show: false, serviceName: '', date: '', time: '' })
@@ -196,10 +196,10 @@ export function PortalBookings() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${lang === 'ar' ? 'احجز موعد' : 'Book Appointment'}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${lang === 'ar' ? 'احجز موعد' : 'Book Appointment'}`
     }
-  }, [settings?.shop_name, lang])
+  }, [settings?.clinic_name, lang])
 
   // Calculate available time slots when date or service changes
   // Debounced to prevent excessive API calls
@@ -207,12 +207,12 @@ export function PortalBookings() {
     if (!form.date || !form.serviceId) return
 
     const timer = setTimeout(async () => {
-      const slots = await getAvailableSlots(form.date, form.barberId || undefined)
+      const slots = await getAvailableSlots(form.date, form.barber_id || undefined)
       setAvailableSlots(slots)
     }, 300) // Wait 300ms after user stops changing values
 
     return () => clearTimeout(timer) // Cleanup previous timer
-  }, [form.date, form.serviceId, form.barberId, getAvailableSlots])
+  }, [form.date, form.serviceId, form.barber_id, getAvailableSlots])
 
   // Get min & max dates for input
   const getMinDate = useCallback(() => {
@@ -245,7 +245,7 @@ export function PortalBookings() {
         form.serviceId,
         form.date,
         form.time,
-        form.barberId || undefined
+        form.barber_id || undefined
       )
 
       // Show confirmation
@@ -257,7 +257,7 @@ export function PortalBookings() {
       })
 
       // Reset form
-      setForm({ serviceId: '', barberId: null, date: '', time: '' })
+      setForm({ serviceId: '', barber_id: null, date: '', time: '' })
       setAvailableSlots([])
 
       // Auto-dismiss after 3 seconds
@@ -273,9 +273,9 @@ export function PortalBookings() {
   }
 
   // Handle cancellation
-  const handleCancel = async (bookingId: string) => {
+  const handleCancel = async (booking_id: string) => {
     try {
-      await cancelBooking(bookingId)
+      await cancelBooking(booking_id)
       setCancelConfirm(null)
       toast.success(lang === 'ar' ? 'تم إلغاء الموعد' : 'Booking cancelled')
     } catch (error) {
@@ -332,7 +332,7 @@ export function PortalBookings() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">{t.bookAppointment}</h1>
-          <p className="text-white/60">{t.with} {settings?.shop_name}</p>
+          <p className="text-white/60">{t.with} {settings?.clinic_name}</p>
         </div>
 
         {/* Tabs */}
@@ -394,7 +394,7 @@ export function PortalBookings() {
               <div className="bg-white/5 border border-white/10 rounded-lg p-12 text-center">
                 <div className="text-5xl mb-4">📋</div>
                 <h3 className="text-xl font-bold text-white/70 mb-2">{t.noServices}</h3>
-                <p className="text-white/50">{lang === 'ar' ? 'يرجى التواصل مع المتجر' : 'Please contact the shop'}</p>
+                <p className="text-white/50">{lang === 'ar' ? 'يرجى التواصل مع العيادة' : 'Please contact the clinic'}</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-8">
@@ -420,8 +420,8 @@ export function PortalBookings() {
                   <div>
                     <label className="block text-white/70 text-sm font-bold mb-2">{t.barber} ({t.optional})</label>
                     <select
-                      value={form.barberId || ''}
-                      onChange={(e) => setForm({ ...form, barberId: e.target.value || null, time: '' })}
+                      value={form.barber_id || ''}
+                      onChange={(e) => setForm({ ...form, barber_id: e.target.value || null, time: '' })}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white 
                         placeholder:text-white/40 focus:outline-none focus:border-white/30 transition"
                     >
@@ -539,7 +539,7 @@ export function PortalBookings() {
               bookings.map((booking: any) => {
                 const statusBadge = getStatusBadge(booking.status)
                 const serviceInfo = services.find(s => s.id === booking.serviceId)
-                const barberInfo = barbers.find(b => b.id === booking.barberId)
+                const barberInfo = barbers.find(b => b.id === booking.barber_id)
 
                 return (
                   <div key={booking.id} className="bg-white/5 border border-white/10 rounded-lg p-6 hover:bg-white/[0.08] transition">
@@ -552,11 +552,11 @@ export function PortalBookings() {
                         <div className="space-y-2 text-sm text-white/70 mb-4">
                           <div className="flex items-center gap-2">
                             <Calendar size={16} />
-                            {new Date(booking.bookingDate).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                            {new Date(booking.booking_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock size={16} />
-                            {booking.bookingTime}
+                            {booking.booking_time}
                           </div>
                           {barberInfo && (
                             <div className="flex items-center gap-2">

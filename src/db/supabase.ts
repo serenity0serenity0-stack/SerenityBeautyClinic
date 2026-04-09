@@ -19,44 +19,49 @@ export interface Client {
   email?: string | null
   birthday?: string
   notes?: string
-  totalVisits: number
-  totalSpent: number
-  isVIP: boolean
-  lastVisit?: string
-  shop_id?: string
-  createdAt: string
-  updatedAt: string
+  total_visits: number
+  total_spent: number
+  is_vip: boolean
+  last_visit?: string
+  clinic_id?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Service {
   id?: string
-  nameAr: string
-  nameEn: string
+  nameAr?: string
+  nameEn?: string
   price: number
   duration: number
   category: string
   active: boolean
-  createdAt: string
-  updatedAt: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Transaction {
   id?: string
-  clientId?: string
-  clientName: string
-  clientPhone?: string
-  visitNumber: number
-  date: string
-  time: string
-  items: Array<{ id: string; name: string; price: number }>
-  subtotal: number
-  discount: number
-  discountType: 'percentage' | 'fixed'
+  client_id?: string
+  booking_id?: string
+  client_name?: string
+  client_phone?: string
+  barber_id?: string
+  amount?: number
+  discount?: number
+  discount_type?: 'percentage' | 'fixed'
   total: number
-  paymentMethod: 'cash' | 'card' | 'wallet'
-  barberId?: string
-  createdAt: string
-  updatedAt: string
+  payment_method?: 'cash' | 'card' | 'wallet'
+  status?: 'completed' | 'pending'
+  description?: string
+  date: string
+  time?: string
+  items?: Array<{ id: string; name: string; price: number }>
+  subtotal?: number
+  visit_number?: number
+  created_at?: string
+  updated_at?: string
+  clinic_id?: string
 }
 
 export interface Expense {
@@ -65,14 +70,14 @@ export interface Expense {
   amount: number
   date: string
   note?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Settings {
   key: string
   value: any
-  updatedAt: string
+  updated_at: string
 }
 
 export interface Barber {
@@ -80,23 +85,26 @@ export interface Barber {
   name: string
   phone?: string
   active: boolean
-  createdAt: string
-  updatedAt: string
+  created_at?: string
+  updated_at?: string
+  clinic_id?: string
 }
 
 export interface Booking {
   id?: string
-  clientId: string
-  clientName: string
-  clientPhone: string
-  barberId?: string
-  barberName?: string
-  serviceType?: string
-  bookingTime: string // ISO date string
-  duration?: number // in minutes
-  queueNumber: number
+  client_id: string
+  client_name: string
+  client_phone: string
+  barber_id?: string
+  barber_name?: string
+  service_type?: string
+  booking_date?: string
+  booking_time: string
+  duration?: number
+  queue_number: number
   status: 'pending' | 'ongoing' | 'completed' | 'cancelled'
   notes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at?: string
+  clinic_id?: string
 }

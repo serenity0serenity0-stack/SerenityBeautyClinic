@@ -1,0 +1,739 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #E91E63;           /* Hot Pink - Main Color */
+  --primary-dark: #C2185B;      /* Deep Pink */
+  --primary-light: #F06292;     /* Light Pink */
+  --secondary: #CE93D8;         /* Purple Accent */
+  --dark-bg: #0A0F1E;
+  --dark-secondary: #111827;
+  --light-bg: #FDF2F8;          /* Soft pink background */
+  --glass-light: rgba(255, 255, 255, 0.1);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html,
+body {
+  font-family: 'Outfit', 'Cairo', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+html[dir='ar'] {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir='en'] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* ===== DARK MODE (DEFAULT) ===== */
+html.dark,
+html:not(.light) {
+  background-color: #0A0F1E;
+}
+
+html.dark body,
+html:not(.light) body {
+  background-color: #0A0F1E;
+  color: #d1d5db;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* ===== LIGHT MODE ===== */
+html.light {
+  background-color: #f5f3f0;
+}
+
+html.light body {
+  background-color: #f5f3f0;
+  color: #111827;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+/* ===== TEXT COLORS - LIGHT MODE ===== */
+html.light {
+  color: #111827;
+}
+
+html.light p,
+html.light span,
+html.light div,
+html.light li {
+  color: #374151;
+}
+
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #111827;
+}
+
+html.light .text-white {
+  color: #1f2937 !important;
+}
+
+html.light .text-gray-100 {
+  color: #d1d5db !important;
+}
+
+html.light .text-gray-200 {
+  color: #e5e7eb !important;
+}
+
+html.light .text-gray-300 {
+  color: #f3f4f6 !important;
+}
+
+html.light .text-gray-400 {
+  color: #9ca3af !important;
+}
+
+html.light .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+html.light .text-gold-400 {
+  color: #E91E63 !important;
+}
+
+html.light .text-gold-300 {
+  color: #F06292 !important;
+}
+
+html.light .text-gold-500 {
+  color: #C2185B !important;
+}
+
+/* ===== BACKGROUNDS - LIGHT MODE ===== */
+html.light .bg-white {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-gray-50 {
+  background-color: #f9fafb !important;
+}
+
+html.light .bg-gray-100 {
+  background-color: #f3f4f6 !important;
+}
+
+html.light .bg-gray-200 {
+  background-color: #e5e7eb !important;
+}
+
+html.light .bg-black {
+  background-color: #f3f4f6 !important;
+}
+
+html.light [class*='bg-white/'],
+html.light [class*='bg-black/'] {
+  background-color: rgba(243, 244, 246, 0.5) !important;
+}
+
+html.light .bg-dark-bg {
+  background-color: #f5f3f0 !important;
+}
+
+html.light .bg-gold-400 {
+  background-color: #F06292 !important;
+}
+
+html.light [class*='bg-gold-400/'] {
+  background-color: rgba(224, 30, 99, 0.2) !important;
+}
+
+/* ===== BORDERS - LIGHT MODE ===== */
+html.light [class*='border-white'] {
+  border-color: #d1d5db !important;
+}
+
+html.light [class*='border-gray'] {
+  border-color: #e5e7eb !important;
+}
+
+html.light [class*='border-white/'] {
+  border-color: #e5e7eb !important;
+}
+
+html.light .border-gray-200 {
+  border-color: #e5e7eb !important;
+}
+
+html.light .border-gray-300 {
+  border-color: #d1d5db !important;
+}
+
+html.light .border-gold-400 {
+  border-color: #E91E63 !important;
+}
+
+html.light [class*='border-gold-400/'] {
+  border-color: rgba(233, 30, 99, 0.2) !important;
+}
+
+/* ===== GLASSMORPHISM - LIGHT MODE ===== */
+html.light .glass {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(209, 213, 219, 0.5) !important;
+  color: #111827 !important;
+}
+
+html.light .glass-dark {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(156, 163, 175, 0.4) !important;
+  color: #111827 !important;
+}
+
+html.light .glass-light {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(209, 213, 219, 0.6) !important;
+  color: #111827 !important;
+}
+
+/* ===== HEADER & NAV - LIGHT MODE ===== */
+html.light header {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+  backdrop-filter: blur(10px);
+}
+
+html.light nav {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+html.light nav button {
+  color: #111827 !important;
+}
+
+html.light nav a {
+  color: #374151 !important;
+}
+
+html.light nav a:hover {
+  color: #d97706 !important;
+}
+
+/* ===== INPUT FIELDS - DARK MODE ===== */
+input[type='text'],
+input[type='tel'],
+input[type='email'],
+input[type='date'],
+input[type='number'],
+textarea,
+select {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #f3f4f6 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: #d4af37 !important;
+  outline: none !important;
+}
+
+select option {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
+}
+
+/* ===== INPUT FIELDS - LIGHT MODE ===== */
+html.light input[type='text'],
+html.light input[type='tel'],
+html.light input[type='email'],
+html.light input[type='date'],
+html.light input[type='number'],
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+html.light input:focus,
+html.light textarea:focus,
+html.light select:focus {
+  background-color: #f9fafb !important;
+  border-color: #d97706 !important;
+  outline: none !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* ===== BADGES & TAGS - LIGHT MODE ===== */
+html.light .badge-gold {
+  background-color: rgba(217, 119, 6, 0.1) !important;
+  color: #d97706 !important;
+  border-color: rgba(217, 119, 6, 0.3) !important;
+}
+
+html.light .badge-success {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+  color: #22c55e !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+html.light .badge-danger {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* ===== BUTTONS - LIGHT MODE ===== */
+html.light button {
+  color: #111827 !important;
+}
+
+html.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light [class*='bg-white/']:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ===== SCROLLBAR - LIGHT MODE ===== */
+html.light ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background-color: #f5f3f0 !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background-color: #d97706 !important;
+  border-radius: 4px;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background-color: #b45309 !important;
+}
+
+/* ===== MODAL & OVERLAY - LIGHT MODE ===== */
+html.light .modal,
+html.light [class*='backdrop-blur'] {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+html.light .modal-content,
+html.light [class*='rounded-lg'] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* ===== UTILITY FIXES - LIGHT MODE ===== */
+html.light .p-3,
+html.light .px-4,
+html.light .py-2 {
+  color: #111827 !important;
+}
+
+html.light .hover\:bg-gold-400\/30:hover {
+  background-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+html.light .focus\:bg-white\/10:focus {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .disabled\:opacity-50:disabled {
+  opacity: 0.5;
+}
+
+/* Default dark mode styles */
+body {
+  background-color: #0A0F1E;
+  color: #d1d5db;
+}
+
+/* Glassmorphism utilities */
+.glass {
+  @apply bg-white/10 backdrop-blur border border-white/20;
+}
+
+.glass-dark {
+  @apply bg-black/20 backdrop-blur border border-white/10;
+}
+
+.glass-light {
+  @apply bg-white/20 backdrop-blur border border-white/30;
+}
+
+/* Input styling */
+input,
+select,
+textarea {
+  @apply bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 transition-all;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  @apply outline-none border-gold-400 bg-white/10;
+}
+
+input::placeholder {
+  @apply text-gray-500;
+}
+
+/* Button reset */
+button {
+  @apply font-outfit;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-gold {
+  @apply bg-gold-400/20 text-gold-400 border border-gold-400/20;
+}
+
+.badge-success {
+  @apply bg-green-500/20 text-green-300 border border-green-500/20;
+}
+
+.badge-danger {
+  @apply bg-red-500/20 text-red-300 border border-red-500/20;
+}
+
+/* Card animations */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-gold-400/20;
+}
+
+/* Scroll smooth */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-bg;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gold-400 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gold-500;
+}
+
+/* Print styles */
+@media print {
+  body {
+    @apply bg-white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
+  /* Thermal printer receipt */
+  .receipt {
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+  }
+}
+
+/* Receipt specific styles */
+.receipt {
+  width: 80mm;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #000;
+  background: #fff;
+  padding: 0;
+  margin: 0;
+
+  @media print {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}
+
+.receipt-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.receipt-divider {
+  border-top: 1px solid #000;
+  margin: 4px 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.receipt-total {
+  font-weight: bold;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Animations */
+.fade-enter {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Confetti animation */
+@keyframes confetti-fall {
+  to {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.confetti {
+  animation: confetti-fall 3s ease-out forwards;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gold-500;
+}
+
+/* Print styles */
+@media print {
+  body {
+    @apply bg-white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
+  /* Thermal printer receipt */
+  .receipt {
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+  }
+}
+
+/* Receipt specific styles */
+.receipt {
+  width: 80mm;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #000;
+  background: #fff;
+  padding: 0;
+  margin: 0;
+
+  @media print {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}
+
+.receipt-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.receipt-divider {
+  border-top: 1px solid #000;
+  margin: 4px 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.receipt-total {
+  font-weight: bold;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Animations */
+.fade-enter {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Input styling */
+input,
+select,
+textarea {
+  @apply bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 transition-all;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  @apply outline-none border-gold-400 bg-white/10;
+}
+
+input::placeholder {
+  @apply text-gray-500;
+}
+
+/* Button reset */
+button {
+  @apply font-outfit;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-gold {
+  @apply bg-gold-400/20 text-gold-400 border border-gold-400/20;
+}
+
+.badge-success {
+  @apply bg-green-500/20 text-green-300 border border-green-500/20;
+}
+
+.badge-danger {
+  @apply bg-red-500/20 text-red-300 border border-red-500/20;
+}
+
+/* Card animations */
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-gold-400/20;
+}
+
+/* Confetti animation */
+@keyframes confetti-fall {
+  to {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.confetti {
+  animation: confetti-fall 3s ease-out forwards;
+}

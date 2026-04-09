@@ -3,8 +3,8 @@ import { supabase } from '@/db/supabase'
 
 export interface PortalSettingsWithShop {
   id: string
-  shop_id: string
-  shop_name: string
+  clinic_id: string
+  clinic_name: string
   is_active: boolean
   template_id: number
   primary_color: string
@@ -63,7 +63,7 @@ export function usePortalSettingsWithShop(slug?: string) {
       console.log('✅ Portal data found:', {
         slug: portalData.portal_slug,
         is_active: portalData.is_active,
-        shop_id: portalData.shop_id,
+        clinic_id: portalData.clinic_id,
       })
 
       // Check if portal is active
@@ -73,24 +73,24 @@ export function usePortalSettingsWithShop(slug?: string) {
         return null
       }
 
-      // Now fetch the shop name
-      const { data: shopData } = await supabase
-        .from('shops')
+      // Now fetch the clinic name
+      const { data: clinicData } = await supabase
+        .from('clinic')
         .select('name')
-        .eq('id', portalData.shop_id)
+        .eq('id', portalData.clinic_id)
         .single()
 
-      console.log('✅ Shop found:', shopData?.name)
+      console.log('✅ Clinic found:', clinicData?.name)
 
       const settingsWithShop: PortalSettingsWithShop = {
         id: portalData.id,
-        shop_id: portalData.shop_id,
-        shop_name: shopData?.name || 'محل',
+        clinic_id: portalData.clinic_id,
+        clinic_name: clinicData?.name || 'Serenity Beauty Clinic',
         is_active: portalData.is_active,
-        template_id: portalData.template_id,
-        primary_color: portalData.primary_color || '#3B82F6',
-        secondary_color: portalData.secondary_color || '#1E40AF',
-        accent_color: portalData.accent_color || '#0EA5E9',
+        template_id: portalData.template_id || 1,
+        primary_color: portalData.primary_color || '#E91E63',
+        secondary_color: portalData.secondary_color || '#C2185B',
+        accent_color: portalData.accent_color || '#F06292',
         text_color: portalData.text_color || '#FFFFFF',
         logo_url: portalData.logo_url,
         portal_slug: portalData.portal_slug,

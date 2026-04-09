@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 import { Badge } from '../components/ui/Badge'
-import { SubscriptionAlert } from '../components/subscription/SubscriptionAlert'
+import { EgyptClock } from '../components/ui/EgyptClock'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
 import { appEmitter } from '../utils/eventEmitter'
@@ -83,12 +83,12 @@ export const Dashboard: React.FC = () => {
     })
 
     const revenue = todayTx.reduce((sum, t) => sum + (Number(t.total) || 0), 0)
-    const todayClientIds = new Set(todayTx.map((t) => t.clientId).filter(Boolean))
+    const todayClientIds = new Set(todayTx.map((t) => t.client_id).filter(Boolean))
     const monthTx = transactions.filter((t) => {
       if (!t || !t.date) return false
       return String(t.date).slice(0, 10).startsWith(currentMonth)
     })
-    const monthlyClientIds = new Set(monthTx.map((t) => t.clientId).filter(Boolean))
+    const monthlyClientIds = new Set(monthTx.map((t) => t.client_id).filter(Boolean))
 
     setTodayRevenue(revenue)
     setTodayClients(todayClientIds.size)
@@ -167,9 +167,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-4 md:space-y-6 px-3 md:px-0">
-      {/* Subscription Alert */}
-      <SubscriptionAlert />
-
       {/* Page Title with Refresh Button */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -189,10 +186,13 @@ export const Dashboard: React.FC = () => {
         </motion.button>
       </motion.div>
 
-      {/* Info */}
-      <div className="text-xs text-gray-400 flex justify-between items-center">
-        <span>{t('dashboard.transactions')}: {transactions?.length || 0} | {t('dashboard.expenses')}: {expenses?.length || 0}</span>
-        {lastUpdated && <span>{t('dashboard.last_updated')}: {lastUpdated}</span>}
+      {/* Info with Egypt Clock */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="text-xs text-gray-400">
+          <span>{t('dashboard.transactions')}: {transactions?.length || 0} | {t('dashboard.expenses')}: {expenses?.length || 0}</span>
+          {lastUpdated && <span className="ml-2">{t('dashboard.last_updated')}: {lastUpdated}</span>}
+        </div>
+        <EgyptClock locale="ar" />
       </div>
 
       {/* KPI Cards - Grid Responsive */}
@@ -247,7 +247,7 @@ export const Dashboard: React.FC = () => {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold text-sm md:text-base truncate">
-                      {tx.clientName || t('dashboard.unknown_client')}
+                      {tx.client_name || t('dashboard.unknown_client')}
                     </p>
                     <p className="text-xs md:text-xs text-gray-400">
                       {tx.date} {tx.time}

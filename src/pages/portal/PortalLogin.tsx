@@ -25,10 +25,10 @@ const translations = {
     portalBroken: 'البوابة معطلة حالياً',
     checkLink: 'تأكد من صحة الرابط',
     needActivation: 'قد تحتاج البوابة إلى تفعيل',
-    contactAdmin: 'اتصل بمدير المحل',
-    contactAdminHelp: 'اتصل بمدير المحل للمزيد من المساعدة',
+    contactAdmin: 'اتصل بمدير العيادة',
+    contactAdminHelp: 'اتصل بمدير العيادة للمزيد من المساعدة',
     retry: 'إعادة المحاولة',
-    shopNotError: 'خطأ: محل غير محدد',
+    shopNotError: 'خطأ: عيادة غير محددة',
     portalNotAvailable: 'البوربتال غير متاح الآن',
     loginSuccess: 'تم تسجيل الدخول بنجاح',
     loginError: 'خطأ في تسجيل الدخول',
@@ -126,10 +126,10 @@ export function PortalLogin() {
 
   // Update browser title
   useEffect(() => {
-    if (settings?.shop_name) {
-      document.title = `${settings.shop_name} - ${t.login}`
+    if (settings?.clinic_name) {
+      document.title = `${settings.clinic_name} - ${t.login}`
     }
-  }, [settings?.shop_name, lang, t])
+  }, [settings?.clinic_name, lang, t])
 
   const handleLanguageChange = (newLang: Language) => {
     setLang(newLang)
@@ -151,7 +151,7 @@ export function PortalLogin() {
         return
       }
 
-      const { error } = await signIn(email, password, settings.shop_id)
+      const { error } = await signIn(email, password, settings.clinic_id)
       
       if (error) {
         toast.error(error)
@@ -186,7 +186,7 @@ export function PortalLogin() {
       const { data, error: checkErr } = await supabase
         .from('customer_users')
         .select('id, email')
-        .eq('shop_id', settings.shop_id)
+        .eq('clinic_id', settings.clinic_id)
         .eq('email', forgotEmail)
         .eq('phone', forgotPhone)
         .maybeSingle()
@@ -284,7 +284,7 @@ export function PortalLogin() {
             ✂️
           </h1>
           <h2 className="text-3xl font-bold text-white drop-shadow-lg">
-            {settings.shop_name}
+            {settings.clinic_name}
           </h2>
           <div className="flex items-center justify-center gap-2 pt-2">
             <p className="text-cyan-300 font-medium text-sm">{lang === 'ar' ? 'تسجيل الدخول إلى حسابك' : 'Sign in to your account'}</p>
