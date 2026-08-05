@@ -65,7 +65,6 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
       client_name,
       client_phone,
       barber_name,
-      transactionId,
       date,
       time,
       items,
@@ -129,11 +128,6 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
       }
     }, [clinicId])
 
-    const receiptNumber =
-      transactionId && transactionId !== 'unknown'
-        ? transactionId.slice(-4).toUpperCase()
-        : '0001'
-
     const discountAmount =
       discount_type === 'percentage' ? (subtotal * discount) / 100 : discount
 
@@ -189,8 +183,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
           )}
           <div style={{ fontSize: '16px', fontWeight: '800', lineHeight: '1.3' }}>{shopName}</div>
           <div style={{ fontSize: '13px', fontWeight: '700', marginTop: '4px' }}>إيصال ضريبي مبسط</div>
-          <div style={{ fontSize: '10px', marginTop: '2px' }}>رقم الإيصال: #{receiptNumber}</div>
-          <div style={{ fontSize: '10px' }}>
+          <div style={{ fontSize: '10px', marginTop: '2px' }}>
             {formatArabicDate(date)} • {formatArabicTime(time)}
           </div>
           {taxNumber && <div style={{ fontSize: '10px' }}>الرقم الضريبي: {taxNumber}</div>}
