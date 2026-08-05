@@ -61,40 +61,56 @@ export const useTransactions = () => {
       // ✅ Database trigger (log_transaction_usage) automatically logs to usage_logs
       // No need to insert here - trigger handles it automatically
 
-      // 🔄 Auto-complete today's pending/confirmed bookings for this client
+      // 🔄 Auto-complete the linked booking after payment.
+      // Flow: pending -> confirmed -> checked_in -> completed (cashier integration).
       try {
-        const client_phone = transaction.client_phone
-        if (client_phone) {
-          const today = new Date().toISOString().split('T')[0] // today's date
-          
-          // Find client's active bookings for today
-          const { data: activeBookings, error: bookingErr } = await supabase
+        const today = getEgyptDateString()
+
+        // 1) Prefer the explicitly linked booking (booking_id on the transaction).
+        let targetIds: string[] = []
+        if (transaction.booking_id) {
+          targetIds = [transaction.booking_id]
+        } else {
+          // 2) Fallback: find the client's earliest active booking today.
+          const client_id = transaction.client_id
+          const client_phone = transaction.client_phone
+
+          let q = supabase
             .from('bookings')
             .select('id')
             .eq('clinic_id', clinicId)
-            .eq('client_phone', client_phone)
-            .in('status', ['pending', 'confirmed'])
-            .gte('booking_date', today + 'T00:00:00')
-            .lte('booking_date', today + 'T23:59:59')
+            .eq('booking_date', today)
+            .in('status', ['pending', 'confirmed', 'checked_in', 'ongoing'])
             .order('booking_time', { ascending: true })
+            .limit(1)
 
-          if (!bookingErr && activeBookings && activeBookings.length > 0) {
-            // Update each booking to completed
-            for (const booking of activeBookings) {
-              const { error: updateErr } = await supabase
-                .from('bookings')
-                .update({
-                  status: 'completed',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', booking.id)
-              
-              if (updateErr) {
-                console.warn('⚠️ Warning: Failed to complete booking:', booking.id, updateErr)
-              }
+          if (client_id) q = q.eq('client_id', client_id)
+          else if (client_phone) q = q.eq('client_phone', client_phone)
+
+          if (client_id || client_phone) {
+            const { data: activeBookings, error: bookingErr } = await q
+            if (!bookingErr && activeBookings && activeBookings.length > 0) {
+              targetIds = activeBookings.map((b: any) => b.id)
             }
-            console.log(`✅ Auto-completed ${activeBookings.length} booking(s) for client ${client_phone}`)
           }
+        }
+
+        for (const bookingId of targetIds) {
+          const { error: updateErr } = await supabase
+            .from('bookings')
+            .update({
+              status: 'completed',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', bookingId)
+            .in('status', ['pending', 'confirmed', 'checked_in', 'ongoing'])
+
+          if (updateErr) {
+            console.warn('⚠️ Warning: Failed to complete booking:', bookingId, updateErr)
+          }
+        }
+        if (targetIds.length > 0) {
+          console.log(`✅ Auto-completed ${targetIds.length} booking(s) after payment`)
         }
       } catch (bookingErr) {
         console.warn('⚠️ Warning: Error auto-completing bookings:', bookingErr)

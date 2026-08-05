@@ -80,11 +80,24 @@ export interface Settings {
   updated_at: string
 }
 
+export type BookingStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'checked_in'
+  | 'ongoing'
+  | 'completed'
+  | 'cancelled'
+
 export interface Barber {
   id?: string
   name: string
   phone?: string
   active: boolean
+  working_hours_start?: string | null
+  working_hours_end?: string | null
+  days_off?: number[] | null
+  vacation_start?: string | null
+  vacation_end?: string | null
   created_at?: string
   updated_at?: string
   clinic_id?: string
@@ -102,9 +115,25 @@ export interface Booking {
   booking_time: string
   duration?: number
   queue_number: number
-  status: 'pending' | 'ongoing' | 'completed' | 'cancelled'
+  status: BookingStatus
   notes?: string
   created_at: string
   updated_at?: string
   clinic_id?: string
+}
+
+export interface WaitingList {
+  id?: string
+  clinic_id?: string
+  client_id?: string
+  client_name: string
+  client_phone: string
+  barber_id?: string
+  barber_name?: string
+  service_type?: string
+  duration?: number
+  status: 'waiting' | 'notified' | 'booked' | 'removed'
+  notes?: string
+  created_at?: string
+  updated_at?: string
 }

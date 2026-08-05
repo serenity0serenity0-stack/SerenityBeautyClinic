@@ -23,7 +23,23 @@ export const Staff: React.FC = () => {
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ name: '', phone: '' })
+  const [formData, setFormData] = useState<{
+    name: string
+    phone: string
+    working_hours_start: string
+    working_hours_end: string
+    days_off: number[]
+    vacation_start: string
+    vacation_end: string
+  }>({
+    name: '',
+    phone: '',
+    working_hours_start: '09:00',
+    working_hours_end: '21:00',
+    days_off: [],
+    vacation_start: '',
+    vacation_end: '',
+  })
   const [staffStats, setStaffStats] = useState<{
     [barberId: string]: StaffStats
   }>({})
@@ -90,6 +106,11 @@ export const Staff: React.FC = () => {
     setFormData({
       name: barber.name,
       phone: barber.phone || '',
+      working_hours_start: barber.working_hours_start || '09:00',
+      working_hours_end: barber.working_hours_end || '21:00',
+      days_off: Array.isArray(barber.days_off) ? barber.days_off : [],
+      vacation_start: barber.vacation_start || '',
+      vacation_end: barber.vacation_end || '',
     })
     setIsModalOpen(true)
   }
@@ -100,20 +121,38 @@ export const Staff: React.FC = () => {
       return
     }
 
+    const schedule = {
+      working_hours_start: formData.working_hours_start || null,
+      working_hours_end: formData.working_hours_end || null,
+      days_off: formData.days_off.length > 0 ? formData.days_off : null,
+      vacation_start: formData.vacation_start || null,
+      vacation_end: formData.vacation_end || null,
+    }
+
     try {
       if (editingBarberId) {
         await updateBarber(editingBarberId, {
           name: formData.name,
           phone: formData.phone,
+          ...schedule,
         })
       } else {
         await addBarber({
           name: formData.name,
           phone: formData.phone,
           active: true,
+          ...schedule,
         })
       }
-      setFormData({ name: '', phone: '' })
+      setFormData({
+        name: '',
+        phone: '',
+        working_hours_start: '09:00',
+        working_hours_end: '21:00',
+        days_off: [],
+        vacation_start: '',
+        vacation_end: '',
+      })
       setIsModalOpen(false)
       setEditingBarberId(null)
     } catch (err) {
@@ -142,8 +181,27 @@ export const Staff: React.FC = () => {
 
   const openAddModal = () => {
     setEditingBarberId(null)
-    setFormData({ name: '', phone: '' })
+    setFormData({
+      name: '',
+      phone: '',
+      working_hours_start: '09:00',
+      working_hours_end: '21:00',
+      days_off: [],
+      vacation_start: '',
+      vacation_end: '',
+    })
     setIsModalOpen(true)
+  }
+
+  const DAYS_LABELS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+
+  const toggleDayOff = (day: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      days_off: prev.days_off.includes(day)
+        ? prev.days_off.filter((d) => d !== day)
+        : [...prev.days_off, day],
+    }))
   }
 
   const totalMonthlyRevenue = Object.values(staffStats).reduce((sum, s) => sum + s.monthlyRevenue, 0)
@@ -240,6 +298,21 @@ export const Staff: React.FC = () => {
                         {barber.phone && (
                           <p className="text-gray-400 text-sm mt-1">📱 {barber.phone}</p>
                         )}
+                        {barber.working_hours_start && barber.working_hours_end && (
+                          <p className="text-gray-500 text-xs mt-1">
+                            🕐 {barber.working_hours_start.slice(0, 5)} - {barber.working_hours_end.slice(0, 5)}
+                          </p>
+                        )}
+                        {Array.isArray(barber.days_off) && barber.days_off.length > 0 && (
+                          <p className="text-amber-400/80 text-xs mt-1">
+                            إجازة: {barber.days_off.map((d) => DAYS_LABELS[d]).filter(Boolean).join('، ')}
+                          </p>
+                        )}
+                        {barber.vacation_start && barber.vacation_end && (
+                          <p className="text-amber-400/80 text-xs mt-1">
+                            🏖 إجازة من {barber.vacation_start} إلى {barber.vacation_end}
+                          </p>
+                        )}
                       </div>
                       <div 
                         onClick={() => handleToggleActive(barber.id!, barber.active)}
@@ -309,7 +382,15 @@ export const Staff: React.FC = () => {
         onClose={() => {
           setIsModalOpen(false)
           setEditingBarberId(null)
-          setFormData({ name: '', phone: '' })
+          setFormData({
+            name: '',
+            phone: '',
+            working_hours_start: '09:00',
+            working_hours_end: '21:00',
+            days_off: [],
+            vacation_start: '',
+            vacation_end: '',
+          })
         }}
         title={editingBarberId ? 'تعديل الطبيب' : 'إضافة طبيب جديد'}
       >
@@ -336,6 +417,68 @@ export const Staff: React.FC = () => {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">بداية العمل</label>
+              <input
+                type="time"
+                value={formData.working_hours_start}
+                onChange={(e) => setFormData({ ...formData, working_hours_start: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-pink-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">نهاية العمل</label>
+              <input
+                type="time"
+                value={formData.working_hours_end}
+                onChange={(e) => setFormData({ ...formData, working_hours_end: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-pink-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">أيام الإجازة الأسبوعية</label>
+            <div className="flex flex-wrap gap-2">
+              {DAYS_LABELS.map((label, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleDayOff(i)}
+                  className={`px-3 py-1.5 rounded text-xs font-semibold border transition ${
+                    formData.days_off.includes(i)
+                      ? 'bg-amber-500/30 text-amber-300 border-amber-500/50'
+                      : 'bg-white/10 text-gray-300 border-white/20 hover:bg-white/15'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">إجازة من</label>
+              <input
+                type="date"
+                value={formData.vacation_start}
+                onChange={(e) => setFormData({ ...formData, vacation_start: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-pink-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">إجازة إلى</label>
+              <input
+                type="date"
+                value={formData.vacation_end}
+                onChange={(e) => setFormData({ ...formData, vacation_end: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-pink-500"
+              />
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleSaveStaff}
@@ -347,7 +490,15 @@ export const Staff: React.FC = () => {
               onClick={() => {
                 setIsModalOpen(false)
                 setEditingBarberId(null)
-                setFormData({ name: '', phone: '' })
+                setFormData({
+                  name: '',
+                  phone: '',
+                  working_hours_start: '09:00',
+                  working_hours_end: '21:00',
+                  days_off: [],
+                  vacation_start: '',
+                  vacation_end: '',
+                })
               }}
               className="flex-1 px-4 py-2 bg-gray-600/50 text-gray-300 rounded-lg font-semibold hover:bg-gray-600 transition"
             >

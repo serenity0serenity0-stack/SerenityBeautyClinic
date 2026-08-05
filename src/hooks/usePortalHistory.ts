@@ -31,7 +31,7 @@ export function usePortalHistory(clinicId?: string, _customerId?: string, slug?:
       const { data: clientData, error: clientErr } = await supabase
         .from('clients')
         .select('id')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('phone', customerPhone)
         .maybeSingle()
 
@@ -46,7 +46,7 @@ export function usePortalHistory(clinicId?: string, _customerId?: string, slug?:
       const { data: visitLogs, error: err } = await supabase
         .from('visit_logs')
         .select('id, visitDate, servicesCount, total_spent, notes')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('client_id', clientData.id)
         .order('visitDate', { ascending: false })
 

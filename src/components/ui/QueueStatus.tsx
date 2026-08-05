@@ -4,6 +4,7 @@ import { Clock, Users, AlertCircle, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useBookings } from '../../db/hooks/useBookings'
 import { getEgyptDateString } from '../../utils/egyptTime'
+import { bookingDateOf } from '../../utils/bookingAvailability'
 import { Booking } from '../../db/supabase'
 
 interface QueueInfo {
@@ -33,22 +34,21 @@ export const QueueStatus: React.FC<QueueStatusProps> = ({ bookings: propBookings
     return () => clearInterval(interval)
   }, [])
 
-  // Today's pending/ongoing bookings, pre-sorted once per bookings change
+  // Today's active bookings, pre-sorted once per bookings change
   const todayBookings = useMemo(() => {
     const today = getEgyptDateString()
-    const todayDate = new Date(today).toLocaleDateString('en-CA')
     return bookings
       .filter((b) => {
-        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-CA')
+        const bookingDate = bookingDateOf(b.booking_time)
         return (
-          bookingDate === todayDate &&
-          (b.status === 'pending' || b.status === 'ongoing')
+          bookingDate === today &&
+          (b.status === 'pending' ||
+            b.status === 'confirmed' ||
+            b.status === 'checked_in' ||
+            b.status === 'ongoing')
         )
       })
-      .sort(
-        (a, b) =>
-          new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime()
-      )
+      .sort((a, b) => a.booking_time.localeCompare(b.booking_time))
   }, [bookings])
 
   // Queue status computed in real-time from the pre-sorted list (O(n) per tick)

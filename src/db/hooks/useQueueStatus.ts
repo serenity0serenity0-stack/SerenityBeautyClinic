@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useBookings } from './useBookings'
-import { getEgyptDateString } from '../../utils/egyptTime'
+import { getEgyptDateString, getEgyptTimeString } from '../../utils/egyptTime'
+import {
+  bookingDateOf,
+  bookingMinutesOf,
+  timeToMinutes,
+} from '../../utils/bookingAvailability'
 import { Booking } from '../supabase'
 
 export interface QueueInfo {
@@ -15,9 +20,10 @@ export interface QueueInfo {
 
 /**
  * Real-time queue status.
- * Today's pending/ongoing bookings are pre-sorted in a useMemo that runs only when
- * `bookings` change; the per-second tick only iterates that pre-sorted list (O(n)),
- * instead of re-filtering and re-sorting the whole dataset every second.
+ * Today's pending/confirmed/checked_in/ongoing bookings are pre-sorted in a
+ * useMemo that runs only when `bookings` change; the per-second tick only
+ * iterates that pre-sorted list (O(n)) instead of re-filtering and re-sorting
+ * the whole dataset every second. All times are compared in Cairo wall clock.
  */
 export const useQueueStatus = (externalBookings?: Booking[]) => {
   const { bookings: hookBookings } = useBookings()
@@ -31,25 +37,26 @@ export const useQueueStatus = (externalBookings?: Booking[]) => {
     return () => clearInterval(interval)
   }, [])
 
-  // Pre-sorted list of today's pending/ongoing bookings — computed once per bookings change.
+  // Pre-sorted list of today's active bookings — computed once per bookings change.
   const todayBookings = useMemo(() => {
-    const todayDate = new Date(getEgyptDateString()).toLocaleDateString('en-CA')
+    const today = getEgyptDateString()
     return bookings
       .filter((b: Booking) => {
-        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-CA')
+        const bookingDate = bookingDateOf(b.booking_time)
         return (
-          bookingDate === todayDate &&
-          (b.status === 'pending' || b.status === 'ongoing')
+          bookingDate === today &&
+          (b.status === 'pending' ||
+            b.status === 'confirmed' ||
+            b.status === 'checked_in' ||
+            b.status === 'ongoing')
         )
       })
-      .sort(
-        (a: Booking, b: Booking) =>
-          new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime()
-      )
+      .sort((a: Booking, b: Booking) => a.booking_time.localeCompare(b.booking_time))
   }, [bookings])
 
   const queueInfo = useMemo<QueueInfo>(() => {
     const currentTime = now
+    const nowMinutes = timeToMinutes(getEgyptTimeString())
 
     if (todayBookings.length === 0) {
       return {
@@ -71,24 +78,23 @@ export const useQueueStatus = (externalBookings?: Booking[]) => {
 
     // Separate current booking and future bookings
     const currentBooking =
-      todayBookings.find((b) => b.status === 'ongoing') || null
+      todayBookings.find(
+        (b) => b.status === 'ongoing' || b.status === 'checked_in'
+      ) || null
     let futureBookings: Booking[] = []
     let totalWaitMinutes = 0
     let remainingTimeForCurrent = 0
 
     if (currentBooking) {
-      const bookingStartTime = new Date(currentBooking.booking_time)
       const duration = currentBooking.duration || 30
-      const completionTime = bookingStartTime.getTime() + duration * 60000
-      remainingTimeForCurrent = Math.max(
-        0,
-        Math.ceil((completionTime - currentTime.getTime()) / 60000)
-      )
+      const completionMinutes =
+        bookingMinutesOf(currentBooking.booking_time) + duration
+      remainingTimeForCurrent = Math.max(0, completionMinutes - nowMinutes)
     }
 
     futureBookings = todayBookings.filter((booking: Booking) => {
-      if (booking.status === 'ongoing') return false
-      return new Date(booking.booking_time).getTime() > currentTime.getTime()
+      if (booking.status === 'ongoing' || booking.status === 'checked_in') return false
+      return bookingMinutesOf(booking.booking_time) > nowMinutes
     })
 
     // Calculate total wait
@@ -110,9 +116,9 @@ export const useQueueStatus = (externalBookings?: Booking[]) => {
     let percentageWaited = 0
     if (currentBooking !== null) {
       const duration = currentBooking.duration || 30
-      const bookingStart = new Date(currentBooking.booking_time).getTime()
-      const elapsed = currentTime.getTime() - bookingStart
-      percentageWaited = Math.min(100, Math.max(0, (elapsed / (duration * 60000)) * 100))
+      const bookingStart = bookingMinutesOf(currentBooking.booking_time)
+      const elapsed = nowMinutes - bookingStart
+      percentageWaited = Math.min(100, Math.max(0, (elapsed / duration) * 100))
     }
 
     return {

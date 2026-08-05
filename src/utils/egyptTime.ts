@@ -10,11 +10,9 @@ const EGYPT_TIMEZONE = 'Africa/Cairo'
  */
 export const getEgyptDateString = (date: Date = new Date()): string => {
   // Use Intl.DateTimeFormat with explicit Cairo timezone
-  const result = date.toLocaleDateString('en-CA', {
+  return date.toLocaleDateString('en-CA', {
     timeZone: 'Africa/Cairo'
   })
-  console.log('[getEgyptDateString] Result:', result)
-  return result
 }
 
 /**

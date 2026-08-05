@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/db/supabase'
+import { getEgyptDateString } from '@/utils/egyptTime'
 
 export interface DashboardStats {
   total_visits: number
@@ -40,7 +41,7 @@ export function usePortalDashboardStats(clinicId?: string, customerId?: string, 
       const { data: clientData, error: clientErr } = await supabase
         .from('clients')
         .select('id, total_visits, total_spent')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('phone', customerPhone)
         .maybeSingle()
 
@@ -59,7 +60,7 @@ export function usePortalDashboardStats(clinicId?: string, customerId?: string, 
       const { data: visitLogs, error: visitErr } = await supabase
         .from('visit_logs')
         .select('total_spent, visitDate')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('client_id', clientData.id)
         .order('visitDate', { ascending: false })
 
@@ -69,19 +70,20 @@ export function usePortalDashboardStats(clinicId?: string, customerId?: string, 
       const total_spent = visitLogs?.reduce((sum, v) => sum + (v.total_spent || 0), 0) || clientData.total_spent || 0
       const last_visit = visitLogs && visitLogs.length > 0 ? visitLogs[0]?.visitDate : undefined
 
-      // Step 4: Get next upcoming booking using correct column name and date filtering
-      const now = new Date()
-      const dateStart = now.toISOString().split('T')[0] + 'T00:00:00'
-      const dateEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] + 'T23:59:59'
+      // Step 4: Get next upcoming booking (Cairo wall clock)
+      const today = getEgyptDateString()
+      const limit = new Date()
+      limit.setDate(limit.getDate() + 30)
+      const dateEnd = limit.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
 
       const { data: nextBookings, error: bookingErr } = await supabase
         .from('bookings')
         .select('id, booking_date, booking_time, service_name, status')
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('client_phone', customerPhone)
         .in('status', ['pending', 'confirmed'])
-        .gte('booking_date', dateStart.split('T')[0])
-        .lte('booking_date', dateEnd.split('T')[0])
+        .gte('booking_date', today)
+        .lte('booking_date', dateEnd)
         .order('booking_date', { ascending: true })
         .order('booking_time', { ascending: true })
         .limit(1)
@@ -92,11 +94,11 @@ export function usePortalDashboardStats(clinicId?: string, customerId?: string, 
       const { count: upcomingCount, error: countErr } = await supabase
         .from('bookings')
         .select('id', { count: 'exact', head: true })
-        .eq('shop_id', clinicId)
+        .eq('clinic_id', clinicId)
         .eq('client_phone', customerPhone)
         .in('status', ['pending', 'confirmed'])
-        .gte('booking_date', dateStart.split('T')[0])
-        .lte('booking_date', dateEnd.split('T')[0])
+        .gte('booking_date', today)
+        .lte('booking_date', dateEnd)
 
       if (countErr) throw countErr
 

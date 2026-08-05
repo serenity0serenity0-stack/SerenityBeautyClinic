@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase, Booking } from '../supabase'
-import { getEgyptDateString } from '../../utils/egyptTime'
+import { getEgyptDateString, getEgyptTimeString } from '../../utils/egyptTime'
+import {
+  isSlotAvailable,
+  bookingDateOf,
+  bookingMinutesOf,
+  minutesToTime,
+} from '../../utils/bookingAvailability'
 import toast from 'react-hot-toast'
 import { appEmitter } from '../../utils/eventEmitter'
-
-/**
- * Parse an ISO booking_time into a local date string (YYYY-MM-DD).
- * Uses the same locale semantics as the original code so behavior is preserved.
- */
-const toLocalDate = (iso: string) => new Date(iso).toLocaleDateString('en-CA')
 
 /** Parse "HH:MM" (or "HH:MM:SS") from an ISO time into minutes of the day. */
 const timeToMinutes = (iso: string) => {
@@ -51,12 +51,14 @@ export const useBookings = () => {
         barber_name: b.barber_name,
         service_type: b.service_type,
         booking_time: b.booking_time,
+        booking_date: b.booking_date,
         duration: b.duration,
         queue_number: b.queue_number,
         status: b.status,
         notes: b.notes,
         created_at: b.created_at,
         updated_at: b.updated_at,
+        clinic_id: b.clinic_id,
       }))
 
       setBookings(normalizedData)
@@ -95,9 +97,9 @@ export const useBookings = () => {
     selectedbarber_id?: string
   ): Promise<{ queue_number: number; recommendedbarber_id?: string }> => {
     // Get all bookings for the same day (pending/ongoing only)
-    const booking_date = toLocalDate(booking_time)
+    const booking_date = bookingDateOf(booking_time)
     const dayBookings = bookings.filter((b) => {
-      const bDate = toLocalDate(b.booking_time)
+      const bDate = bookingDateOf(b.booking_time)
       // استبعد المكتملة والملغاة
       return bDate === booking_date && b.status !== 'cancelled' && b.status !== 'completed'
     })
@@ -183,10 +185,10 @@ export const useBookings = () => {
    * Calculate remaining time and position in queue
    */
   const getQueueInfo = useCallback((queue_number: number, booking_time: string) => {
-    const booking_date = toLocalDate(booking_time)
+    const booking_date = bookingDateOf(booking_time)
     const dayBookings = bookings
       .filter((b) => {
-        const bDate = toLocalDate(b.booking_time)
+        const bDate = bookingDateOf(b.booking_time)
         return (
           bDate === booking_date &&
           b.status !== 'cancelled' &&
@@ -218,37 +220,28 @@ export const useBookings = () => {
    * المنطق الصحيح: لا يمكن تداخل الحجزات
    *   إذا كان هناك حجز من 10:00-10:30
    *   لا يمكن حجز أي وقت يتداخل معه قبل 10:30
+   * Uses the shared availability util: Cairo-local past-time guard +
+   * duration-aware overlap detection against all active bookings.
    */
   const isTimeSlotAvailable = useCallback(
     (booking_time: string, barber_id?: string, duration: number = 30): boolean => {
-      const now = new Date()
+      const date = bookingDateOf(booking_time)
+      const minutes = bookingMinutesOf(booking_time)
 
-      // Check if the time has already passed
-      if (new Date(booking_time) <= now) {
+      // Past-time guard in Cairo wall clock
+      const today = getEgyptDateString()
+      const nowMinutes = timeToMinutes(getEgyptTimeString())
+      if (date < today || (date === today && minutes < nowMinutes)) {
         return false
       }
 
-      const requestStart = new Date(booking_time).getTime()
-      const requestEnd = requestStart + duration * 60000 // Convert minutes to ms
-
-      const conflictingBooking = bookings.find((b) => {
-        // استبعد الحجوزات المكتملة والملغاة - لا تحجز الوقت
-        if (b.status === 'cancelled' || b.status === 'completed') return false
-
-        // If barber_id is specified, only check that barber
-        if (barber_id && b.barber_id !== barber_id) return false
-
-        const bookingStart = new Date(b.booking_time).getTime()
-        const bookingEnd = bookingStart + (b.duration || 30) * 60000 // Use actual booking duration
-
-        // Check for overlap:
-        // Conflict if: requestStart < bookingEnd AND requestEnd > bookingStart
-        const hasOverlap = requestStart < bookingEnd && requestEnd > bookingStart
-
-        return hasOverlap
+      return isSlotAvailable({
+        date,
+        time: minutesToTime(minutes),
+        barberId: barber_id,
+        bookings,
+        duration,
       })
-
-      return !conflictingBooking
     },
     [bookings]
   )
@@ -261,7 +254,7 @@ export const useBookings = () => {
     const today = getEgyptDateString()
     return bookings
       .filter((b) => {
-        const bDate = toLocalDate(b.booking_time)
+        const bDate = bookingDateOf(b.booking_time)
         return bDate === today && b.status !== 'cancelled'
       })
       .sort((a, b) => a.queue_number - b.queue_number)
@@ -272,23 +265,28 @@ export const useBookings = () => {
   }, [bookings, getQueueInfo])
 
   /**
-   * Get upcoming bookings (next 24-48 hours).
+   * Get upcoming bookings (next 48 hours, Cairo wall clock).
    * Memoized to avoid recomputation on every render.
    */
   const upcomingBookings = useMemo(() => {
-    const now = new Date()
-    const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+    const today = getEgyptDateString()
+    const nowMinutes = timeToMinutes(getEgyptTimeString())
+
+    const limitDate = new Date()
+    limitDate.setDate(limitDate.getDate() + 2)
+    const limit = limitDate.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
 
     return bookings
       .filter((b) => {
-        const booking_date = new Date(b.booking_time)
-        return (
-          booking_date >= now &&
-          booking_date <= in48Hours &&
-          b.status !== 'cancelled'
-        )
+        if (b.status === 'cancelled') return false
+
+        const d = bookingDateOf(b.booking_time)
+        if (d < today || d > limit) return false
+        if (d === today && bookingMinutesOf(b.booking_time) < nowMinutes) return false
+
+        return true
       })
-      .sort((a, b) => new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime())
+      .sort((a, b) => a.booking_time.localeCompare(b.booking_time))
   }, [bookings])
 
   const addBooking = async (
@@ -311,10 +309,10 @@ export const useBookings = () => {
       const clientConflict = bookings.find((b) => {
         if (b.status === 'cancelled' || b.status === 'completed') return false
 
-        const requestStart = new Date(booking.booking_time).getTime()
-        const requestEnd = requestStart + (booking.duration || 30) * 60000
-        const bookingStart = new Date(b.booking_time).getTime()
-        const bookingEnd = bookingStart + (b.duration || 30) * 60000
+        const requestStart = bookingMinutesOf(booking.booking_time)
+        const requestEnd = requestStart + (booking.duration || 30)
+        const bookingStart = bookingMinutesOf(b.booking_time)
+        const bookingEnd = bookingStart + (b.duration || 30)
 
         const hasOverlap = requestStart < bookingEnd && requestEnd > bookingStart
         return b.client_phone === booking.client_phone && hasOverlap
@@ -414,26 +412,20 @@ export const useBookings = () => {
       if (updates.booking_time || updates.barber_id) {
         const newbooking_time = updates.booking_time || currentBooking.booking_time
         const newbarber_id = updates.barber_id || currentBooking.barber_id
-        const newDuration = updates.duration || currentBooking.duration
+        const newDuration = updates.duration || currentBooking.duration || 30
 
         // Create a temporary list excluding the current booking being updated
         const tempBookings = bookings.filter(b => b.id !== id)
 
-        // Check for conflicts with other bookings
-        const requestStart = new Date(newbooking_time).getTime()
-        const requestEnd = requestStart + (newDuration || 30) * 60000
-
-        const conflictingBooking = tempBookings.find((b) => {
-          if (b.status === 'cancelled' || b.status === 'completed') return false
-          if (newbarber_id && b.barber_id !== newbarber_id) return false
-
-          const bookingStart = new Date(b.booking_time).getTime()
-          const bookingEnd = bookingStart + (b.duration || 30) * 60000
-
-          return requestStart < bookingEnd && requestEnd > bookingStart
+        const conflicting = !isSlotAvailable({
+          date: bookingDateOf(newbooking_time),
+          time: minutesToTime(bookingMinutesOf(newbooking_time)),
+          barberId: newbarber_id,
+          bookings: tempBookings,
+          duration: newDuration,
         })
 
-        if (conflictingBooking) {
+        if (conflicting) {
           throw new Error('هذا الموعد محجوز بالفعل للطبيب المحدد')
         }
       }
@@ -491,7 +483,7 @@ export const useBookings = () => {
   const getClientBookings = useCallback((client_id: string) => {
     return bookings
       .filter((b) => b.client_id === client_id && b.status !== 'cancelled')
-      .sort((a, b) => new Date(b.booking_time).getTime() - new Date(a.booking_time).getTime())
+      .sort((a, b) => b.booking_time.localeCompare(a.booking_time))
   }, [bookings])
 
   /** Get barber's schedule for the day (memoized per barber/date). */
@@ -499,7 +491,7 @@ export const useBookings = () => {
     const targetDate = date || getEgyptDateString()
     return bookings
       .filter((b) => {
-        const bDate = toLocalDate(b.booking_time)
+        const bDate = bookingDateOf(b.booking_time)
         return b.barber_id === barber_id && bDate === targetDate && b.status !== 'cancelled'
       })
       .sort((a, b) => a.queue_number - b.queue_number)

@@ -150,9 +150,11 @@ BEGIN
     RAISE EXCEPTION 'A user with this email already exists';
   END IF;
 
-  -- Create auth user (confirmed immediately)
+  -- Create auth user (confirmed immediately, tokens set to '' for GoTrue scan)
   INSERT INTO auth.users (
     instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change_token_current,
+    email_change, reauthentication_token, phone_change_token,
     raw_app_meta_data, raw_user_meta_data, created_at, updated_at
   )
   VALUES (
@@ -163,6 +165,8 @@ BEGIN
     v_email,
     crypt(p_password, gen_salt('bf')),
     now(),
+    '', '', '', '',
+    '', '', '',
     jsonb_build_object('provider', 'email', 'providers', array['email']),
     '{}'::jsonb,
     now(),
@@ -173,7 +177,7 @@ BEGIN
   -- Create identity row (required for password login)
   INSERT INTO auth.identities (
     id, user_id, provider_id, identity_data, provider,
-    last_sign_in_at, created_at, updated_at
+    email, last_sign_in_at, created_at, updated_at
   )
   VALUES (
     v_user_id,
@@ -181,6 +185,7 @@ BEGIN
     v_user_id::text,
     jsonb_build_object('sub', v_user_id::text, 'email', v_email, 'email_verified', true),
     'email',
+    v_email,
     now(),
     now(),
     now()

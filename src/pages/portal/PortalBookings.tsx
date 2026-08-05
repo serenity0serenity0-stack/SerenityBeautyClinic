@@ -62,7 +62,10 @@ const translations = {
     selectFirstDate: 'اختر التاريخ أولاً',
     pleaseSelect: 'الرجاء اختيار جميع البيانات المطلوبة',
     noServices: 'لا توجد خدمات متاحة',
-    bookingFailed: 'الحجز فشل'
+    bookingFailed: 'الحجز فشل',
+    addToWaitingList: 'أضفني لقائمة الانتظار',
+    addedToWaitingList: 'تمت إضافتك لقائمة الانتظار، سنخبرك عند توفر موعد',
+    noSlotsWaitingDesc: 'لا توجد أوقات متاحة الآن، يمكنك الانضمام لقائمة الانتظار وسنتواصل معك عند توفر موعد'
   },
   en: {
     back: 'Back to Dashboard',
@@ -101,7 +104,10 @@ const translations = {
     selectFirstDate: 'Select a date first',
     pleaseSelect: 'Please select all required fields',
     noServices: 'No services available',
-    bookingFailed: 'Booking failed'
+    bookingFailed: 'Booking failed',
+    addToWaitingList: 'Add me to the waiting list',
+    addedToWaitingList: 'You\'ve been added to the waiting list. We\'ll notify you when a slot opens.',
+    noSlotsWaitingDesc: 'No slots are available right now. Join the waiting list and we\'ll contact you when a slot opens.'
   }
 }
 
@@ -157,7 +163,8 @@ export function PortalBookings() {
     error: bookingsError,
     createBooking,
     cancelBooking,
-    getAvailableSlots
+    getAvailableSlots,
+    addToWaitingList
   } = usePortalBookings(customer?.clinic_id, customer?.id)
 
   // Data isolation: Filter bookings by customer phone
@@ -206,13 +213,37 @@ export function PortalBookings() {
   useEffect(() => {
     if (!form.date || !form.serviceId) return
 
+    const selectedService = services.find(s => s.id === form.serviceId)
+
     const timer = setTimeout(async () => {
-      const slots = await getAvailableSlots(form.date, form.barber_id || undefined)
+      const slots = await getAvailableSlots(
+        form.date,
+        form.barber_id || undefined,
+        selectedService?.duration || 30
+      )
       setAvailableSlots(slots)
     }, 300) // Wait 300ms after user stops changing values
 
     return () => clearTimeout(timer) // Cleanup previous timer
-  }, [form.date, form.serviceId, form.barber_id, getAvailableSlots])
+  }, [form.date, form.serviceId, form.barber_id, getAvailableSlots, services])
+
+  // Waiting list submission state
+  const [addingWaiting, setAddingWaiting] = useState(false)
+
+  const handleAddToWaitingList = async () => {
+    if (!form.serviceId) return
+    setAddingWaiting(true)
+    try {
+      const ok = await addToWaitingList(form.serviceId, form.barber_id || undefined)
+      if (ok) {
+        toast.success(t.addedToWaitingList)
+        setForm({ serviceId: '', barber_id: null, date: '', time: '' })
+        setAvailableSlots([])
+      }
+    } finally {
+      setAddingWaiting(false)
+    }
+  }
 
   // Get min & max dates for input
   const getMinDate = useCallback(() => {
@@ -468,7 +499,20 @@ export function PortalBookings() {
                       <p className="text-white/40 text-xs mt-2">{t.selectFirstDate}</p>
                     )}
                     {form.date && availableSlots.length === 0 && (
-                      <p className="text-yellow-400/70 text-xs mt-2">{t.noSlots}</p>
+                      <div className="mt-3">
+                        <p className="text-yellow-400/70 text-xs mb-2">{t.noSlots}</p>
+                        <p className="text-white/50 text-xs mb-3">{t.noSlotsWaitingDesc}</p>
+                        <button
+                          onClick={handleAddToWaitingList}
+                          disabled={addingWaiting || !form.serviceId}
+                          className="px-4 py-2 rounded-lg font-bold text-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          {addingWaiting
+                            ? (lang === 'ar' ? 'جاري الإضافة...' : 'Adding...')
+                            : t.addToWaitingList}
+                        </button>
+                      </div>
                     )}
                   </div>
 

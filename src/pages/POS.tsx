@@ -69,7 +69,7 @@ export const POS: React.FC = () => {
   const { addVisitLog } = useVisitLogs()
   const { getVariantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
-  const { getTodayBookings, updateBooking } = useBookings()
+  const { getTodayBookings } = useBookings()
   const { clinicId } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -209,9 +209,20 @@ export const POS: React.FC = () => {
       const dateStr = getEgyptDateString()
       const timeStr = getEgyptTimeString()
 
-      // Create transaction
+      // Create transaction (linked to the client's active booking when present;
+      // addTransaction auto-completes the booking after payment).
+      const clientBookingsToday = getTodayBookings()
+        .filter((b: any) => b.client_id === selectedClient.id)
+        .filter((b: any) =>
+          ['pending', 'confirmed', 'checked_in', 'ongoing'].includes(b.status)
+        )
+        .sort((a: any, b: any) => a.booking_time.localeCompare(b.booking_time))
+
+      const targetBooking = clientBookingsToday[0]
+
       const newTransaction = await addTransaction({
         client_id: selectedClient.id,
+        booking_id: targetBooking?.id,
         client_name: selectedClient.name,
         client_phone: selectedClient.phone,
         visit_number: (selectedClient.total_visits || 0) + 1,
@@ -244,29 +255,6 @@ export const POS: React.FC = () => {
         total_spent: total,
         notes: `${cart.length} services - ${payment_method}`,
       })
-
-      // Auto-complete bookings: Update today's pending/ongoing bookings for this client to "completed"
-      try {
-        const todayBookings = getTodayBookings()
-        const clientBookingsToday = todayBookings.filter((b: any) => 
-          b.client_id === selectedClient.id && 
-          (b.status === 'pending' || b.status === 'ongoing')
-        )
-
-        // Update each booking to completed
-        for (const booking of clientBookingsToday) {
-          if (booking.id) {
-            await updateBooking(booking.id, { status: 'completed' })
-          }
-        }
-
-        if (clientBookingsToday.length > 0) {
-          console.log(`✅ تم تحديث ${clientBookingsToday.length} حجز إلى مكتمل`)
-        }
-      } catch (bookingErr) {
-        console.error('Error updating bookings:', bookingErr)
-        // Don't fail the transaction if booking update fails
-      }
 
       // Show receipt
       setCompletedTransaction({
