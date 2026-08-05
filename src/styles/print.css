@@ -1,0 +1,58 @@
+/* ============================================================
+   DEDICATED PRINT STYLESHEET — Thermal Receipts (80mm / 58mm)
+   ============================================================
+
+   The app UI (sidebar, header, dialogs, overlays, buttons) lives
+   inside #root. The receipt is rendered into #print-area, which is
+   portaled to <body> OUTSIDE #root so it can be isolated for print.
+
+   On screen:  #print-area is hidden (display:none).
+   On print:   #root is hidden, #print-area is shown and centered.
+
+   The @page size (80mm default, 58mm optional) is injected into the
+   document <head> at runtime so the paper width follows the user's
+   selection (see POS page). Everything else lives here.
+   ============================================================ */
+
+#print-area {
+  display: none;
+}
+
+@media print {
+  /* Hide the entire application UI: navigation, buttons, dialogs, overlays. */
+  #root {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+  }
+
+  /* Print only the receipt. The receipt itself sets its own width
+     (80mm or 58mm) and centers itself with margin:auto. */
+  #print-area {
+    display: block !important;
+    margin: 0 auto;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  /* Force crisp black-on-white thermal output, ignoring the app's
+     light/dark mode color remapping. */
+  #print-area,
+  #print-area * {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}

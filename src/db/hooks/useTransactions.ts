@@ -158,12 +158,14 @@ export const useTransactions = () => {
 
   const getTransactionsByclient_id = async (client_id: string) => {
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from('transactions')
         .select('*')
         .eq('client_id', client_id)
         .order('created_at', { ascending: false })
+      if (clinicId) query.eq('clinic_id', clinicId)
 
+      const { data, error } = await query
       if (error) throw error
       return data || []
     } catch (err: any) {

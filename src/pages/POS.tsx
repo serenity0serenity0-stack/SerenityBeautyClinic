@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Modal } from '../components/ui/Modal'
 import { ReceiptTemplate } from '../components/receipt/ReceiptTemplate'
@@ -85,7 +86,22 @@ export const POS: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState(false)
   const [selectedBarber, setSelectedBarber] = useState<any>(null)
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
+  const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>(
+    () => (localStorage.getItem('receiptPaperWidth') as '80mm' | '58mm') || '80mm'
+  )
   const receiptRef = useRef<HTMLDivElement>(null)
+  const printInProgress = useRef(false)
+
+  // Inject the thermal @page size so the print dialog matches the selected paper.
+  useEffect(() => {
+    let el = document.getElementById('thermal-page-size') as HTMLStyleElement | null
+    if (!el) {
+      el = document.createElement('style')
+      el.id = 'thermal-page-size'
+      document.head.appendChild(el)
+    }
+    el.textContent = `@media print { @page { size: ${paperWidth} auto; margin: 0; } }`
+  }, [paperWidth])
 
   // Load variants
   useEffect(() => {
@@ -235,6 +251,7 @@ export const POS: React.FC = () => {
         total,
         payment_method: payment_method as 'cash' | 'card' | 'wallet',
         barber_id: selectedBarber?.id || undefined,
+        barber_name: selectedBarber?.name || undefined,
       })
 
       const transactionId = newTransaction?.id || 'unknown'
@@ -288,79 +305,31 @@ export const POS: React.FC = () => {
   }
 
   const handlePrint = () => {
-    if (!receiptRef.current) return
+    if (printInProgress.current) return
+    printInProgress.current = true
 
-    const printWindow = window.open('', '_blank', 'height=600,width=420,top=100,left=100')
-    const receiptHTML = receiptRef.current.outerHTML
-
-    if (!printWindow) {
-      window.print()
-      return
+    const release = () => {
+      printInProgress.current = false
     }
 
-    const printContent = `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>الإيصال الضريبي</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          html, body {
-            width: 80mm;
-            margin: 0;
-            padding: 0;
-            background: #ffffff;
-          }
-          body {
-            font-family: 'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.5;
-            direction: rtl;
-            text-align: right;
-            color: #000000;
-          }
-          #receipt-container {
-            width: 80mm;
-            max-width: 80mm;
-            padding: 0;
-            margin: 0;
-            background: #ffffff;
-            font-family: 'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif;
-          }
-          @media print {
-            body > *:not(#receipt-container) { display: none !important; }
-            body { background: #ffffff; }
-            #receipt-container {
-              width: 80mm;
-              max-width: 80mm;
-              font-family: 'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif;
-              direction: rtl;
-              margin: 0;
-              padding: 0;
-            }
-            @page { size: 80mm auto; margin: 5mm 0; }
-          }
-        </style>
-      </head>
-      <body>
-        ${receiptHTML}
-      </body>
-      </html>
-    `
+    // Guard: only one print dialog per click. Reset on close + safety timeout.
+    window.addEventListener('afterprint', release, { once: true })
+    window.setTimeout(release, 5000)
 
-    printWindow.document.open()
-    printWindow.document.write(printContent)
-    printWindow.document.close()
+    const doPrint = () => {
+      try {
+        window.print()
+      } catch {
+        release()
+      }
+    }
 
-    setTimeout(() => {
-      printWindow.focus()
-      printWindow.print()
-    }, 400)
+    // Wait for the Cairo font to be ready so the receipt renders correctly.
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(doPrint).catch(doPrint)
+    } else {
+      doPrint()
+    }
   }
 
   return (
@@ -750,6 +719,27 @@ export const POS: React.FC = () => {
       >
         {completedTransaction && (
           <div className="space-y-4">
+            {/* Paper size selector */}
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-sm text-gray-400">حجم الورق:</span>
+              <div className="inline-flex rounded-lg border border-white/20 overflow-hidden">
+                {(['80mm', '58mm'] as const).map((w) => (
+                  <button
+                    key={w}
+                    onClick={() => {
+                      setPaperWidth(w)
+                      localStorage.setItem('receiptPaperWidth', w)
+                    }}
+                    className={`px-4 py-1.5 text-sm font-bold transition ${
+                      paperWidth === w ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                    }`}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Receipt Preview */}
             <div className="bg-white text-black p-6 rounded-lg shadow-xl overflow-auto max-h-96" style={{ fontFamily: "'Cairo', Arial, sans-serif", direction: 'rtl' }}>
               <ReceiptTemplate
@@ -766,6 +756,7 @@ export const POS: React.FC = () => {
                 discount_type={completedTransaction.discount_type}
                 total={completedTransaction.total}
                 payment_method={completedTransaction.payment_method}
+                paperWidth={paperWidth}
               />
             </div>
 
@@ -804,6 +795,30 @@ export const POS: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Print-only receipt (portaled to <body>, hidden on screen, shown on print).
+          Rendered only while the receipt modal is open. */}
+      {completedTransaction &&
+        createPortal(
+          <div id="print-area" data-paper={paperWidth}>
+            <ReceiptTemplate
+              transactionId={completedTransaction.transactionId}
+              client_name={completedTransaction.client_name}
+              client_phone={completedTransaction.client_phone}
+              barber_name={completedTransaction.barber_name}
+              date={completedTransaction.date}
+              time={completedTransaction.time}
+              items={completedTransaction.items}
+              subtotal={completedTransaction.subtotal}
+              discount={completedTransaction.discount}
+              discount_type={completedTransaction.discount_type}
+              total={completedTransaction.total}
+              payment_method={completedTransaction.payment_method}
+              paperWidth={paperWidth}
+            />
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

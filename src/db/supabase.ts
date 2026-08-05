@@ -47,6 +47,7 @@ export interface Transaction {
   client_name?: string
   client_phone?: string
   barber_id?: string
+  barber_name?: string
   amount?: number
   discount?: number
   discount_type?: 'percentage' | 'fixed'
@@ -92,6 +93,8 @@ export interface Barber {
   id?: string
   name: string
   phone?: string
+  email?: string
+  specialization?: string
   active: boolean
   working_hours_start?: string | null
   working_hours_end?: string | null

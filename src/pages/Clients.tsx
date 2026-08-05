@@ -4,10 +4,11 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { useClients } from '../db/hooks/useClients'
-import { useVisitLogs, VisitLog } from '../db/hooks/useVisitLogs'
+import { useTransactions } from '../db/hooks/useTransactions'
+import { useBarbers } from '../db/hooks/useBarbers'
 import { Client } from '../db/supabase'
 import { motion } from 'framer-motion'
-import { Trash2, Edit2, Plus, Calendar, Clock, Filter } from 'lucide-react'
+import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type SortBy = 'name' | 'visits' | 'spent' | 'recent'
@@ -15,12 +16,13 @@ type SortBy = 'name' | 'visits' | 'spent' | 'recent'
 export const Clients: React.FC = () => {
   const { t } = useTranslation()
   const { clients, addClient, updateClient, deleteClient } = useClients()
-  const { getClientVisitLogs } = useVisitLogs()
+  const { getTransactionsByclient_id } = useTransactions()
+  const { barbers, fetchBarbers } = useBarbers()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<any>(null)
-  const [clientVisitLogs, setClientVisitLogs] = useState<VisitLog[]>([])
+  const [clientTransactions, setClientTransactions] = useState<any[]>([])
   const [editingclient_id, setEditingclient_id] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', birthday: '', is_vip: false })
@@ -31,20 +33,24 @@ export const Clients: React.FC = () => {
   const [birthdayMonth, setBirthdayMonth] = useState<string>('')
   const [sortBy, setSortBy] = useState<SortBy>('recent')
 
-  // Fetch visit logs when opening detail modal
+  // Fetch the client's paid appointments (transactions carry the real
+  // service names, doctor, price, payment and booking status).
   useEffect(() => {
     if (isDetailModalOpen && selectedClientForDetail?.id) {
-      const fetchLogs = async () => {
+      const fetchHistory = async () => {
         try {
-          const logs = await getClientVisitLogs(selectedClientForDetail.id)
-          setClientVisitLogs(logs)
+          if (barbers.length === 0) {
+            await fetchBarbers()
+          }
+          const txs = await getTransactionsByclient_id(selectedClientForDetail.id)
+          setClientTransactions(txs || [])
         } catch (err) {
           toast.error('Failed to load visit history')
         }
       }
-      fetchLogs()
+      fetchHistory()
     }
-  }, [isDetailModalOpen, selectedClientForDetail, getClientVisitLogs])
+  }, [isDetailModalOpen, selectedClientForDetail, getTransactionsByclient_id])
 
   const handleAddClient = async () => {
     if (!formData.name || !formData.phone) {
@@ -122,6 +128,47 @@ export const Clients: React.FC = () => {
   const handleViewDetails = (client: any) => {
     setSelectedClientForDetail(client)
     setIsDetailModalOpen(true)
+  }
+
+  const getTransactionServiceNames = (t: any): string[] => {
+    if (Array.isArray(t.items)) {
+      return (t.items as any[]).map((it: any) => it?.name).filter(Boolean)
+    }
+    return t.service_type ? [t.service_type] : []
+  }
+
+  const getDoctorName = (t: any): string => {
+    if (t.barber_name) return t.barber_name
+    const barber = barbers.find((b) => b.id === t.barber_id)
+    return barber?.name || ''
+  }
+
+  const formatMoney = (amount: number): string =>
+    `${Number(amount || 0).toLocaleString('en-EG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} ج.م`
+
+  const formatArabicDate = (date: string): string => {
+    try {
+      return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(`${date}T12:00:00`))
+    } catch {
+      return date
+    }
+  }
+
+  const formatArabicTime = (time: string): string => {
+    const parts = (time || '').split(':')
+    if (parts.length < 2) return time || ''
+    let hours = parseInt(parts[0], 10)
+    if (isNaN(hours)) return time
+    const suffix = hours >= 12 ? 'مساءً' : 'صباحاً'
+    hours = hours % 12 || 12
+    return `${String(hours).padStart(2, '0')}:${parts[1]} ${suffix}`
   }
 
   const filteredClients = clients
@@ -487,13 +534,13 @@ export const Clients: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Client Detail Modal with Visit History */}
+      {/* Client Detail Modal with Appointment History */}
       <Modal
         isOpen={isDetailModalOpen}
         onClose={() => {
           setIsDetailModalOpen(false)
           setSelectedClientForDetail(null)
-          setClientVisitLogs([])
+          setClientTransactions([])
         }}
         title={`${selectedClientForDetail?.name} - ${t('clients.visit_history')}`}
         size="lg"
@@ -516,31 +563,73 @@ export const Clients: React.FC = () => {
               </div>
             </div>
 
-            {/* Visit History */}
+            {/* Appointment History */}
             <div>
-              <h3 className="text-lg font-bold text-white mb-4">Visit Logs</h3>
-              {clientVisitLogs.length > 0 ? (
+              <h3 className="text-lg font-bold text-white mb-4">سجل المواعيد</h3>
+              {clientTransactions.length > 0 ? (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {clientVisitLogs.map((log, idx) => (
-                    <div key={idx} className="bg-white/5 p-4 rounded-lg border border-white/10">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={16} className="text-pink-400" />
-                          <span className="text-white font-semibold">{log.visitDate}</span>
+                  {clientTransactions.map((t, idx) => {
+                    const serviceNames = getTransactionServiceNames(t)
+                    const doctorName = getDoctorName(t)
+                    const paid = t.status !== 'pending'
+                    const bookingStatusLabel =
+                      t.status === 'completed' ? 'مكتملة'
+                      : t.status === 'pending' ? 'قيد الانتظار'
+                      : t.status === 'cancelled' ? 'ملغاة'
+                      : t.status || 'مكتملة'
+
+                    return (
+                      <div key={t.id || idx} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                        <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-pink-400" />
+                            <span className="text-white font-semibold">{formatArabicDate(t.date)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock size={16} className="text-pink-400" />
+                            <span className="text-gray-300">{formatArabicTime(t.time)}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-pink-400" />
-                          <span className="text-gray-300">{log.visitTime}</span>
+
+                        {doctorName && (
+                          <div className="flex items-center gap-2 text-sm mb-2">
+                            <User size={14} className="text-pink-400" />
+                            <span className="text-gray-400">الطبيب:</span>
+                            <span className="text-white font-semibold">{doctorName}</span>
+                          </div>
+                        )}
+
+                        <div className="mb-2">
+                          {serviceNames.length === 1 ? (
+                            <p className="text-sm text-gray-200">{serviceNames[0]}</p>
+                          ) : serviceNames.length > 1 ? (
+                            <>
+                              <p className="text-sm text-gray-200 font-semibold">{serviceNames.length} خدمات</p>
+                              <ul className="mt-1 space-y-0.5">
+                                {serviceNames.map((s, i) => (
+                                  <li key={i} className="text-sm text-gray-300">• {s}</li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-500">{t('common.no_services') || 'لا توجد خدمات'}</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                          <span className="text-lg font-bold text-pink-400">{formatMoney(t.total)}</span>
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge label={paid ? 'مدفوع' : 'غير مدفوع'} variant={paid ? 'success' : 'danger'} size="sm" />
+                            <Badge label={bookingStatusLabel} variant="info" size="sm" />
+                          </div>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-400 mb-2">{log.servicesCount} services • {log.total_spent.toFixed(2)} ج.م</p>
-                      {log.notes && <p className="text-xs text-gray-500">{log.notes}</p>}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-400">
-                  <p>No visit history yet</p>
+                  <p>لا يوجد سجل مواعيد بعد</p>
                 </div>
               )}
             </div>
