@@ -622,7 +622,7 @@ export const POS: React.FC = () => {
                 <option value="">اختر الطبيب (اختياري)</option>
                 {barbers.filter(b => b.active).map((barber) => (
                   <option key={barber.id} value={barber.id}>
-                    ✂️ {barber.name}
+                    {barber.name}
                   </option>
                 ))}
               </select>
