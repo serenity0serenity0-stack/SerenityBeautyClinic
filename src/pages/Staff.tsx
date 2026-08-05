@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
+import { Badge } from '../components/ui/Badge'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { motion } from 'framer-motion'
-import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp, UserX } from 'lucide-react'
+import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp, UserX, Calendar, Clock, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptYearMonth } from '../utils/egyptTime'
@@ -45,6 +46,9 @@ export const Staff: React.FC = () => {
     [barberId: string]: StaffStats
   }>({})
   const [selectedMonth, setSelectedMonth] = useState(getEgyptYearMonth())
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [selectedBarberForDetail, setSelectedBarberForDetail] = useState<any>(null)
+  const [historyLimit, setHistoryLimit] = useState(20)
 
   // Load transactions on mount
   useEffect(() => {
@@ -174,6 +178,47 @@ export const Staff: React.FC = () => {
     }
   }
 
+  const handleViewDetails = (barber: any) => {
+    setSelectedBarberForDetail(barber)
+    setHistoryLimit(20)
+    setIsDetailModalOpen(true)
+  }
+
+  const getTransactionServiceNames = (t: any): string[] => {
+    if (Array.isArray(t.items)) {
+      return (t.items as any[]).map((it: any) => it?.name).filter(Boolean)
+    }
+    return t.service_type ? [t.service_type] : []
+  }
+
+  const formatMoney = (amount: number): string =>
+    `${Number(amount || 0).toLocaleString('en-EG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} ج.م`
+
+  const formatArabicDate = (date: string): string => {
+    try {
+      return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(`${date}T12:00:00`))
+    } catch {
+      return date
+    }
+  }
+
+  const formatArabicTime = (time: string | undefined): string => {
+    const parts = (time || '').split(':')
+    if (parts.length < 2) return time || ''
+    let hours = parseInt(parts[0], 10)
+    if (isNaN(hours)) return time || ''
+    const suffix = hours >= 12 ? 'مساءً' : 'صباحاً'
+    hours = hours % 12 || 12
+    return `${String(hours).padStart(2, '0')}:${parts[1]} ${suffix}`
+  }
+
   const openAddModal = () => {
     setEditingBarberId(null)
     setFormData({
@@ -202,6 +247,16 @@ export const Staff: React.FC = () => {
   const totalMonthlyRevenue = Object.values(staffStats).reduce((sum, s) => sum + s.monthlyRevenue, 0)
   const monthTransactionCount = transactions.filter(t => String(t.date).startsWith(selectedMonth)).length
   const activeBarbers = barbers.filter(b => b.active).length
+
+  const selectedDoctorTransactions = selectedBarberForDetail?.id
+    ? transactions
+        .filter((t) => t.barber_id === selectedBarberForDetail.id)
+        .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    : []
+  const visibleDoctorHistory = selectedDoctorTransactions.slice(0, historyLimit)
+  const doctorMonthRevenue = selectedDoctorTransactions
+    .filter((t) => String(t.date).startsWith(selectedMonth))
+    .reduce((sum, t) => sum + (t.total || 0), 0)
 
   return (
     <div className="space-y-6">
@@ -300,7 +355,10 @@ export const Staff: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
               >
-                <GlassCard className={!barber.active ? 'opacity-75' : ''}>
+                <GlassCard
+                  className={!barber.active ? 'opacity-75' : ''}
+                  onClick={() => handleViewDetails(barber)}
+                >
                   <div className="space-y-4">
                     {/* Header */}
                     <div className="flex items-start justify-between">
@@ -326,7 +384,10 @@ export const Staff: React.FC = () => {
                         )}
                       </div>
                       <div 
-                        onClick={() => handleToggleActive(barber.id!, barber.active)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleToggleActive(barber.id!, barber.active)
+                        }}
                         title="اضغط لتبديل حالة الطبيب"
                         className={`px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap cursor-pointer transition hover:opacity-80 ${
                           barber.active 
@@ -368,14 +429,20 @@ export const Staff: React.FC = () => {
                     {/* Actions */}
                     <div className="flex gap-2 pt-3 border-t border-white/10">
                       <button
-                        onClick={() => handleEditClick(barber)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditClick(barber)
+                        }}
                         className="flex-1 px-3 py-2 bg-blue-500/20 text-blue-300 border border-blue-400/50 rounded hover:bg-blue-500/30 transition flex items-center justify-center gap-2 text-sm"
                       >
                         <Edit2 size={16} />
                         تعديل
                       </button>
                       <button
-                        onClick={() => handleDelete(barber.id!)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(barber.id!)
+                        }}
                         className="flex-1 px-3 py-2 bg-red-500/20 text-red-300 border border-red-400/50 rounded hover:bg-red-500/30 transition flex items-center justify-center gap-2 text-sm"
                       >
                         <Trash2 size={16} />
@@ -520,6 +587,153 @@ export const Staff: React.FC = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Doctor Detail Modal with Appointment History */}
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          setSelectedBarberForDetail(null)
+        }}
+        title={`${selectedBarberForDetail?.name} - ${t('clients.visit_history')}`}
+        size="lg"
+      >
+        {selectedBarberForDetail && (
+          <div className="space-y-6">
+            {/* Doctor Summary */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/5 p-4 rounded-lg">
+                <p className="text-xs text-gray-400 mb-1">الحالة</p>
+                <p className={`text-2xl font-bold ${selectedBarberForDetail.active ? 'text-green-400' : 'text-red-400'}`}>
+                  {selectedBarberForDetail.active ? 'نشط' : 'غير نشط'}
+                </p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-lg">
+                <p className="text-xs text-gray-400 mb-1">عدد العمليات</p>
+                <p className="text-2xl font-bold text-pink-400">{selectedDoctorTransactions.length}</p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-lg">
+                <p className="text-xs text-gray-400 mb-1">أرباح {selectedMonth}</p>
+                <p className="text-2xl font-bold text-pink-400">{formatMoney(doctorMonthRevenue)}</p>
+              </div>
+            </div>
+
+            {/* Doctor Information */}
+            <div className="bg-white/5 p-4 rounded-lg border border-white/10 space-y-2">
+              <h3 className="text-lg font-bold text-white mb-3">بيانات الطبيب</h3>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">رقم الهاتف</span>
+                <span className="text-white font-semibold">{selectedBarberForDetail.phone || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">مواعيد العمل</span>
+                <span className="text-white font-semibold">
+                  {selectedBarberForDetail.working_hours_start && selectedBarberForDetail.working_hours_end
+                    ? `${selectedBarberForDetail.working_hours_start.slice(0, 5)} - ${selectedBarberForDetail.working_hours_end.slice(0, 5)}`
+                    : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">أيام الإجازة</span>
+                <span className="text-white font-semibold">
+                  {Array.isArray(selectedBarberForDetail.days_off) && selectedBarberForDetail.days_off.length > 0
+                    ? selectedBarberForDetail.days_off.map((d: number) => DAYS_LABELS[d]).filter(Boolean).join('، ')
+                    : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">إجازة من</span>
+                <span className="text-white font-semibold">{selectedBarberForDetail.vacation_start || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-sm">إجازة إلى</span>
+                <span className="text-white font-semibold">{selectedBarberForDetail.vacation_end || '—'}</span>
+              </div>
+            </div>
+
+            {/* Appointment History */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4">سجل المواعيد</h3>
+              {visibleDoctorHistory.length > 0 ? (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {visibleDoctorHistory.map((t, idx) => {
+                    const serviceNames = getTransactionServiceNames(t)
+                    const patientName = t.client_name
+                    const paid = t.status !== 'pending'
+                    const bookingStatusLabel =
+                      t.status === 'completed' ? 'مكتملة'
+                      : t.status === 'pending' ? 'قيد الانتظار'
+                      : t.status === 'cancelled' ? 'ملغاة'
+                      : t.status || 'مكتملة'
+
+                    return (
+                      <div key={t.id || idx} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                        <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-pink-400" />
+                            <span className="text-white font-semibold">{formatArabicDate(t.date)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock size={16} className="text-pink-400" />
+                            <span className="text-gray-300">{formatArabicTime(t.time)}</span>
+                          </div>
+                        </div>
+
+                        {patientName && (
+                          <div className="flex items-center gap-2 text-sm mb-2">
+                            <User size={14} className="text-pink-400" />
+                            <span className="text-gray-400">العميل:</span>
+                            <span className="text-white font-semibold">{patientName}</span>
+                          </div>
+                        )}
+
+                        <div className="mb-2">
+                          {serviceNames.length === 1 ? (
+                            <p className="text-sm text-gray-200">{serviceNames[0]}</p>
+                          ) : serviceNames.length > 1 ? (
+                            <>
+                              <p className="text-sm text-gray-200 font-semibold">{serviceNames.length} خدمات</p>
+                              <ul className="mt-1 space-y-0.5">
+                                {serviceNames.map((s, i) => (
+                                  <li key={i} className="text-sm text-gray-300">• {s}</li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-500">لا توجد خدمات</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                          <span className="text-lg font-bold text-pink-400">{formatMoney(t.total)}</span>
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge label={paid ? 'مدفوع' : 'غير مدفوع'} variant={paid ? 'success' : 'danger'} size="sm" />
+                            <Badge label={bookingStatusLabel} variant="info" size="sm" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  <p>لا يوجد سجل مواعيد بعد</p>
+                </div>
+              )}
+
+              {/* Load more */}
+              {selectedDoctorTransactions.length > historyLimit && (
+                <button
+                  onClick={() => setHistoryLimit((prev) => prev + 20)}
+                  className="mt-3 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-300 text-sm hover:bg-white/10 transition"
+                >
+                  عرض المزيد ({selectedDoctorTransactions.length - historyLimit} متبقي)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )
