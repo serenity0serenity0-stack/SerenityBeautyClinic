@@ -2,8 +2,10 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useAuth } from '../../hooks/useAuth'
 import { motion, AnimatePresence } from 'framer-motion'
 import logo from '../../assets/serenity-logo.png'
+import { canAccess } from '../../lib/permissions'
 import {
   BarChart3,
   ShoppingCart,
@@ -22,6 +24,7 @@ interface SidebarLink {
   icon: React.ReactNode
   label: string
   href: string
+  key: string
 }
 
 interface SidebarProps {
@@ -34,22 +37,23 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }) => {
   const { t } = useTranslation()
   const { language } = useLanguage()
+  const { role, permissions } = useAuth()
   const navigate = useNavigate()
 
-  // Single clinic - all users (admin) see the same clinic management interface
+  // Cashiers only see the pages the admin granted them; admins see everything
   const links: SidebarLink[] = [
-    { icon: <Home size={20} />, label: t('navigation.dashboard'), href: '/dashboard' },
-    { icon: <ShoppingCart size={20} />, label: t('navigation.pos'), href: '/pos' },
-    { icon: <Users size={20} />, label: t('navigation.clients'), href: '/clients' },
-    { icon: <Calendar size={20} />, label: t('navigation.bookings'), href: '/bookings' },
-    { icon: <Sparkles size={20} />, label: t('navigation.services'), href: '/services' },
-    { icon: <Users size={20} />, label: t('navigation.staff'), href: '/staff' },
-    { icon: <FileText size={20} />, label: t('navigation.dailyLogs'), href: '/logs' },
-    { icon: <DollarSign size={20} />, label: t('navigation.expenses'), href: '/expenses' },
-    { icon: <Clock size={20} />, label: t('navigation.queue'), href: '/queue' },
-    { icon: <BarChart3 size={20} />, label: t('navigation.analytics'), href: '/analytics' },
-    { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings' },
-  ]
+    { icon: <Home size={20} />, label: t('navigation.dashboard'), href: '/dashboard', key: 'dashboard' },
+    { icon: <ShoppingCart size={20} />, label: t('navigation.pos'), href: '/pos', key: 'pos' },
+    { icon: <Users size={20} />, label: t('navigation.clients'), href: '/clients', key: 'clients' },
+    { icon: <Calendar size={20} />, label: t('navigation.bookings'), href: '/bookings', key: 'bookings' },
+    { icon: <Sparkles size={20} />, label: t('navigation.services'), href: '/services', key: 'services' },
+    { icon: <Users size={20} />, label: t('navigation.staff'), href: '/staff', key: 'staff' },
+    { icon: <FileText size={20} />, label: t('navigation.dailyLogs'), href: '/logs', key: 'logs' },
+    { icon: <DollarSign size={20} />, label: t('navigation.expenses'), href: '/expenses', key: 'expenses' },
+    { icon: <Clock size={20} />, label: t('navigation.queue'), href: '/queue', key: 'queue' },
+    { icon: <BarChart3 size={20} />, label: t('navigation.analytics'), href: '/analytics', key: 'analytics' },
+    { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings', key: 'settings' },
+  ].filter(link => canAccess(role, permissions, link.key))
 
   const handleNavigate = (path: string) => {
     navigate(path)

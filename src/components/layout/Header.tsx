@@ -20,6 +20,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
+  const roleLabel =
+    role === 'cashier'
+      ? (t('settings.role_cashier') || 'Cashier')
+      : (t('settings.role_admin') || 'Admin')
+
   const handleLogout = async () => {
     await signOut()
     setShowUserMenu(false)
@@ -116,9 +121,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 >
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-white text-sm font-medium">{user?.email}</p>
-                    <p className="text-gold-400 text-xs mt-1">
-                      {role === 'admin' ? 'Clinic Manager' : 'Clinic Doctor'}
-                    </p>
+                    <p className="text-gold-400 text-xs mt-1">{roleLabel}</p>
                   </div>
 
                   <motion.button

@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useTheme } from './hooks/useTheme'
 import { useLanguage } from './hooks/useLanguage'
 import { useAuth } from './hooks/useAuth'
+import { canAccess, firstAllowedPage, ROUTE_TO_PAGE } from './lib/permissions'
 
 // Pages
 import Login from './pages/Login'
@@ -23,11 +24,12 @@ import { QueueDisplay } from './pages/QueueDisplay'
 /**
  * ProtectedRoute Component
  * 
- * Single admin only - if admin is logged in, allow access
- * Otherwise redirect to login
+ * Requires login. Cashiers can only open pages they were granted by the admin.
+ * Admins can access everything.
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { loading, role } = useAuth()
+  const { loading, role, permissions } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -42,6 +44,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!role) {
     return <Navigate to="/login" replace />
+  }
+
+  // Enforce per-page permissions for cashiers
+  const required = ROUTE_TO_PAGE[location.pathname]
+  if (required && !canAccess(role, permissions, required)) {
+    const target = firstAllowedPage(role, permissions)
+    return <Navigate to={target} replace />
   }
 
   return <>{children}</>

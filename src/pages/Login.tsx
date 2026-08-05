@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
+import { firstAllowedPage } from '@/lib/permissions'
 import { motion } from 'framer-motion'
 import { Mail, Lock, LogIn } from 'lucide-react'
 import logo from '../assets/serenity-logo.png'
@@ -27,7 +28,7 @@ type LoginFormInputs = z.infer<typeof loginSchema>
  */
 export default function Login() {
   const navigate = useNavigate()
-  const { signIn, loading: authLoading, error: authError, role } = useAuth()
+  const { signIn, loading: authLoading, error: authError, role, permissions } = useAuth()
   const { t, i18n } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -43,7 +44,7 @@ export default function Login() {
 
   // Redirect if already logged in
   if (!authLoading && role) {
-    navigate('/dashboard', { replace: true })
+    navigate(firstAllowedPage(role, permissions), { replace: true })
     return null
   }
 

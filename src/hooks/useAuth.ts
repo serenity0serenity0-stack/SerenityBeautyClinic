@@ -1,27 +1,41 @@
 import { useEffect, useState, useCallback } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/db/supabase'
-
-export type UserRole = 'admin' | null
+import { UserRole, normalizePermissions } from '@/lib/permissions'
 
 export interface AuthUser {
   user: User | null
   session: Session | null
   role: UserRole
   clinicId: string | null
+  permissions: string[]
+  userName: string | null
   loading: boolean
   error: string | null
 }
 
+const initialState: AuthUser = {
+  user: null,
+  session: null,
+  role: null,
+  clinicId: null,
+  permissions: [],
+  userName: null,
+  loading: true,
+  error: null,
+}
+
+interface MyAuthInfo {
+  role?: string | null
+  name?: string | null
+  permissions?: unknown
+  clinic_id?: string | null
+  active?: boolean
+  email?: string | null
+}
+
 export function useAuth() {
-  const [state, setState] = useState<AuthUser>({
-    user: null,
-    session: null,
-    role: null,
-    clinicId: null,
-    loading: true,
-    error: null,
-  })
+  const [state, setState] = useState<AuthUser>(initialState)
 
   const checkIfAdmin = useCallback(async (userId: string): Promise<string | null> => {
     try {
@@ -35,20 +49,43 @@ export function useAuth() {
 
     const resolveUser = async (session: Session | null) => {
       if (!session) {
-        if (mounted) setState({ user: null, session: null, role: null, clinicId: null, loading: false, error: null })
+        if (mounted) setState({ ...initialState, loading: false })
         return
       }
 
       const userId = session.user.id
       const clinicId = await checkIfAdmin(userId)
 
-      if (clinicId) {
-        if (mounted) setState({ user: session.user, session, role: 'admin', clinicId, loading: false, error: null })
+      if (!clinicId) {
+        await supabase.auth.signOut()
+        if (mounted) setState({ ...initialState, loading: false, error: 'Not authorized' })
         return
       }
 
-      await supabase.auth.signOut()
-      if (mounted) setState({ user: null, session: null, role: null, clinicId: null, loading: false, error: 'Not authorized' })
+      // Fetch the user's role / permissions / name
+      let role: UserRole = null
+      let permissions: string[] = []
+      let userName: string | null = null
+      let active = true
+
+      try {
+        const { data } = await supabase.rpc('get_my_auth_info')
+        const info: MyAuthInfo | undefined = Array.isArray(data) ? data[0] : (data ?? undefined)
+        if (info) {
+          role = info.role === 'admin' || info.role === 'cashier' ? info.role : null
+          permissions = normalizePermissions(role, info.permissions)
+          userName = info.name || null
+          active = info.active !== false
+        }
+      } catch { /* keep defaults */ }
+
+      if (!role || !active) {
+        await supabase.auth.signOut()
+        if (mounted) setState({ ...initialState, loading: false, error: !role ? 'Not authorized' : 'Account disabled' })
+        return
+      }
+
+      if (mounted) setState({ user: session.user, session, role, clinicId, permissions, userName, loading: false, error: null })
     }
 
     // ✅ Step 1: Check existing session immediately
@@ -86,7 +123,7 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true }))
     await supabase.auth.signOut()
-    setState({ user: null, session: null, role: null, clinicId: null, loading: false, error: null })
+    setState({ ...initialState, loading: false })
     return { error: null }
   }, [])
 
