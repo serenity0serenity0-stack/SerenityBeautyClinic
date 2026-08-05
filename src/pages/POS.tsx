@@ -333,7 +333,7 @@ export const POS: React.FC = () => {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-hidden flex flex-col">
+    <div className="h-screen app-shell overflow-hidden flex flex-col">
       {/* Header */}
       <div className="glass-dark border-b border-white/10 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between z-20">
         <div>
@@ -361,7 +361,7 @@ export const POS: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-gold-400/10 to-yellow-500/10 border border-pink-500/30 rounded-lg"
+                className="flex items-center gap-3 p-3 bg-gradient-to-r from-pink-400/10 to-sky-blue/10 border border-pink-500/30 rounded-lg"
               >
                 <div className="flex-1">
                   <p className="text-white font-bold text-lg">{selectedClient.name}</p>
@@ -389,7 +389,7 @@ export const POS: React.FC = () => {
 
           {/* Services Grid */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
-            <h2 className="text-lg font-bold text-white sticky top-0 bg-gradient-to-b from-black to-transparent">
+            <h2 className="text-lg font-bold text-white sticky top-0 fade-top">
               📋 الخدمات
             </h2>
             
@@ -494,7 +494,7 @@ export const POS: React.FC = () => {
           className="w-full md:w-96 flex flex-col bg-gradient-to-br from-white/10 to-white/5 border-t md:border-t-0 md:border border-white/10 rounded-t-2xl md:rounded-lg p-4 md:p-6 space-y-4 overflow-hidden"
         >
           {/* Cart Header */}
-          <div className="flex items-center justify-between sticky top-0 bg-gradient-to-b from-black to-transparent -mx-4 md:-mx-6 px-4 md:px-6 py-2">
+          <div className="flex items-center justify-between sticky top-0 fade-top -mx-4 md:-mx-6 px-4 md:px-6 py-2">
             <h2 className="text-lg md:text-xl font-bold text-white">🛒 السلة</h2>
             <span className="text-sm font-semibold bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 px-3 py-1 rounded-full">
               {cart.length} عنصر
@@ -544,7 +544,7 @@ export const POS: React.FC = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="space-y-3 border-t border-white/10 pt-4 sticky bottom-0 bg-gradient-to-t from-black to-transparent -mx-4 md:-mx-6 px-4 md:px-6 py-4"
+              className="space-y-3 border-t border-white/10 pt-4 sticky bottom-0 fade-bottom -mx-4 md:-mx-6 px-4 md:px-6 py-4"
             >
               {/* Subtotal */}
               <div className="flex justify-between text-gray-400 text-sm">
@@ -611,7 +611,7 @@ export const POS: React.FC = () => {
                 disabled={isCheckingOut || !selectedClient || cart.length === 0}
                 whileHover={!isCheckingOut && selectedClient ? { scale: 1.02, y: -2 } : {}}
                 whileTap={!isCheckingOut && selectedClient ? { scale: 0.98 } : {}}
-                className="w-full p-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold text-base md:text-lg rounded-xl hover:shadow-2xl hover:shadow-pink-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition transform"
+                className="w-full p-4 bg-gradient-to-r from-pink-600 to-pink-700 text-white font-bold text-base md:text-lg rounded-xl hover:shadow-2xl hover:shadow-pink-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition transform"
               >
                 {isCheckingOut ? (
                   <span className="flex items-center justify-center gap-2">

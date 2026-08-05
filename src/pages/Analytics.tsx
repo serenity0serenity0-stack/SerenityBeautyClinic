@@ -189,7 +189,7 @@ export const Analytics: React.FC = () => {
                 border: '1px solid rgba(255,255,255,0.1)',
               }}
             />
-            <Line type="monotone" dataKey="total" stroke="#D4AF37" dot={false} />
+            <Line type="monotone" dataKey="total" stroke="#B794CE" dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </GlassCard>

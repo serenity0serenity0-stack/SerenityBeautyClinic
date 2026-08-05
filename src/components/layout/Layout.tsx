@@ -17,7 +17,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPath, onNavigat
   const activePath = currentPath || location.pathname
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-midnight via-[#0D1225] to-midnight dark:from-midnight dark:via-[#0D1225] dark:to-midnight">
+    <div className="min-h-screen app-shell">
       <Header onMenuClick={() => setSidebarOpen(true)} />
       
       {/* Mobile Sidebar */}

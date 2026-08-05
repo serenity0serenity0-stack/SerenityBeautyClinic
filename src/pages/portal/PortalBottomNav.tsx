@@ -23,7 +23,7 @@ const translations = {
   }
 }
 
-export function PortalBottomNav({ primaryColor = '#D4AF37' }: PortalBottomNavProps) {
+export function PortalBottomNav({ primaryColor = '#CDB4DB' }: PortalBottomNavProps) {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const location = useLocation()

@@ -867,7 +867,7 @@ export const Bookings: React.FC = () => {
                             key={client.id}
                             type="button"
                             onClick={() => selectClient(client)}
-                            whileHover={{ backgroundColor: '#D4AF37' }}
+                            whileHover={{ backgroundColor: '#8A5FB0' }}
                             className="w-full text-start px-4 py-3 text-white hover:bg-gradient-to-r from-pink-600 to-pink-700 hover:text-dark transition border-b border-gray-700 last:border-b-0 font-medium"
                           >
                             <div className="font-semibold text-base">{client.name}</div>
@@ -1069,7 +1069,7 @@ export const Bookings: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 shadow-2xl max-w-md w-full border border-white/10"
+              className="force-dark bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 shadow-2xl max-w-md w-full border border-white/10"
               role="dialog"
               aria-modal="true"
               aria-label="ساعات العمل"

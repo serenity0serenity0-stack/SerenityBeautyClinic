@@ -81,7 +81,7 @@ export function PortalLanding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-gold-400/20 border-t-gold-400 animate-spin mx-auto mb-4"></div>
           <p className="text-white/60">{t.loading}</p>
@@ -92,7 +92,7 @@ export function PortalLanding() {
 
   if (error || !settings) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center" dir={dir}>
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center" dir={dir}>
         <div className="text-center">
           <p className="text-red-400 mb-4">{error || t.unknownError}</p>
           <button
@@ -109,7 +109,7 @@ export function PortalLanding() {
   // Check if portal is inactive
   if (settings.is_active === false) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center" dir={dir}>
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center" dir={dir}>
         <div className="text-center">
           <p className="text-3xl text-red-400 font-bold">
             {t.portalInactive}
@@ -122,10 +122,10 @@ export function PortalLanding() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="force-dark min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{
-        backgroundColor: "#0A0F1E",
-        background: `radial-gradient(ellipse at center, #0A0F1E 0%, #000 100%)`,
+        backgroundColor: "#0F172A",
+        background: `radial-gradient(ellipse at center, #141D37 0%, #0F172A 100%)`,
       }}
       dir={dir}
     >
@@ -141,7 +141,7 @@ export function PortalLanding() {
               width: Math.random() * 100 + 50 + "px",
               height: Math.random() * 100 + 50 + "px",
               borderRadius: "50%",
-              backgroundColor: "#D4AF37",
+              backgroundColor: "#CDB4DB",
               opacity: 0.05,
               right: Math.random() * 100 + "%",
               top: Math.random() * 100 + "%",
@@ -174,7 +174,7 @@ export function PortalLanding() {
                 borderRadius: "50%",
                 objectFit: "cover",
                 margin: "0 auto",
-                border: "2px solid rgba(212, 175, 55, 0.4)"
+                border: "2px solid rgba(139, 92, 176, 0.45)"
               }}
             />
           </div>
@@ -184,7 +184,7 @@ export function PortalLanding() {
             className="text-center font-bold mb-4"
             style={{
               fontSize: "2rem",
-              color: "#D4AF37",
+              color: "#B794CE",
               fontFamily: "Cairo, sans-serif",
               fontWeight: 700
             }}
@@ -220,8 +220,8 @@ export function PortalLanding() {
               onClick={() => navigate(`/shop/${slug}/login`)}
               className="w-full transition hover:shadow-lg hover:scale-105 font-cairo"
               style={{
-                backgroundColor: "#D4AF37",
-                color: "#000",
+                backgroundColor: "#8A5FB0",
+                color: "#fff",
                 borderRadius: "12px",
                 padding: "14px",
                 fontSize: "1rem",
@@ -241,8 +241,8 @@ export function PortalLanding() {
               className="w-full transition hover:shadow-lg hover:scale-105 font-cairo"
               style={{
                 backgroundColor: "transparent",
-                color: "#D4AF37",
-                border: "2px solid #D4AF37",
+                color: "#B794CE",
+                border: "2px solid #B794CE",
                 borderRadius: "12px",
                 padding: "14px",
                 fontSize: "1rem",
@@ -252,7 +252,7 @@ export function PortalLanding() {
                 transition: "all 0.3s ease"
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(212, 175, 55, 0.1)"
+                e.currentTarget.style.backgroundColor = "rgba(139, 92, 176, 0.1)"
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent"

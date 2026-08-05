@@ -76,9 +76,9 @@ export const usePortalSettings = () => {
           is_active: false,
           portal_slug: slug,
           template_id: 1,
-          primary_color: '#E91E63',
-          secondary_color: '#C2185B',
-          accent_color: '#F06292',
+          primary_color: '#CDB4DB',
+          secondary_color: '#8A5FB0',
+          accent_color: '#FFC8DD',
           text_color: '#FFFFFF',
         })
         .select()

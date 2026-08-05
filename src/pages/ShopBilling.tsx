@@ -373,7 +373,7 @@ export const ShopBilling = () => {
                   labelStyle={{ color: '#fff' }}
                 />
                 <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.7)' }} />
-                <Bar dataKey='usage' fill='#D4AF37' name={t('shop.billing.usage_this_month')} />
+                <Bar dataKey='usage' fill='#B794CE' name={t('shop.billing.usage_this_month')} />
               </BarChart>
             </ResponsiveContainer>
           </div>

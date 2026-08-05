@@ -24,7 +24,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     <Component
       onClick={onClick}
       className={`${baseClasses} ${className}`}
-      whileHover={animated ? { y: -4, boxShadow: '0 20px 25px rgba(212, 175, 55, 0.15)' } : {}}
+      whileHover={animated ? { y: -4, boxShadow: '0 20px 25px rgba(139, 92, 176, 0.18)' } : {}}
       transition={animated ? { duration: 0.2 } : {}}
     >
       {children}

@@ -226,7 +226,7 @@ export function PortalLoginSecure() {
 
   if (settingsLoading || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-gold-400/20 border-t-gold-400 animate-spin mx-auto mb-4"></div>
           <p className="text-white/60">جاري التحميل...</p>
@@ -237,7 +237,7 @@ export function PortalLoginSecure() {
 
   if (!settings) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md text-center space-y-6">
           <div className="space-y-2">
             <div className="text-5xl">⚠️</div>

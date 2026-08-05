@@ -82,7 +82,7 @@ export default function Login() {
           className="absolute inset-0 opacity-5"
           style={{
             backgroundImage:
-              'linear-gradient(90deg, #EC4899 1px, transparent 1px), linear-gradient(0deg, #EC4899 1px, transparent 1px)',
+              'linear-gradient(90deg, rgba(205, 180, 219, 0.25) 1px, transparent 1px), linear-gradient(0deg, rgba(205, 180, 219, 0.25) 1px, transparent 1px)',
             backgroundSize: '50px 50px',
           }}
         />
@@ -214,11 +214,11 @@ export default function Login() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
-              whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(233, 30, 99, 0.3)' }}
+              whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(139, 92, 176, 0.35)' }}
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={isSubmitting || authLoading}
-              className="w-full bg-gradient-to-r from-hot-pink via-rose-pink to-deep-pink hover:from-rose-pink hover:via-deep-pink hover:to-deep-pink text-white font-bold py-4 rounded-xl transition duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-hot-pink/30 border border-hot-pink/50"
+              className="w-full bg-gradient-to-r from-pink-600 via-pink-700 to-pink-800 hover:from-pink-700 hover:via-pink-800 hover:to-pink-800 text-white font-bold py-4 rounded-xl transition duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/30 border border-pink-500/50"
             >
               {isSubmitting || authLoading ? (
                 <>

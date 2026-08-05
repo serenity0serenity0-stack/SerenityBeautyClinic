@@ -11,17 +11,28 @@
 }
 
 :root {
-  --primary: #E91E63;           /* Hot Pink - Main Color */
-  --primary-dark: #C2185B;      /* Deep Pink */
-  --primary-light: #F06292;     /* Light Pink */
-  --secondary: #CE93D8;         /* Purple Accent */
-  --gold: #D4AF37;
-  --focus-ring: #F0C33E;
-  --dark-bg: #0A0F1E;
-  --dark-secondary: #111827;
-  --light-bg: #FDF2F8;          /* Soft pink background */
-  --glass-light: rgba(255, 255, 255, 0.1);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Serenity palette */
+  --primary: #CDB4DB;           /* Lavender */
+  --primary-dark: #8A5FB0;      /* Deep lavender (contrast accents) */
+  --primary-light: #DCCBED;     /* Light lavender */
+  --secondary: #FFC8DD;         /* Soft Pink */
+  --accent-rose: #FFAFCC;       /* Rose Pink */
+  --accent-sky: #BDE0FE;        /* Light Sky Blue */
+  --accent-blue: #A2D2FF;       /* Soft Blue */
+  --gold: #B794CE;
+  --focus-ring: #8A5FB0;
+  /* Dark surfaces */
+  --dark-bg: #0F172A;
+  --dark-secondary: #1E293B;
+  --dark-card: #1F2937;
+  --dark-border: #334155;
+  /* Light surfaces */
+  --light-bg: #FBFAFC;
+  --light-card: #FFFFFF;
+  /* App shell / fade helpers */
+  --app-fade: #0F172A;
+  --glass-light: rgba(255, 255, 255, 0.08);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 html,
@@ -44,25 +55,27 @@ html[dir='en'] {
 /* ===== DARK MODE (DEFAULT) ===== */
 html.dark,
 html:not(.light) {
-  background-color: #0A0F1E;
+  background-color: #0F172A;
   color-scheme: dark;
+  --app-fade: #0F172A;
 }
 
 html.dark body,
 html:not(.light) body {
-  background-color: #0A0F1E;
-  color: #d1d5db;
+  background-color: #0F172A;
+  color: #CBD5E1;
 }
 
 /* ===== LIGHT MODE ===== */
 html.light {
-  background-color: #f7f3f6;
+  background-color: #FBFAFC;
   color: #111827;
   color-scheme: light;
+  --app-fade: #FBFAFC;
 }
 
 html.light body {
-  background-color: #f7f3f6;
+  background-color: #FBFAFC;
   color: #111827;
 }
 
@@ -110,15 +123,15 @@ html.light .text-gray-500 {
 }
 
 html.light .text-pink-400 {
-  color: #E91E63 !important;
+  color: #8A5FB0 !important;
 }
 
 html.light .text-pink-300 {
-  color: #BE185D !important;
+  color: #9A6FC0 !important;
 }
 
 html.light .text-pink-500 {
-  color: #C2185B !important;
+  color: #744D99 !important;
 }
 
 /* Pastel "-300" shades are unreadable on light backgrounds; remap to darker tones. */
@@ -170,45 +183,59 @@ html.light .text-slate-400 {
   color: #94a3b8 !important;
 }
 
-/* Pink gradient buttons: in light mode use soft pink stops so the remapped
-   dark text/pink text on top stays readable. */
+/* Pink gradient buttons: in light mode use soft lavender stops so the
+   remapped dark text on top stays readable. */
 html.light [class*='from-pink-'],
 html.light [class*='from-hot-pink'] {
-  --tw-gradient-from: #FCE7F3 !important;
+  --tw-gradient-from: #F4ECFA !important;
 }
 
 html.light [class*='to-pink-'],
 html.light [class*='to-deep-pink'] {
-  --tw-gradient-to: #FBCFE8 !important;
+  --tw-gradient-to: #E9DDF5 !important;
+}
+
+/* Pink gradient buttons with dark text: in dark mode use pastel lavender
+   stops so `text-black` / `text-dark` stays readable (matches the palette). */
+[class*='from-pink-'][class*='text-black'],
+[class*='from-pink-'][class*='text-dark'] {
+  --tw-gradient-from: #DCCBED !important;
+  --tw-gradient-to: #CDB4DB !important;
+}
+
+/* Translucent "chip" gradients that pair a lavender tint with pink accent text */
+[class*='from-pink-'][class*='text-pink-'] {
+  --tw-gradient-from: rgba(139, 92, 176, 0.45) !important;
+  --tw-gradient-to: rgba(139, 92, 176, 0.12) !important;
 }
 
 html.light [class*='bg-gray-600/'] {
   background-color: rgba(107, 114, 128, 0.15) !important;
 }
 
-/* ===== GOLD COLORS - LIGHT MODE ===== */
+/* ===== GOLD (LAVENDER) COLORS - LIGHT MODE ===== */
 html.light [class*='text-gold-400'] {
-  color: #B45309 !important;
+  color: #744D99 !important;
 }
 
 html.light [class*='text-gold-500'] {
-  color: #92400E !important;
+  color: #6F5290 !important;
 }
 
 html.light [class*='text-gold-300'] {
-  color: #D97706 !important;
+  color: #8A5FB0 !important;
 }
 
 html.light [class*='bg-gold-400/'] {
-  background-color: rgba(212, 175, 55, 0.25) !important;
+  background-color: rgba(138, 95, 176, 0.15) !important;
 }
 
 html.light [class*='border-gold-400/'] {
-  border-color: rgba(146, 64, 14, 0.35) !important;
+  border-color: rgba(138, 95, 176, 0.35) !important;
 }
 
 html.light [class*='border-gold-500/'] {
-  border-color: rgba(146, 64, 14, 0.45) !important;
+  border-color: rgba(111, 82, 144, 0.45) !important;
 }
 
 /* ===== BACKGROUNDS - LIGHT MODE ===== */
@@ -238,15 +265,19 @@ html.light [class*='bg-black/'] {
 }
 
 html.light .bg-dark-bg {
-  background-color: #f7f3f6 !important;
+  background-color: #FBFAFC !important;
 }
 
 html.light .bg-pink-400 {
-  background-color: #F06292 !important;
+  background-color: #A983C9 !important;
+}
+
+html.light .bg-pink-500 {
+  background-color: #8A5FB0 !important;
 }
 
 html.light [class*='bg-pink-400/'] {
-  background-color: rgba(224, 30, 99, 0.18) !important;
+  background-color: rgba(138, 95, 176, 0.15) !important;
 }
 
 /* ===== BORDERS - LIGHT MODE ===== */
@@ -271,11 +302,11 @@ html.light .border-gray-300 {
 }
 
 html.light .border-pink-400 {
-  border-color: #E91E63 !important;
+  border-color: #8A5FB0 !important;
 }
 
 html.light [class*='border-pink-400/'] {
-  border-color: rgba(233, 30, 99, 0.25) !important;
+  border-color: rgba(138, 95, 176, 0.3) !important;
 }
 
 /* ===== GLASSMORPHISM - LIGHT MODE ===== */
@@ -320,7 +351,7 @@ html.light nav a {
 }
 
 html.light nav a:hover {
-  color: #E91E63 !important;
+  color: #8A5FB0 !important;
 }
 
 /* ===== INPUT FIELDS - DARK MODE ===== */
@@ -345,7 +376,7 @@ input:focus,
 textarea:focus,
 select:focus {
   background-color: rgba(255, 255, 255, 0.12) !important;
-  border-color: #E91E63 !important;
+  border-color: #B794CE !important;
   outline: none !important;
 }
 
@@ -376,7 +407,7 @@ html.light input:focus,
 html.light textarea:focus,
 html.light select:focus {
   background-color: #f9fafb !important;
-  border-color: #E91E63 !important;
+  border-color: #8A5FB0 !important;
   outline: none !important;
 }
 
@@ -387,9 +418,9 @@ html.light select option {
 
 /* ===== BADGES & TAGS - LIGHT MODE ===== */
 html.light .badge-gold {
-  background-color: rgba(212, 175, 55, 0.15) !important;
-  color: #92400E !important;
-  border-color: rgba(212, 175, 55, 0.4) !important;
+  background-color: rgba(138, 95, 176, 0.12) !important;
+  color: #6F5290 !important;
+  border-color: rgba(138, 95, 176, 0.35) !important;
 }
 
 html.light .badge-success {
@@ -424,16 +455,16 @@ html.light ::-webkit-scrollbar {
 }
 
 html.light ::-webkit-scrollbar-track {
-  background-color: #f7f3f6 !important;
+  background-color: #FBFAFC !important;
 }
 
 html.light ::-webkit-scrollbar-thumb {
-  background-color: #E91E63 !important;
+  background-color: #A983C9 !important;
   border-radius: 4px;
 }
 
 html.light ::-webkit-scrollbar-thumb:hover {
-  background-color: #C2185B !important;
+  background-color: #8A5FB0 !important;
 }
 
 /* ===== MODAL & OVERLAY - LIGHT MODE ===== */
@@ -441,19 +472,19 @@ html.light .modal {
   background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
-/* ===== FORCED DARK SURFACES (Login, Queue Display) =====
+/* ===== FORCED DARK SURFACES (Login, Queue Display, Portal) =====
    These pages are intentionally always-dark. Guard them against the
    light-mode text remapping so text never becomes unreadable. */
 html.light .force-dark {
-  background-color: #0A0F1E !important;
-  color: #d1d5db !important;
+  background-color: #0F172A !important;
+  color: #CBD5E1 !important;
 }
 
 html.light .force-dark p,
 html.light .force-dark span,
 html.light .force-dark div,
 html.light .force-dark li {
-  color: #d1d5db !important;
+  color: #CBD5E1 !important;
 }
 
 html.light .force-dark h1,
@@ -474,19 +505,19 @@ html.light .force-dark .text-gray-100 {
 }
 
 html.light .force-dark .text-gray-200 {
-  color: #e5e7eb !important;
+  color: #e2e8f0 !important;
 }
 
 html.light .force-dark .text-gray-300 {
-  color: #d1d5db !important;
+  color: #cbd5e1 !important;
 }
 
 html.light .force-dark .text-gray-400 {
-  color: #9ca3af !important;
+  color: #94a3b8 !important;
 }
 
 html.light .force-dark .text-gray-500 {
-  color: #6b7280 !important;
+  color: #64748b !important;
 }
 
 html.light .force-dark .text-slate-300 {
@@ -527,14 +558,43 @@ html.light .recharts-default-tooltip .recharts-tooltip-item {
 
 /* ===== ACCESSIBILITY: VISIBLE FOCUS STATES ===== */
 :focus-visible {
-  outline: 2px solid var(--focus-ring, #F0C33E);
+  outline: 2px solid var(--focus-ring, #8A5FB0);
   outline-offset: 2px;
 }
 
 /* Default dark mode styles */
 body {
-  background-color: #0A0F1E;
-  color: #d1d5db;
+  background-color: #0F172A;
+  color: #CBD5E1;
+}
+
+/* App shell: premium subtle palette gradient (lavender + sky glows).
+   Used by Layout, POS and the loading screen so both themes share one bg. */
+.app-shell {
+  background-color: var(--dark-bg);
+  background-image:
+    radial-gradient(1100px 480px at 50% -8%, rgba(205, 180, 219, 0.16), transparent 60%),
+    radial-gradient(900px 420px at 100% 100%, rgba(162, 210, 255, 0.10), transparent 60%),
+    radial-gradient(800px 380px at 0% 100%, rgba(255, 200, 221, 0.08), transparent 60%),
+    linear-gradient(180deg, #141D37 0%, var(--dark-bg) 45%);
+}
+
+html.light .app-shell {
+  background-color: var(--light-bg);
+  background-image:
+    radial-gradient(1100px 480px at 50% -8%, rgba(205, 180, 219, 0.30), transparent 60%),
+    radial-gradient(900px 420px at 100% 100%, rgba(162, 210, 255, 0.25), transparent 60%),
+    radial-gradient(800px 380px at 0% 100%, rgba(255, 200, 221, 0.22), transparent 60%),
+    linear-gradient(180deg, #FFFFFF 0%, var(--light-bg) 45%);
+}
+
+/* Sticky fade overlays (POS lists) that match the page background in both themes */
+.fade-top {
+  background: linear-gradient(180deg, var(--app-fade) 0%, transparent 100%);
+}
+
+.fade-bottom {
+  background: linear-gradient(0deg, var(--app-fade) 0%, transparent 100%);
 }
 
 /* Glassmorphism utilities */
@@ -572,14 +632,14 @@ input::placeholder {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--focus-ring, #F0C33E) !important;
+  outline: 2px solid var(--focus-ring, #8A5FB0) !important;
   outline-offset: 1px !important;
 }
 
 html.light input:focus-visible,
 html.light select:focus-visible,
 html.light textarea:focus-visible {
-  outline: 2px solid var(--focus-ring, #F0C33E) !important;
+  outline: 2px solid var(--focus-ring, #8A5FB0) !important;
   outline-offset: 1px !important;
 }
 

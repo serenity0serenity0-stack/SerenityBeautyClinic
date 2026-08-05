@@ -6,8 +6,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0A0F1E",
-  "theme_color": "#D4AF37",
+  "background_color": "#0F172A",
+  "theme_color": "#B794CE",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -25,7 +25,7 @@
   "categories": ["business", "productivity"],
   "screenshots": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%230A0F1E' width='540' height='720'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='60' fill='%23D4AF37' font-family='Arial'>💈 POS System</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%230F172A' width='540' height='720'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='60' fill='%23B794CE' font-family='Arial'>💈 POS System</text></svg>",
       "sizes": "540x720",
       "type": "image/svg+xml",
       "form_factor": "narrow"

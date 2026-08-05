@@ -202,7 +202,7 @@ export function PortalRegister() {
 
   if (settingsLoading || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-gold-400/20 border-t-gold-400 animate-spin mx-auto mb-4"></div>
           <p className="text-white/60">{t.loading}</p>
@@ -213,7 +213,7 @@ export function PortalRegister() {
 
   if (!settings) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center" dir={dir}>
+      <div className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center" dir={dir}>
         <div className="text-center">
           <p className="text-red-400">{t.portalUnavailable}</p>
           <button

@@ -33,7 +33,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-900 via-pink-900 to-rose-900 flex items-center justify-center">
+      <div className="min-h-screen app-shell flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-hot-pink/20 border-t-hot-pink animate-spin mx-auto mb-4"></div>
           <p className="text-white/60">جاري التحميل...</p>

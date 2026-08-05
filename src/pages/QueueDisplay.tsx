@@ -24,7 +24,7 @@ export const QueueDisplay: React.FC = () => {
 
   if (displayMode === 'large') {
     return (
-      <div className="force-dark w-full h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center p-4">
+      <div className="force-dark w-full h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
