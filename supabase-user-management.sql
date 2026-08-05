@@ -59,7 +59,7 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT a.role, a.name, a.permissions, a.clinic_id, a.active, a.email
+  SELECT a.role::text, a.name, a.permissions, a.clinic_id, a.active, a.email::text
   FROM public.admin_auth a
   WHERE a.auth_user_id = auth.uid();
 END;
@@ -107,7 +107,7 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT a.id, a.email, a.name, a.role, a.active, a.permissions, a.password, a.auth_user_id, a.created_at
+  SELECT a.id, a.email::text, a.name, a.role::text, a.active, a.permissions, a.password, a.auth_user_id, a.created_at
   FROM public.admin_auth a
   WHERE a.clinic_id = v_clinic_id
   ORDER BY a.role = 'admin' DESC, a.created_at ASC;
