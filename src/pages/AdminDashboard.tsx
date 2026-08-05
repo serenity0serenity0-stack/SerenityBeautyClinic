@@ -196,10 +196,10 @@ export const AdminDashboard = () => {
           <table className='w-full'>
             <thead>
               <tr className='border-b border-white/10 bg-white/5'>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>{t('common.name')}</th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>{t('common.email')}</th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>{t('admin.shops.subscription_status')}</th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>{t('common.date')}</th>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>{t('common.name')}</th>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>{t('common.email')}</th>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>{t('admin.shops.subscription_status')}</th>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>{t('common.date')}</th>
               </tr>
             </thead>
             <tbody>

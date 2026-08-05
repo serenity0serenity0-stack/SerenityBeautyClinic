@@ -242,7 +242,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
             <div style={{ marginBottom: '6px', fontSize: '11px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>{barber_name}</span>
-                <span style={{ fontWeight: 'bold' }}>الموظف :</span>
+                <span style={{ fontWeight: 'bold' }}>الطبيب :</span>
               </div>
             </div>
           </>

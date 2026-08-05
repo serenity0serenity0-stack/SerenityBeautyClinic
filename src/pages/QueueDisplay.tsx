@@ -10,6 +10,7 @@ import {
 
 } from 'lucide-react'
 import { useQueueStatus } from '../db/hooks/useQueueStatus'
+import logo from '../assets/serenity-logo.png'
 
 export const QueueDisplay: React.FC = () => {
   const { t } = useTranslation()
@@ -23,7 +24,7 @@ export const QueueDisplay: React.FC = () => {
 
   if (displayMode === 'large') {
     return (
-      <div className="w-full h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center p-4">
+      <div className="force-dark w-full h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -38,6 +39,11 @@ export const QueueDisplay: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="text-center mb-12"
             >
+              <img
+                src={logo}
+                alt={t('common.appName')}
+                className="w-24 h-24 sm:w-28 sm:h-28 object-contain rounded-full mx-auto mb-6"
+              />
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
                 {t('bookings:queueAhead') || 'أمامك في الدور'}
               </h1>
@@ -218,7 +224,7 @@ export const QueueDisplay: React.FC = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 rounded-lg border border-slate-700 p-4 shadow-lg"
+        className="force-dark bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 rounded-lg border border-slate-700 p-4 shadow-lg"
       >
         <div className="grid grid-cols-3 gap-3">
           {/* Queue Position */}

@@ -52,6 +52,7 @@
     "password": "Password",
     "demoCredentials": "Demo Credentials:",
     "logout": "Logout",
+    "account": "Account",
     "allRightsReserved": "All rights reserved.",
     "days": "Days",
     "info": "Info",
@@ -61,7 +62,7 @@
     "dashboard": "Dashboard",
     "pos": "Cashier",
     "clients": "Clients",
-    "staff": "Staff",
+    "staff": "Doctors",
     "bookings": "Bookings",
     "queue": "Queue Status",
     "dailyLogs": "Daily Logs",
@@ -71,14 +72,14 @@
     "settings": "Settings"
   },
   "pages": {
-    "staff_title": "Staff",
-    "staff_count": "Number of Staff",
+    "staff_title": "Doctors",
+    "staff_count": "Number of Doctors",
     "monthly_revenue": "Monthly Revenue Total",
-    "staff_stats": "Staff Statistics",
+    "staff_stats": "Doctors Statistics",
     "total_clients": "Total Clients",
-    "staff_phone": "Staff Phone",
-    "staff_email": "Staff Email",
-    "staff_earnings": "Staff Earnings"
+    "staff_phone": "Doctor Phone",
+    "staff_email": "Doctor Email",
+    "staff_earnings": "Doctor Earnings"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -139,7 +140,7 @@
     "discount_applied": "Discount applied successfully",
     "product_added": "Service added",
     "product_removed": "Service removed",
-    "barber": "Beauty Specialist",
+    "barber": "Doctor",
     "vip_badge_earned": "VIP Status Reached!"
   },
   "clients": {
@@ -237,8 +238,8 @@
     "vip_threshold": "VIP Threshold",
     "by_visits": "By Visits",
     "by_amount": "By Amount Spent",
-    "staff_management": "Staff Management",
-    "add_staff": "Add Staff Member",
+    "staff_management": "Doctor Management",
+    "add_staff": "Add Doctor",
     "data_management": "Data Management",
     "export_data": "Export Data",
     "import_data": "Import Data",
@@ -284,7 +285,7 @@
     "delete_booking": "Delete Booking",
     "booking_date": "Booking Date",
     "booking_time": "Booking Time",
-    "barber": "Beauty Specialist",
+    "barber": "Doctor",
     "service": "Service",
     "duration": "Duration",
     "status": "Status",
@@ -309,7 +310,7 @@
     "visit_us_again": "We look forward to seeing you again",
     "vip_client": "VIP Client",
     "payment_method": "Payment Method",
-    "barber": "Beauty Specialist",
+    "barber": "Doctor",
     "date_time": "Date & Time"
   },
 

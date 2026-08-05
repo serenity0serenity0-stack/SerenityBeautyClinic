@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { usePortalSettingsWithShop } from '@/hooks/usePortalSettingsWithShop'
+import logo from '../../assets/serenity-logo.png'
 
 type Language = 'ar' | 'en'
 
@@ -162,17 +163,20 @@ export function PortalLanding() {
             boxShadow: "0 25px 50px rgba(0, 0, 0, 0.5)"
           }}
         >
-          {/* Scissors Icon */}
+          {/* Logo */}
           <div className="text-center mb-6">
-            <div
+            <img
+              src={logo}
+              alt="Serenity Beauty Clinic"
               style={{
-                fontSize: "48px",
-                color: "#D4AF37",
-                marginBottom: "16px"
+                width: "96px",
+                height: "96px",
+                borderRadius: "50%",
+                objectFit: "cover",
+                margin: "0 auto",
+                border: "2px solid rgba(212, 175, 55, 0.4)"
               }}
-            >
-              ✂️
-            </div>
+            />
           </div>
 
           {/* Shop Name */}

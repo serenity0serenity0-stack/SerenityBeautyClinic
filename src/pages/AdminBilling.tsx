@@ -199,22 +199,22 @@ export const AdminBilling = () => {
           <table className='w-full'>
             <thead>
               <tr className='border-b border-white/10 bg-white/5'>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>
                   {t('admin.billing.shop_name')}
                 </th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>
                   {t('common.email')}
                 </th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>
                   {t('admin.billing.plan')}
                 </th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>
                   {t('admin.billing.pricing_type')}
                 </th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>
                   {t('admin.billing.usage_this_month')}
                 </th>
-                <th className='px-6 py-4 text-left text-sm font-semibold text-slate-200'>
+                <th className='px-6 py-4 text-sm font-semibold text-slate-200'>
                   {t('admin.billing.amount_due')}
                 </th>
               </tr>

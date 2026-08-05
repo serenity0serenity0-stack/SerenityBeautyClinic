@@ -52,6 +52,7 @@
     "password": "كلمة المرور",
     "demoCredentials": "بيانات غير حقيقية للاختبار:",
     "logout": "تسجيل الخروج",
+    "account": "الحساب",
     "allRightsReserved": "جميع الحقوق محفوظة.",
     "days": "أيام",
     "info": "معلومات",
@@ -61,7 +62,7 @@
     "dashboard": "لوحة التحكم",
     "pos": "الكاشير",
     "clients": "العملاء",
-    "staff": "الموظفين",
+    "staff": "الأطباء",
     "bookings": "الحجوزات",
     "queue": "حالة الانتظار",
     "dailyLogs": "السجلات اليومية",
@@ -129,7 +130,7 @@
     "discount_applied": "تم تطبيق خصم بنجاح",
     "product_added": "تمت إضافة الخدمة",
     "product_removed": "تم إزالة الخدمة",
-    "barber": "خبيرة التجميل",
+    "barber": "الطبيب",
     "vip_badge_earned": "وصلتِ لحالة عميلة مميزة!"
   },
   "clients": {
@@ -226,8 +227,8 @@
     "vip_threshold": "حد VIP",
     "by_visits": "عدد الزيارات",
     "by_amount": "المبلغ المنفق",
-    "staff_management": "إدارة الموظفين",
-    "add_staff": "إضافة موظف جديد",
+    "staff_management": "إدارة الأطباء",
+    "add_staff": "إضافة طبيب جديد",
     "data_management": "إدارة البيانات",
     "export_data": "تصدير البيانات",
     "import_data": "استيراد البيانات",
@@ -273,7 +274,7 @@
     "delete_booking": "حذف الحجز",
     "booking_date": "تاريخ الحجز",
     "booking_time": "وقت الحجز",
-    "barber": "الحلاق",
+    "barber": "الطبيب",
     "service": "الخدمة",
     "duration": "المدة",
     "status": "الحالة",
@@ -297,7 +298,7 @@
     "visit_us_again": "نتشرف بزيارتك دايماً",
     "vip_client": "عميل مميز",
     "payment_method": "طريقة الدفع",
-    "barber": "الحلاق",
+    "barber": "الطبيب",
     "date_time": "التاريخ والوقت"
   },
 
@@ -310,14 +311,14 @@
   },
 
   "pages": {
-    "staff_title": "الموظفين",
-    "staff_count": "عدد الموظفين",
+    "staff_title": "الأطباء",
+    "staff_count": "عدد الأطباء",
     "monthly_revenue": "إجمالي الأرباح هذا الشهر",
-    "staff_stats": "إحصائيات الموظفين",
+    "staff_stats": "إحصائيات الأطباء",
     "total_clients": "إجمالي العملاء",
     "month_revenue": "أرباح الشهر",
-    "add_staff": "إضافة موظف جديد",
-    "staff_name": "اسم الموظف",
+    "add_staff": "إضافة طبيب جديد",
+    "staff_name": "اسم الطبيب",
     "staff_phone": "التليفون"
   }
 }

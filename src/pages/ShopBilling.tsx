@@ -248,7 +248,7 @@ export const ShopBilling = () => {
               {t('shop.billing.subscription_end_date')}:{' '}
               {new Date(shopData.subscription_end_date).toLocaleDateString()}
               {daysLeft && daysLeft > 0 && (
-                <span className='ml-2 text-slate-400'>({daysLeft} {t('shop.billing.days_left')})</span>
+                <span className='ms-2 text-slate-400'>({daysLeft} {t('shop.billing.days_left')})</span>
               )}
             </p>
           )}

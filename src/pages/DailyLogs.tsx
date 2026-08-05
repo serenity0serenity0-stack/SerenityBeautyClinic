@@ -174,12 +174,14 @@ export const DailyLogs: React.FC = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => openEditModal(tx, 'transaction')}
+                        aria-label={t('common.edit')}
                         className="p-2 hover:bg-blue-500/10 rounded transition"
                       >
                         <Edit2 size={18} className="text-blue-400" />
                       </button>
                       <button 
                         onClick={() => tx.id && handleDeleteTransaction(tx.id)}
+                        aria-label={t('common.delete')}
                         className="p-2 hover:bg-red-500/10 rounded transition"
                       >
                         <Trash2 size={18} className="text-red-400" />
@@ -241,12 +243,14 @@ export const DailyLogs: React.FC = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => openEditModal(visit, 'visit')}
+                        aria-label={t('common.edit')}
                         className="p-2 hover:bg-blue-500/10 rounded transition"
                       >
                         <Edit2 size={18} className="text-blue-400" />
                       </button>
                       <button 
                         onClick={() => visit.id && handleDeleteVisitLog(visit.id)}
+                        aria-label={t('common.delete')}
                         className="p-2 hover:bg-red-500/10 rounded transition"
                       >
                         <Trash2 size={18} className="text-red-400" />

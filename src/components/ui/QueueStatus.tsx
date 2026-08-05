@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Clock, Users, AlertCircle, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useBookings } from '../../db/hooks/useBookings'
 import { getEgyptDateString } from '../../utils/egyptTime'
+import { Booking } from '../../db/supabase'
 
 interface QueueInfo {
   peopleAhead: number
@@ -14,17 +15,15 @@ interface QueueInfo {
   isWaiting: boolean
 }
 
-export const QueueStatus: React.FC = () => {
+interface QueueStatusProps {
+  bookings?: Booking[]
+}
+
+export const QueueStatus: React.FC<QueueStatusProps> = ({ bookings: propBookings }) => {
   const { t } = useTranslation()
-  const { bookings } = useBookings()
-  const [queueInfo, setQueueInfo] = useState<QueueInfo>({
-    peopleAhead: 0,
-    waitingMinutes: 0,
-    currentTime: '',
-    estimatedTime: '',
-    isWaiting: false,
-  })
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const { bookings: hookBookings } = useBookings()
+  const bookings = propBookings || hookBookings
+  const [currentTime, setCurrentTime] = useState(() => new Date())
 
   // Update current time every second for real-time display
   useEffect(() => {
@@ -34,96 +33,92 @@ export const QueueStatus: React.FC = () => {
     return () => clearInterval(interval)
   }, [])
 
-  // Calculate queue status in real-time
-  useEffect(() => {
-    const calculateQueue = () => {
-      try {
-        const today = getEgyptDateString()
-        
-        // Get all pending and ongoing bookings for today, sorted by time
-        const todayBookings = bookings
-          .filter((b) => {
-            const booking_date = new Date(b.booking_time).toLocaleDateString('en-CA')
-            const todayDate = new Date(today).toLocaleDateString('en-CA')
-            return (
-              booking_date === todayDate &&
-              (b.status === 'pending' || b.status === 'ongoing')
-            )
-          })
-          .sort((a, b) => new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime())
-
-        if (todayBookings.length === 0) {
-          setQueueInfo({
-            peopleAhead: 0,
-            waitingMinutes: 0,
-            currentTime: currentTime.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true,
-            }),
-            estimatedTime: currentTime.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true,
-            }),
-            isWaiting: false,
-          })
-          return
-        }
-
-        // Calculate wait time based on bookings ahead
-        let totalWaitMinutes = 0
-        let peopleAhead = 0
-
-        // Add buffer for bookings that are still ongoing or starting soon
-        todayBookings.forEach((booking) => {
-          const bookingStartTime = new Date(booking.booking_time)
-          const duration = booking.duration || 30 // default 30 minutes if not specified
-
-          // Only count bookings that haven't finished yet
-          if (bookingStartTime.getTime() > currentTime.getTime()) {
-            peopleAhead++
-            totalWaitMinutes += duration
-          } else if (
-            booking.status === 'ongoing' &&
-            bookingStartTime.getTime() + duration * 60000 > currentTime.getTime()
-          ) {
-            // Current booking is still ongoing, add remaining time
-            const remainingTime = Math.ceil(
-              (bookingStartTime.getTime() + duration * 60000 - currentTime.getTime()) /
-                60000
-            )
-            totalWaitMinutes += remainingTime
-          }
-        })
-
-        // Add total wait time to current time to get estimated completion
-        const finalEstimatedTime = new Date(
-          currentTime.getTime() + totalWaitMinutes * 60000
+  // Today's pending/ongoing bookings, pre-sorted once per bookings change
+  const todayBookings = useMemo(() => {
+    const today = getEgyptDateString()
+    const todayDate = new Date(today).toLocaleDateString('en-CA')
+    return bookings
+      .filter((b) => {
+        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-CA')
+        return (
+          bookingDate === todayDate &&
+          (b.status === 'pending' || b.status === 'ongoing')
         )
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime()
+      )
+  }, [bookings])
 
-        setQueueInfo({
-          peopleAhead,
-          waitingMinutes: Math.max(0, totalWaitMinutes),
-          currentTime: currentTime.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-          }),
-          estimatedTime: finalEstimatedTime.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',            hour12: true,          }),
-          isWaiting: peopleAhead > 0,
-        })
-      } catch (error) {
-        console.error('Error calculating queue:', error)
+  // Queue status computed in real-time from the pre-sorted list (O(n) per tick)
+  const queueInfo = useMemo<QueueInfo>(() => {
+    if (todayBookings.length === 0) {
+      return {
+        peopleAhead: 0,
+        waitingMinutes: 0,
+        currentTime: currentTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        }),
+        estimatedTime: currentTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }),
+        isWaiting: false,
       }
     }
 
-    calculateQueue()
-  }, [bookings, currentTime])
+    // Calculate wait time based on bookings ahead
+    let totalWaitMinutes = 0
+    let peopleAhead = 0
+
+    todayBookings.forEach((booking) => {
+      const bookingStartTime = new Date(booking.booking_time)
+      const duration = booking.duration || 30 // default 30 minutes if not specified
+
+      // Only count bookings that haven't finished yet
+      if (bookingStartTime.getTime() > currentTime.getTime()) {
+        peopleAhead++
+        totalWaitMinutes += duration
+      } else if (
+        booking.status === 'ongoing' &&
+        bookingStartTime.getTime() + duration * 60000 > currentTime.getTime()
+      ) {
+        // Current booking is still ongoing, add remaining time
+        const remainingTime = Math.ceil(
+          (bookingStartTime.getTime() + duration * 60000 - currentTime.getTime()) /
+            60000
+        )
+        totalWaitMinutes += remainingTime
+      }
+    })
+
+    // Add total wait time to current time to get estimated completion
+    const finalEstimatedTime = new Date(
+      currentTime.getTime() + totalWaitMinutes * 60000
+    )
+
+    return {
+      peopleAhead,
+      waitingMinutes: Math.max(0, totalWaitMinutes),
+      currentTime: currentTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      }),
+      estimatedTime: finalEstimatedTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      isWaiting: peopleAhead > 0,
+    }
+  }, [todayBookings, currentTime])
 
   return (
     <motion.div
@@ -133,7 +128,7 @@ export const QueueStatus: React.FC = () => {
       className="w-full"
     >
       {/* Main Queue Status Card */}
-      <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 rounded-xl border border-slate-700 p-6 shadow-2xl">
+      <div className="force-dark bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 rounded-xl border border-slate-700 p-6 shadow-2xl">
         {/* Header Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* People Ahead */}
@@ -235,36 +230,38 @@ export const QueueStatus: React.FC = () => {
         </div>
 
         {/* Status Alert */}
-        {queueInfo.isWaiting && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 bg-blue-900/50 border border-blue-500/50 rounded-lg flex items-start gap-3"
-          >
-            <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-200">
-              {t('queueMessage') ||
-                `هناك ${queueInfo.peopleAhead} أشخاص أمامك. الوقت المتوقع للانتظار حوالي ${queueInfo.waitingMinutes} دقيقة.`}
-            </div>
-          </motion.div>
-        )}
+        <div aria-live="polite">
+          {queueInfo.isWaiting && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-blue-900/50 border border-blue-500/50 rounded-lg flex items-start gap-3"
+            >
+              <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-200">
+                {t('queueMessage') ||
+                  `هناك ${queueInfo.peopleAhead} أشخاص أمامك. الوقت المتوقع للانتظار حوالي ${queueInfo.waitingMinutes} دقيقة.`}
+              </div>
+            </motion.div>
+          )}
 
-        {!queueInfo.isWaiting && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 bg-green-900/50 border border-green-500/50 rounded-lg flex items-start gap-3"
-          >
-            <Zap className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-green-200">
-              {t('noQueue') || 'لا يوجد انتظار حالياً. دورك الآن!'}
-            </div>
-          </motion.div>
-        )}
+          {!queueInfo.isWaiting && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-green-900/50 border border-green-500/50 rounded-lg flex items-start gap-3"
+            >
+              <Zap className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-green-200">
+                {t('noQueue') || 'لا يوجد انتظار حالياً. دورك الآن!'}
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Compact Mode - Optional Smaller Widget */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="force-dark mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
         <motion.div
           whileHover={{ scale: 1.02 }}
           className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center"

@@ -122,7 +122,7 @@ export const Barbers: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('هل تريد حذف هذا الحلاق؟')) {
+    if (confirm('هل تريد حذف هذا الطبيب؟')) {
       try {
         await deleteBarber(id)
       } catch (err) {
@@ -134,7 +134,7 @@ export const Barbers: React.FC = () => {
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
       await updateBarber(id, { active: !currentActive })
-      toast.success(!currentActive ? 'تم تفعيل الحلاق' : 'تم تعطيل الحلاق')
+      toast.success(!currentActive ? 'تم تفعيل الطبيب' : 'تم تعطيل الطبيب')
     } catch (err) {
       toast.error(t('errors.database_error'))
     }
@@ -206,12 +206,12 @@ export const Barbers: React.FC = () => {
       {barbers.length === 0 ? (
         <GlassCard>
           <div className="text-center py-12">
-            <p className="text-gray-400">لا توجد حلاقين بعد</p>
+            <p className="text-gray-400">لا يوجد أطباء بعد</p>
             <button
               onClick={openAddModal}
               className="mt-4 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700 text-black rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition"
             >
-              إضافة حلاق الآن
+              إضافة طبيب الآن
             </button>
           </div>
         </GlassCard>
@@ -311,11 +311,11 @@ export const Barbers: React.FC = () => {
           setEditingBarberId(null)
           setFormData({ name: '', phone: '' })
         }}
-        title={editingBarberId ? 'تعديل الحلاق' : 'إضافة حلاق جديد'}
+        title={editingBarberId ? 'تعديل الطبيب' : 'إضافة طبيب جديد'}
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-300 mb-2">اسم الحلاق *</label>
+            <label className="block text-sm text-gray-300 mb-2">اسم الطبيب *</label>
             <input
               type="text"
               placeholder="مثال: أحمد"

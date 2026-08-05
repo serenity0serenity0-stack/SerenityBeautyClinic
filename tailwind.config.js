@@ -19,6 +19,19 @@ export default {
         'lavender': '#F3E5F5',          // Light lavender
         'soft-purple': '#CE93D8',       // Purple accent
         'magenta': '#D946EF',           // Magenta highlight
+        'dark': '#111827',              // Dark ink (used for text on gradient buttons)
+        'gold': {
+          50: '#FDF9EB',
+          100: '#FAF0C8',
+          200: '#F5E08E',
+          300: '#F1D25C',
+          400: '#F0C33E',              // Bright Gold (Dark Mode Accent)
+          500: '#D4AF37',              // Classic Gold
+          600: '#B8930F',
+          700: '#8F720B',
+          800: '#6E5609',
+          900: '#4A3907',
+        },
         'rose': {
           50: '#FFF5F7',
           100: '#FFE0E6',
@@ -39,6 +52,9 @@ export default {
       fontFamily: {
         cairo: ['Cairo', 'sans-serif'],
         outfit: ['Outfit', 'sans-serif'],
+      },
+      screens: {
+        xs: '480px',
       },
       backdropFilter: {
         'blur-20': 'blur(20px)',

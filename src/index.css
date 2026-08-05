@@ -15,6 +15,8 @@
   --primary-dark: #C2185B;      /* Deep Pink */
   --primary-light: #F06292;     /* Light Pink */
   --secondary: #CE93D8;         /* Purple Accent */
+  --gold: #D4AF37;
+  --focus-ring: #F0C33E;
   --dark-bg: #0A0F1E;
   --dark-secondary: #111827;
   --light-bg: #FDF2F8;          /* Soft pink background */
@@ -43,6 +45,7 @@ html[dir='en'] {
 html.dark,
 html:not(.light) {
   background-color: #0A0F1E;
+  color-scheme: dark;
 }
 
 html.dark body,
@@ -51,29 +54,21 @@ html:not(.light) body {
   color: #d1d5db;
 }
 
-html.dark {
-  color-scheme: dark;
-}
-
 /* ===== LIGHT MODE ===== */
 html.light {
-  background-color: #f5f3f0;
-}
-
-html.light body {
-  background-color: #f5f3f0;
+  background-color: #f7f3f6;
   color: #111827;
-}
-
-html.light {
   color-scheme: light;
 }
 
-/* ===== TEXT COLORS - LIGHT MODE ===== */
-html.light {
+html.light body {
+  background-color: #f7f3f6;
   color: #111827;
 }
 
+/* ===== TEXT COLORS - LIGHT MODE ===== */
+/* The app renders mostly with dark-mode friendly classes (text-white, text-gray-*).
+   In light mode these are remapped to readable dark shades. */
 html.light p,
 html.light span,
 html.light div,
@@ -95,19 +90,19 @@ html.light .text-white {
 }
 
 html.light .text-gray-100 {
-  color: #d1d5db !important;
+  color: #111827 !important;
 }
 
 html.light .text-gray-200 {
-  color: #e5e7eb !important;
+  color: #374151 !important;
 }
 
 html.light .text-gray-300 {
-  color: #f3f4f6 !important;
+  color: #4b5563 !important;
 }
 
 html.light .text-gray-400 {
-  color: #9ca3af !important;
+  color: #6b7280 !important;
 }
 
 html.light .text-gray-500 {
@@ -119,11 +114,101 @@ html.light .text-pink-400 {
 }
 
 html.light .text-pink-300 {
-  color: #F06292 !important;
+  color: #BE185D !important;
 }
 
 html.light .text-pink-500 {
   color: #C2185B !important;
+}
+
+/* Pastel "-300" shades are unreadable on light backgrounds; remap to darker tones. */
+html.light .text-blue-300 {
+  color: #2563EB !important;
+}
+
+html.light .text-green-300 {
+  color: #15803D !important;
+}
+
+html.light .text-amber-300 {
+  color: #B45309 !important;
+}
+
+html.light .text-red-300 {
+  color: #DC2626 !important;
+}
+
+html.light .text-emerald-300 {
+  color: #059669 !important;
+}
+
+html.light .text-yellow-300 {
+  color: #A16207 !important;
+}
+
+html.light .text-purple-300 {
+  color: #7C3AED !important;
+}
+
+html.light .text-indigo-300 {
+  color: #4F46E5 !important;
+}
+
+html.light .text-cyan-300 {
+  color: #0891B2 !important;
+}
+
+html.light .text-slate-200 {
+  color: #475569 !important;
+}
+
+html.light .text-slate-300 {
+  color: #64748b !important;
+}
+
+html.light .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Pink gradient buttons: in light mode use soft pink stops so the remapped
+   dark text/pink text on top stays readable. */
+html.light [class*='from-pink-'],
+html.light [class*='from-hot-pink'] {
+  --tw-gradient-from: #FCE7F3 !important;
+}
+
+html.light [class*='to-pink-'],
+html.light [class*='to-deep-pink'] {
+  --tw-gradient-to: #FBCFE8 !important;
+}
+
+html.light [class*='bg-gray-600/'] {
+  background-color: rgba(107, 114, 128, 0.15) !important;
+}
+
+/* ===== GOLD COLORS - LIGHT MODE ===== */
+html.light [class*='text-gold-400'] {
+  color: #B45309 !important;
+}
+
+html.light [class*='text-gold-500'] {
+  color: #92400E !important;
+}
+
+html.light [class*='text-gold-300'] {
+  color: #D97706 !important;
+}
+
+html.light [class*='bg-gold-400/'] {
+  background-color: rgba(212, 175, 55, 0.25) !important;
+}
+
+html.light [class*='border-gold-400/'] {
+  border-color: rgba(146, 64, 14, 0.35) !important;
+}
+
+html.light [class*='border-gold-500/'] {
+  border-color: rgba(146, 64, 14, 0.45) !important;
 }
 
 /* ===== BACKGROUNDS - LIGHT MODE ===== */
@@ -149,11 +234,11 @@ html.light .bg-black {
 
 html.light [class*='bg-white/'],
 html.light [class*='bg-black/'] {
-  background-color: rgba(243, 244, 246, 0.5) !important;
+  background-color: rgba(243, 244, 246, 0.6) !important;
 }
 
 html.light .bg-dark-bg {
-  background-color: #f5f3f0 !important;
+  background-color: #f7f3f6 !important;
 }
 
 html.light .bg-pink-400 {
@@ -161,7 +246,7 @@ html.light .bg-pink-400 {
 }
 
 html.light [class*='bg-pink-400/'] {
-  background-color: rgba(224, 30, 99, 0.2) !important;
+  background-color: rgba(224, 30, 99, 0.18) !important;
 }
 
 /* ===== BORDERS - LIGHT MODE ===== */
@@ -190,19 +275,19 @@ html.light .border-pink-400 {
 }
 
 html.light [class*='border-pink-400/'] {
-  border-color: rgba(233, 30, 99, 0.2) !important;
+  border-color: rgba(233, 30, 99, 0.25) !important;
 }
 
 /* ===== GLASSMORPHISM - LIGHT MODE ===== */
 html.light .glass {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  border-color: rgba(209, 213, 219, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(209, 213, 219, 0.6) !important;
   color: #111827 !important;
 }
 
 html.light .glass-dark {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-  border-color: rgba(156, 163, 175, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(156, 163, 175, 0.45) !important;
   color: #111827 !important;
 }
 
@@ -214,14 +299,14 @@ html.light .glass-light {
 
 /* ===== HEADER & NAV - LIGHT MODE ===== */
 html.light header {
-  background-color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
   color: #111827 !important;
   border-color: #e5e7eb !important;
   backdrop-filter: blur(10px);
 }
 
 html.light nav {
-  background-color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
   color: #111827 !important;
   border-color: #e5e7eb !important;
 }
@@ -235,7 +320,7 @@ html.light nav a {
 }
 
 html.light nav a:hover {
-  color: #d97706 !important;
+  color: #E91E63 !important;
 }
 
 /* ===== INPUT FIELDS - DARK MODE ===== */
@@ -260,7 +345,7 @@ input:focus,
 textarea:focus,
 select:focus {
   background-color: rgba(255, 255, 255, 0.12) !important;
-  border-color: #d4af37 !important;
+  border-color: #E91E63 !important;
   outline: none !important;
 }
 
@@ -284,14 +369,14 @@ html.light select {
 
 html.light input::placeholder,
 html.light textarea::placeholder {
-  color: #9ca3af !important;
+  color: #6b7280 !important;
 }
 
 html.light input:focus,
 html.light textarea:focus,
 html.light select:focus {
   background-color: #f9fafb !important;
-  border-color: #d97706 !important;
+  border-color: #E91E63 !important;
   outline: none !important;
 }
 
@@ -302,21 +387,21 @@ html.light select option {
 
 /* ===== BADGES & TAGS - LIGHT MODE ===== */
 html.light .badge-gold {
-  background-color: rgba(217, 119, 6, 0.1) !important;
-  color: #d97706 !important;
-  border-color: rgba(217, 119, 6, 0.3) !important;
+  background-color: rgba(212, 175, 55, 0.15) !important;
+  color: #92400E !important;
+  border-color: rgba(212, 175, 55, 0.4) !important;
 }
 
 html.light .badge-success {
-  background-color: rgba(34, 197, 94, 0.1) !important;
-  color: #22c55e !important;
-  border-color: rgba(34, 197, 94, 0.3) !important;
+  background-color: rgba(22, 163, 74, 0.12) !important;
+  color: #15803d !important;
+  border-color: rgba(22, 163, 74, 0.35) !important;
 }
 
 html.light .badge-danger {
-  background-color: rgba(239, 68, 68, 0.1) !important;
-  color: #ef4444 !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  background-color: rgba(220, 38, 38, 0.1) !important;
+  color: #b91c1c !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
 }
 
 /* ===== BUTTONS - LIGHT MODE ===== */
@@ -339,47 +424,111 @@ html.light ::-webkit-scrollbar {
 }
 
 html.light ::-webkit-scrollbar-track {
-  background-color: #f5f3f0 !important;
+  background-color: #f7f3f6 !important;
 }
 
 html.light ::-webkit-scrollbar-thumb {
-  background-color: #d97706 !important;
+  background-color: #E91E63 !important;
   border-radius: 4px;
 }
 
 html.light ::-webkit-scrollbar-thumb:hover {
-  background-color: #b45309 !important;
+  background-color: #C2185B !important;
 }
 
 /* ===== MODAL & OVERLAY - LIGHT MODE ===== */
-html.light .modal,
-html.light [class*='backdrop-blur'] {
+html.light .modal {
   background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
-html.light .modal-content,
-html.light [class*='rounded-lg'] {
+/* ===== FORCED DARK SURFACES (Login, Queue Display) =====
+   These pages are intentionally always-dark. Guard them against the
+   light-mode text remapping so text never becomes unreadable. */
+html.light .force-dark {
+  background-color: #0A0F1E !important;
+  color: #d1d5db !important;
+}
+
+html.light .force-dark p,
+html.light .force-dark span,
+html.light .force-dark div,
+html.light .force-dark li {
+  color: #d1d5db !important;
+}
+
+html.light .force-dark h1,
+html.light .force-dark h2,
+html.light .force-dark h3,
+html.light .force-dark h4,
+html.light .force-dark h5,
+html.light .force-dark h6 {
+  color: #ffffff !important;
+}
+
+html.light .force-dark .text-white {
+  color: #ffffff !important;
+}
+
+html.light .force-dark .text-gray-100 {
+  color: #f3f4f6 !important;
+}
+
+html.light .force-dark .text-gray-200 {
+  color: #e5e7eb !important;
+}
+
+html.light .force-dark .text-gray-300 {
+  color: #d1d5db !important;
+}
+
+html.light .force-dark .text-gray-400 {
+  color: #9ca3af !important;
+}
+
+html.light .force-dark .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+html.light .force-dark .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+html.light .force-dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* ===== RECHARTS (Analytics) - LIGHT MODE =====
+   Charts are drawn with dark-mode strokes; remap text/axis so they
+   stay readable on light backgrounds. */
+html.light .recharts-cartesian-axis-tick text,
+html.light .recharts-legend-item-text {
+  fill: #374151 !important;
+  color: #374151 !important;
+}
+
+html.light .recharts-cartesian-axis-line,
+html.light .recharts-cartesian-axis-tick-line {
+  stroke: rgba(0, 0, 0, 0.2) !important;
+}
+
+html.light .recharts-cartesian-grid line {
+  stroke: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .recharts-default-tooltip {
   background-color: #ffffff !important;
-  color: #111827 !important;
+  border-color: #d1d5db !important;
 }
 
-/* ===== UTILITY FIXES - LIGHT MODE ===== */
-html.light .p-3,
-html.light .px-4,
-html.light .py-2 {
-  color: #111827 !important;
+html.light .recharts-default-tooltip .recharts-tooltip-label,
+html.light .recharts-default-tooltip .recharts-tooltip-item {
+  color: #374151 !important;
 }
 
-html.light .hover\:bg-pink-400\/30:hover {
-  background-color: rgba(251, 191, 36, 0.3) !important;
-}
-
-html.light .focus\:bg-white\/10:focus {
-  background-color: rgba(0, 0, 0, 0.05) !important;
-}
-
-html.light .disabled\:opacity-50:disabled {
-  opacity: 0.5;
+/* ===== ACCESSIBILITY: VISIBLE FOCUS STATES ===== */
+:focus-visible {
+  outline: 2px solid var(--focus-ring, #F0C33E);
+  outline-offset: 2px;
 }
 
 /* Default dark mode styles */
@@ -418,6 +567,22 @@ input::placeholder {
   @apply text-gray-500;
 }
 
+/* Inputs must keep a visible keyboard focus ring (WCAG 2.4.7).
+   Kept here after the `input:focus { outline: none }` rules so it wins. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--focus-ring, #F0C33E) !important;
+  outline-offset: 1px !important;
+}
+
+html.light input:focus-visible,
+html.light select:focus-visible,
+html.light textarea:focus-visible {
+  outline: 2px solid var(--focus-ring, #F0C33E) !important;
+  outline-offset: 1px !important;
+}
+
 /* Button reset */
 button {
   @apply font-outfit;
@@ -429,7 +594,7 @@ button {
 }
 
 .badge-gold {
-  @apply bg-pink-400/20 text-pink-400 border border-pink-400/20;
+  @apply bg-gold-400/20 text-gold-400 border border-gold-400/20;
 }
 
 .badge-success {
@@ -578,164 +743,3 @@ html {
 .confetti {
   animation: confetti-fall 3s ease-out forwards;
 }
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-pink-500;
-}
-
-/* Print styles */
-@media print {
-  body {
-    @apply bg-white;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  .print-only {
-    display: block !important;
-  }
-
-  @page {
-    size: auto;
-    margin: 0;
-  }
-
-  /* Thermal printer receipt */
-  .receipt {
-    @page {
-      size: 80mm auto;
-      margin: 0;
-    }
-  }
-}
-
-/* Receipt specific styles */
-.receipt {
-  width: 80mm;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #000;
-  background: #fff;
-  padding: 0;
-  margin: 0;
-
-  @media print {
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
-  }
-}
-
-.receipt-title {
-  text-align: center;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.receipt-divider {
-  border-top: 1px solid #000;
-  margin: 4px 0;
-}
-
-.receipt-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-}
-
-.receipt-total {
-  font-weight: bold;
-  font-size: 14px;
-  text-align: center;
-}
-
-/* Animations */
-.fade-enter {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.slide-up {
-  animation: slideUp 0.5s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Input styling */
-input,
-select,
-textarea {
-  @apply bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-400 transition-all;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  @apply outline-none border-pink-400 bg-white/10;
-}
-
-input::placeholder {
-  @apply text-gray-500;
-}
-
-/* Button reset */
-button {
-  @apply font-outfit;
-}
-
-/* Badge styles */
-.badge {
-  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
-}
-
-.badge-gold {
-  @apply bg-pink-400/20 text-pink-400 border border-pink-400/20;
-}
-
-.badge-success {
-  @apply bg-green-500/20 text-green-300 border border-green-500/20;
-}
-
-.badge-danger {
-  @apply bg-red-500/20 text-red-300 border border-red-500/20;
-}
-
-/* Card animations */
-.card-hover {
-  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-pink-400/20;
-}
-
-/* Confetti animation */
-@keyframes confetti-fall {
-  to {
-    transform: translateY(100vh) rotate(360deg);
-    opacity: 0;
-  }
-}
-
-.confetti {
-  animation: confetti-fall 3s ease-out forwards;
-}
-
-

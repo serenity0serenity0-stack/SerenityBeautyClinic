@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
 import { motion } from 'framer-motion'
-import { Mail, Lock, LogIn, Sparkles } from 'lucide-react'
+import { Mail, Lock, LogIn } from 'lucide-react'
+import logo from '../assets/serenity-logo.png'
 
 // Validation schema
 const loginSchema = z.object({
@@ -59,7 +60,7 @@ export default function Login() {
   return (
     <div
       dir={isRTL ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden"
+      className="force-dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden"
     >
       {/* Animated background gradient - Pink theme */}
       <div className="absolute inset-0 overflow-hidden">
@@ -96,14 +97,18 @@ export default function Login() {
         <div className="backdrop-blur-2xl bg-gradient-to-br from-white/15 via-white/5 to-white/10 border border-white/20 rounded-3xl p-12 shadow-2xl">
           {/* Header with Beauty Icon */}
           <div className="text-center mb-10">
-            {/* Sparkles Icon */}
+            {/* Logo */}
             <motion.div
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-hot-pink/30 to-deep-pink/20 rounded-full mb-6 border border-hot-pink/50"
+              className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-hot-pink/30 to-deep-pink/20 rounded-full mb-6 border border-hot-pink/50"
             >
-              <Sparkles className="w-8 h-8 text-hot-pink" />
+              <img
+                src={logo}
+                alt={t('common.appName')}
+                className="w-14 h-14 object-contain rounded-full"
+              />
             </motion.div>
 
             {/* Title */}

@@ -36,7 +36,7 @@ const translations = {
     noHistory: 'لا توجد مواعيد',
     noVisitsYet: 'لم تزر العيادة بعد',
     noResults: 'لا توجد نتائج تطابق الفلاتر',
-    barber: 'الموظف',
+    barber: 'الطبيب',
     date: 'التاريخ',
     amount: 'المبلغ',
     notes: 'ملاحظات'

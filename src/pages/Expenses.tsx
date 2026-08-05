@@ -101,6 +101,7 @@ export const Expenses: React.FC = () => {
                   <p className="text-gold-400 font-bold text-lg">{expense.amount.toFixed(2)} ج.م</p>
                   <button
                     onClick={() => handleDelete(expense.id!)}
+                    aria-label={t('common.delete')}
                     className="p-2 hover:bg-red-500/10 rounded transition"
                   >
                     <Trash2 size={18} className="text-red-400" />

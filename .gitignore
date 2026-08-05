@@ -36,5 +36,8 @@ coverage/
 .next/
 out/
 
+# Tooling
+.opencode/
+
 # SQL Files (optional - exclude migration files if desired)
 # supabase-*.sql

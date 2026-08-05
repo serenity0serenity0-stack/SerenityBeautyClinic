@@ -93,7 +93,7 @@ export function usePortalBookings(clinicId?: string, customerId?: string) {
       setBarbers(data || [])
     } catch (err) {
       console.error('Error fetching barbers:', err)
-      setError('خطأ في تحميل الحلاقين')
+      setError('خطأ في تحميل الأطباء')
     }
   }, [clinicId])
 

@@ -180,6 +180,7 @@ export const Dashboard: React.FC = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg hover:bg-gold-400/30 disabled:opacity-50 transition text-xs md:text-sm"
+          aria-label={t('common.refresh')}
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           <span className="hidden sm:inline">{t('common.refresh')}</span>
@@ -190,7 +191,7 @@ export const Dashboard: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="text-xs text-gray-400">
           <span>{t('dashboard.transactions')}: {transactions?.length || 0} | {t('dashboard.expenses')}: {expenses?.length || 0}</span>
-          {lastUpdated && <span className="ml-2">{t('dashboard.last_updated')}: {lastUpdated}</span>}
+          {lastUpdated && <span className="ms-2">{t('dashboard.last_updated')}: {lastUpdated}</span>}
         </div>
         <EgyptClock locale="ar" />
       </div>

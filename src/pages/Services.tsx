@@ -327,7 +327,7 @@ export const Services: React.FC = () => {
                         }
                         className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition group"
                       >
-                        <div className="flex-1 text-left">
+                        <div className="flex-1">
                           <h3 className="text-white font-bold text-lg group-hover:text-pink-400 transition">
                             {service.nameAr}
                           </h3>
@@ -338,7 +338,7 @@ export const Services: React.FC = () => {
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 ml-3">
+                        <div className="flex items-center gap-2 ms-3">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -409,7 +409,7 @@ export const Services: React.FC = () => {
                                         ⏱️ {variant.duration || 30} دقيقة
                                       </p>
                                     </div>
-                                    <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                                    <div className="flex items-center gap-3 ms-3 flex-shrink-0">
                                       <p className="text-pink-400 font-bold text-lg">
                                         {variant.price} ج.م
                                       </p>

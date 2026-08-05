@@ -55,7 +55,7 @@ export const useBarbers = () => {
 
       if (data && data.length > 0) {
         setBarbers([data[0], ...barbers])
-        toast.success('تم إضافة الحلاق بنجاح')
+        toast.success('تم إضافة الطبيب بنجاح')
         return data[0]
       }
     } catch (err: any) {
@@ -79,7 +79,7 @@ export const useBarbers = () => {
 
       if (data && data.length > 0) {
         setBarbers(barbers.map(b => b.id === id ? data[0] : b))
-        toast.success('تم تحديث بيانات الحلاق')
+        toast.success('تم تحديث بيانات الطبيب')
         return data[0]
       }
     } catch (err: any) {
@@ -101,7 +101,7 @@ export const useBarbers = () => {
       if (error) throw error
 
       setBarbers(barbers.filter(b => b.id !== id))
-      toast.success('تم حذف الحلاق')
+      toast.success('تم حذف الطبيب')
     } catch (err: any) {
       toast.error(err.message)
       throw err

@@ -631,7 +631,7 @@ export const POS: React.FC = () => {
                 }}
                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
               >
-                <option value="">اختر الموظف (اختياري)</option>
+                <option value="">اختر الطبيب (اختياري)</option>
                 {barbers.filter(b => b.active).map((barber) => (
                   <option key={barber.id} value={barber.id}>
                     ✂️ {barber.name}

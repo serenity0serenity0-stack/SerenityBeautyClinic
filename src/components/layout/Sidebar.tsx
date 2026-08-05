@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '../../hooks/useLanguage'
 import { motion, AnimatePresence } from 'framer-motion'
+import logo from '../../assets/serenity-logo.png'
 import {
   BarChart3,
   ShoppingCart,
@@ -83,8 +84,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }
         initial={false}
       >
         <div className="p-6 space-y-3">
-          {/* Close button for mobile */}
-          <div className={`flex ${language === 'ar' ? 'justify-start' : 'justify-end'} mb-4`}>
+          {/* Branding + Close button for mobile */}
+          <div className={`flex items-center ${language === 'ar' ? 'flex-row-reverse' : ''} justify-between mb-4`}>
+            <div className="flex items-center gap-2">
+              <img
+                src={logo}
+                alt={t('common.appName')}
+                className="h-10 w-10 object-contain rounded-full"
+              />
+              <span className="font-bold text-white">{t('common.appName')}</span>
+            </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-lg transition"

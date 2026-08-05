@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useTranslation } from 'react-i18next'
 import { Moon, Sun, Globe, LogOut, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import logo from '../../assets/serenity-logo.png'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -40,7 +41,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-2xl">💈</span>
+            <img
+              src={logo}
+              alt={t('common.appName')}
+              className="h-9 w-9 sm:h-10 sm:w-10 object-contain rounded-full"
+            />
             <h1 className="text-lg sm:text-xl font-bold text-white hidden sm:block">{t('common.appName')}</h1>
           </div>
         </div>
@@ -73,6 +78,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           {/* Language Toggle */}
           <motion.button
             onClick={toggleLanguage}
+            aria-label={language === 'ar' ? 'English' : 'العربية'}
             className="p-2 hover:bg-white/10 rounded-lg transition flex items-center gap-1"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -87,6 +93,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <div className="relative">
             <motion.button
               onClick={() => setShowUserMenu(!showUserMenu)}
+              aria-label={t('common.account') || 'Account'}
+              aria-expanded={showUserMenu}
               className="p-2 hover:bg-white/10 rounded-lg transition flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -104,12 +112,12 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-48 bg-slate-900 border border-white/10 rounded-lg shadow-lg overflow-hidden"
+                  className="force-dark absolute end-0 mt-2 w-48 bg-slate-900 border border-white/10 rounded-lg shadow-lg overflow-hidden"
                 >
                   <div className="px-4 py-3 border-b border-white/10">
                     <p className="text-white text-sm font-medium">{user?.email}</p>
                     <p className="text-gold-400 text-xs mt-1">
-                      {role === 'admin' ? 'Clinic Manager' : 'Clinic Staff'}
+                      {role === 'admin' ? 'Clinic Manager' : 'Clinic Doctor'}
                     </p>
                   </div>
 
