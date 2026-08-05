@@ -5,6 +5,7 @@ import { supabase } from '@/db/supabase'
 interface ReceiptItem {
   name: string
   price: number
+  quantity?: number
 }
 
 interface ReceiptProps {
@@ -20,31 +21,41 @@ interface ReceiptProps {
   discount_type: 'percentage' | 'fixed'
   total: number
   payment_method: string
+  paperWidth?: string
+  showDeveloperCredits?: boolean
 }
 
-// Format time with Egypt timezone and AM/PM in Arabic
-const formatEgyptTime = (time: string): string => {
-  try {
-    // Parse time string (HH:MM or HH:MM:SS format)
-    const parts = time.split(':')
-    if (parts.length >= 2) {
-      const hours = parseInt(parts[0])
-      const minutes = parts[1]
-      // Use مساءا (PM) or صباحا (AM) without diacritics
-      const suffix = hours >= 12 ? 'مساءا' : 'صباحا'
-      return `${hours}:${minutes} ${suffix}`
-    }
-    return time
-  } catch {
-    return time
-  }
-}
-
-// Map payment methods to Arabic
-const payment_methodMap: Record<string, string> = {
+const paymentMethodMap: Record<string, string> = {
   cash: 'نقداً',
   card: 'بطاقة بنكية',
   wallet: 'محفظة إلكترونية',
+}
+
+const formatMoney = (amount: number): string =>
+  `${amount.toLocaleString('en-EG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ج.م`
+
+const formatArabicDate = (date: string): string => {
+  try {
+    return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(`${date}T12:00:00`))
+  } catch {
+    return date
+  }
+}
+
+const formatArabicTime = (time: string): string => {
+  const parts = time.split(':')
+  if (parts.length < 2) return time
+  let hours = parseInt(parts[0], 10)
+  const suffix = hours >= 12 ? 'مساءً' : 'صباحاً'
+  hours = hours % 12 || 12
+  return `${String(hours).padStart(2, '0')}:${parts[1]} ${suffix}`
 }
 
 export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
@@ -62,281 +73,256 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
       discount_type,
       total,
       payment_method,
+      paperWidth = '80mm',
+      showDeveloperCredits = false,
     },
     ref
   ) => {
     const { clinicId } = useAuth()
-    const [shopName, setShopName] = useState<string>('عيادة الجمال')
-    const [shopPhone, setShopPhone] = useState<string>('')
-    const [shopAddress, setShopAddress] = useState<string>('')
-    const [shopNumber, setShopNumber] = useState<string>('')
-    const [formattedTime, setFormattedTime] = useState<string>('')
+    const [shopName, setShopName] = useState('Serenity Beauty Clinic')
+    const [shopPhone, setShopPhone] = useState('')
+    const [shopAddress, setShopAddress] = useState('')
+    const [taxNumber, setTaxNumber] = useState('')
+    const [shopLogo, setShopLogo] = useState('')
 
-    // Fetch clinic settings directly from database
     useEffect(() => {
       if (!clinicId) return
+      let cancelled = false
 
-      const fetchShopSettings = async () => {
+      const fetchClinic = async () => {
         try {
-          const [settingsResult, clinicResult] = await Promise.all([
+          const [settingsRes, clinicRes] = await Promise.all([
             supabase
               .from('settings')
               .select('key, value')
               .eq('clinic_id', clinicId),
             supabase
               .from('clinic')
-              .select('clinic_number, location, address, name, phone')
+              .select('name, phone, email, city, description, logo_url, website')
               .eq('id', clinicId)
-              .single()
+              .maybeSingle(),
           ])
 
-          // Parse settings
-          if (settingsResult.data) {
-            const settingsMap: Record<string, any> = {}
-            settingsResult.data.forEach((item: any) => {
-              settingsMap[item.key] = item.value
-            })
-            setShopName(settingsMap['clinicName'] || 'اسم العيادة')
-            setShopPhone(settingsMap['clinicPhone'] || '')
-          }
+          if (cancelled) return
 
-          // Get clinic data
-          if (clinicResult.data) {
-            setShopName(clinicResult.data.name || shopName)
-            setShopPhone(clinicResult.data.phone || '')
-            setShopAddress(clinicResult.data.address || clinicResult.data.location || '')
-            setShopNumber(clinicResult.data.clinic_number?.toString() || '')
-          }
+          const settingsMap: Record<string, any> = {}
+          ;(settingsRes.data || []).forEach((item: any) => {
+            settingsMap[item.key] = item.value
+          })
+
+          const clinic = clinicRes.data
+          setShopName(settingsMap['clinicName'] || clinic?.name || 'Serenity Beauty Clinic')
+          setShopPhone(settingsMap['clinicPhone'] || clinic?.phone || '')
+          setShopAddress(settingsMap['clinicAddress'] || clinic?.description || clinic?.city || '')
+          setTaxNumber(settingsMap['taxNumber'] || '')
+          setShopLogo(settingsMap['clinicLogo'] || clinic?.logo_url || '')
         } catch (err) {
           console.error('Error fetching receipt settings:', err)
-          setShopName('اسم العيادة')
-          setShopPhone('')
         }
       }
 
-      fetchShopSettings()
+      fetchClinic()
+      return () => {
+        cancelled = true
+      }
     }, [clinicId])
 
-    // Format time with proper timezone display
-    useEffect(() => {
-      setFormattedTime(formatEgyptTime(time))
-    }, [time])
+    const receiptNumber =
+      transactionId && transactionId !== 'unknown'
+        ? transactionId.slice(-4).toUpperCase()
+        : '0001'
 
-    // Extract last 4 characters from transaction ID
-    const receiptNumber = transactionId.slice(-4).toUpperCase()
-
-    // Calculate actual discount amount for display
     const discountAmount =
       discount_type === 'percentage'
         ? (subtotal * discount) / 100
         : discount
 
-    // Format discount label
     const discountLabel =
-      discount_type === 'percentage'
-        ? `${discount.toFixed(0)}%`
-        : `ج.م`
+      discount_type === 'percentage' ? `${discount.toFixed(0)}%` : 'ج.م'
+
+    const divider = { borderBottom: '1px dashed #000', margin: '6px 0' }
+    const rowSpace = { display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '2px' }
 
     return (
       <div
         ref={ref}
         id="receipt-container"
-        className="bg-white text-black p-0"
         style={{
-          width: '80mm',
+          width: paperWidth,
+          maxWidth: paperWidth,
           margin: '0 auto',
-          fontFamily: "'Cairo', 'Arial', monospace",
+          padding: '8px 6px',
+          background: '#ffffff',
+          color: '#000000',
+          fontFamily: "'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif",
           direction: 'rtl',
-          textAlign: 'center',
+          textAlign: 'right',
           fontSize: '12px',
-          lineHeight: '1.6',
+          lineHeight: '1.5',
+          boxSizing: 'border-box',
         }}
       >
         <style>{`
           @media print {
-            body > *:not(#receipt-container) { display: none !important; }
-            body {
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              margin: 0;
-              padding: 10mm;
-              background: white;
-            }
-            #receipt-container { 
-              width: 80mm;
-              max-width: 80mm;
-              font-family: 'Cairo', 'Arial', monospace;
-              direction: rtl;
-              text-align: center;
+            body * { visibility: hidden !important; }
+            #receipt-container,
+            #receipt-container * { visibility: visible !important; }
+            #receipt-container {
+              position: absolute !important;
+              top: 0;
+              left: 0;
+              right: 0;
               margin: 0 auto;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            .receipt-divider { 
-              border-bottom: 1px solid #000;
-              margin: 8px 0;
-              padding: 0;
+              width: ${paperWidth};
+              max-width: ${paperWidth};
             }
             @page {
-              size: 80mm 200mm;
-              margin: 0;
+              size: ${paperWidth} auto;
+              margin: 5mm 0;
             }
           }
         `}</style>
 
-        {/* Header with Separator */}
-        <div style={{ textAlign: 'center', marginBottom: '8px', paddingBottom: '8px', borderBottom: '2px solid #000' }}>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>
-            💉 {shopName} 💉
-          </div>
-          {shopNumber && (
-            <div style={{ fontSize: '10px', marginBottom: '2px' }}>رقم العيادة: {shopNumber}</div>
-          )}
-          {shopAddress && (
-            <div style={{ fontSize: '10px', marginBottom: '2px' }}>📍 {shopAddress}</div>
-          )}
-          {shopPhone && (
-            <div style={{ fontSize: '11px', marginBottom: '2px' }}>📞 {shopPhone}</div>
-          )}
-        </div>
-
-        {/* Receipt Title */}
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold' }}>فاتورة ضريبية مبسطة</div>
-          <div style={{ fontSize: '10px', marginTop: '2px' }}>
-            رقم الفاتورة: #{receiptNumber}
-          </div>
+          {shopLogo && (
+            <img
+              src={shopLogo}
+              alt=""
+              style={{
+                height: '52px',
+                maxWidth: '55mm',
+                objectFit: 'contain',
+                marginBottom: '4px',
+              }}
+            />
+          )}
+          <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>{shopName}</div>
+          {taxNumber && <div style={{ fontSize: '10px', marginBottom: '2px' }}>الرقم الضريبي: {taxNumber}</div>}
+          {shopAddress && <div style={{ fontSize: '10px', marginBottom: '2px' }}>{shopAddress}</div>}
+          {shopPhone && <div style={{ fontSize: '11px', fontWeight: '700' }}>{shopPhone}</div>}
         </div>
 
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+        <div style={divider} />
 
-        {/* Date & Time */}
-        <div style={{ textAlign: 'center', fontSize: '10px', marginBottom: '6px' }}>
-          <div>التاريخ: {date}</div>
-          <div>الوقت: {formattedTime}</div>
+        <div style={{ textAlign: 'center', marginBottom: '6px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '2px' }}>إيصال ضريبي مبسط</div>
+          <div style={{ fontSize: '10px' }}>رقم الإيصال: #{receiptNumber}</div>
+          <div style={{ fontSize: '10px' }}>التاريخ: {formatArabicDate(date)}</div>
+          <div style={{ fontSize: '10px' }}>الوقت: {formatArabicTime(time)}</div>
         </div>
 
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+        <div style={divider} />
 
-        {/* Client Info */}
-        <div style={{ marginBottom: '6px', fontSize: '11px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-            <span>{client_name}</span>
-            <span style={{ fontWeight: 'bold' }}>العميل :</span>
+        <div style={{ marginBottom: '6px' }}>
+          <div style={rowSpace}>
+            <span style={{ fontWeight: '700' }}>{client_name}</span>
+            <span style={{ color: '#555555' }}>العميل</span>
           </div>
           {client_phone && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+            <div style={rowSpace}>
               <span>{client_phone}</span>
-              <span style={{ fontWeight: 'bold' }}>الهاتف :</span>
+              <span style={{ color: '#555555' }}>الهاتف</span>
             </div>
           )}
         </div>
 
-        {/* Staff Info */}
         {barber_name && (
           <>
-            <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
-            <div style={{ marginBottom: '6px', fontSize: '11px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{barber_name}</span>
-                <span style={{ fontWeight: 'bold' }}>الطبيب :</span>
-              </div>
+            <div style={divider} />
+            <div style={{ ...rowSpace, marginBottom: '6px' }}>
+              <span style={{ fontWeight: '700' }}>{barber_name}</span>
+              <span style={{ color: '#555555' }}>الطبيب</span>
             </div>
           </>
         )}
 
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
+        <div style={divider} />
 
-        {/* Services Header */}
-        <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '4px' }}>الخدمات:</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', marginBottom: '6px' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'right', fontWeight: '700', paddingBottom: '3px' }}>الخدمة</th>
+              <th style={{ textAlign: 'center', fontWeight: '700', paddingBottom: '3px' }}>الكمية</th>
+              <th style={{ textAlign: 'center', fontWeight: '700', paddingBottom: '3px' }}>سعر الوحدة</th>
+              <th style={{ textAlign: 'left', fontWeight: '700', paddingBottom: '3px' }}>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, idx) => {
+              const qty = item.quantity || 1
+              return (
+                <tr key={idx}>
+                  <td style={{ textAlign: 'right', padding: '2px 0' }}>{item.name}</td>
+                  <td style={{ textAlign: 'center', padding: '2px 0' }}>{qty}</td>
+                  <td style={{ textAlign: 'center', padding: '2px 0' }}>{formatMoney(item.price)}</td>
+                  <td style={{ textAlign: 'left', padding: '2px 0', fontWeight: '700' }}>
+                    {formatMoney(item.price * qty)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
 
-        {/* Services Divider */}
-        <div style={{ borderBottom: '1px dotted #000', margin: '4px 0' }} />
+        <div style={divider} />
 
-        {/* Services List */}
-        <div style={{ marginBottom: '6px' }}>
-          {items.map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '10px',
-                marginBottom: '2px',
-              }}
-            >
-              <span style={{ fontWeight: 'bold' }}>{item.price.toFixed(2)} ج.م</span>
-              <span>{item.name}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Services Divider */}
-        <div style={{ borderBottom: '1px dotted #000', margin: '4px 0' }} />
-
-        {/* Totals */}
         <div style={{ marginBottom: '6px', fontSize: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-            <span style={{ fontWeight: 'bold' }}>{subtotal.toFixed(2)} ج.م</span>
-            <span>المجموع:</span>
+          <div style={rowSpace}>
+            <span style={{ color: '#555555' }}>المجموع</span>
+            <span>{formatMoney(subtotal)}</span>
           </div>
           {discountAmount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#c41e3a', marginBottom: '2px' }}>
-              <span style={{ fontWeight: 'bold' }}>-{discountAmount.toFixed(2)} ج.م</span>
-              <span>الخصم ({discountLabel}):</span>
+            <div style={{ ...rowSpace, color: '#c41e3a' }}>
+              <span style={{ color: '#555555' }}>الخصم ({discountLabel})</span>
+              <span>-{formatMoney(discountAmount)}</span>
             </div>
           )}
         </div>
 
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '2px solid #000', margin: '8px 0' }} />
+        <div style={{ borderBottom: '2px solid #000', margin: '6px 0' }} />
 
-        {/* Grand Total */}
-        <div
-          style={{
-            textAlign: 'center',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            marginBottom: '8px',
-            padding: '4px 0',
-          }}
-        >
-          💰 الإجمالي: {total.toFixed(2)} ج.م
+        <div style={{ textAlign: 'center', fontSize: '15px', fontWeight: '800', margin: '6px 0', padding: '6px 0' }}>
+          الإجمالي: {formatMoney(total)}
         </div>
 
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '2px solid #000', margin: '8px 0' }} />
+        <div style={divider} />
 
-        {/* Payment Method */}
-        <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '10px' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>طريقة الدفع:</div>
-          <div>{payment_methodMap[payment_method] || payment_method}</div>
-        </div>
-
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
-
-        {/* Thank You Message */}
         <div style={{ textAlign: 'center', fontSize: '10px', marginBottom: '8px' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>شكراً لكم على ثقتكم 🙏</div>
-          <div>نتطلع لخدمتكم مرة أخرى</div>
+          <span style={{ color: '#555555' }}>طريقة الدفع: </span>
+          <span style={{ fontWeight: '700' }}>{paymentMethodMap[payment_method] || payment_method}</span>
         </div>
 
-        {/* Divider */}
-        <div className="receipt-divider" style={{ borderBottom: '1px solid #000', margin: '6px 0' }} />
+        <div style={divider} />
 
-        {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: '8px', marginTop: '8px', paddingTop: '4px', borderTop: '1px solid #000' }}>
-          <div style={{ letterSpacing: '2px', marginBottom: '2px' }}>─────────────────────</div>
-          <div style={{ fontWeight: 'bold', marginBottom: '1px' }}>YousefTech</div>
-          <div style={{ marginBottom: '2px' }}>01000139417</div>
-          <div style={{ marginBottom: '2px' }}>تطوير YousefTech</div>
-          <div style={{ letterSpacing: '2px' }}>─────────────────────</div>
+        <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: '700', marginBottom: '4px' }}>
+          شكراً لكم على ثقتكم 🙏
         </div>
+        <div style={{ textAlign: 'center', fontSize: '10px', marginBottom: '6px' }}>
+          نتطلع لخدمتكم مرة أخرى
+        </div>
+
+        <div style={divider} />
+
+        <div style={{ textAlign: 'center', fontSize: '9px', color: '#444444', paddingTop: '4px' }}>
+          {shopPhone && <div style={{ marginBottom: '1px' }}>{shopPhone}</div>}
+          {shopAddress && <div style={{ marginBottom: '1px' }}>{shopAddress}</div>}
+        </div>
+
+        {showDeveloperCredits && (
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: '8px',
+              color: '#888888',
+              marginTop: '6px',
+              paddingTop: '4px',
+              borderTop: '1px solid #000',
+            }}
+          >
+            <div style={{ fontWeight: '700', marginBottom: '1px' }}>YousefTech</div>
+            <div>01000139417</div>
+          </div>
+        )}
       </div>
     )
   }

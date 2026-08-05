@@ -288,70 +288,79 @@ export const POS: React.FC = () => {
   }
 
   const handlePrint = () => {
-    if (receiptRef.current) {
-      const printWindow = window.open('', '', 'height=600,width=400,top=100,left=100')
-      if (printWindow) {
-        const receiptHTML = receiptRef.current.outerHTML
-        const printContent = `
-          <!DOCTYPE html>
-          <html dir="rtl" lang="ar">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>الإيصال</title>
-            <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
-            <style>
-              * { 
-                margin: 0; 
-                padding: 0; 
-                box-sizing: border-box; 
-              }
-              html, body { 
-                width: 80mm;
-                margin: 0;
-                padding: 0;
-              }
-              body { 
-                font-family: 'Cairo', 'Arial', monospace;
-                font-size: 12px;
-                line-height: 1.6;
-                direction: rtl;
-                text-align: right;
-                background: white;
-                color: black;
-              }
-              #receipt-container {
-                width: 80mm;
-                padding: 0;
-                margin: 0;
-                background: white;
-                font-family: 'Cairo', 'Arial', monospace;
-              }
-              @media print {
-                body > *:not(#receipt-container) { display: none !important; }
-                #receipt-container { 
-                  width: 80mm;
-                  font-family: 'Cairo', 'Arial', monospace;
-                  direction: rtl;
-                  margin: 0;
-                  padding: 10px;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            ${receiptHTML}
-            <script>
-              window.print();
-            </script>
-          </body>
-          </html>
-        `
-        printWindow.document.open()
-        printWindow.document.write(printContent)
-        printWindow.document.close()
-      }
+    if (!receiptRef.current) return
+
+    const printWindow = window.open('', '_blank', 'height=600,width=420,top=100,left=100')
+    const receiptHTML = receiptRef.current.outerHTML
+
+    if (!printWindow) {
+      window.print()
+      return
     }
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>الإيصال الضريبي</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body {
+            width: 80mm;
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+          }
+          body {
+            font-family: 'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            direction: rtl;
+            text-align: right;
+            color: #000000;
+          }
+          #receipt-container {
+            width: 80mm;
+            max-width: 80mm;
+            padding: 0;
+            margin: 0;
+            background: #ffffff;
+            font-family: 'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif;
+          }
+          @media print {
+            body > *:not(#receipt-container) { display: none !important; }
+            body { background: #ffffff; }
+            #receipt-container {
+              width: 80mm;
+              max-width: 80mm;
+              font-family: 'Cairo', 'Segoe UI', 'Tahoma', Arial, sans-serif;
+              direction: rtl;
+              margin: 0;
+              padding: 0;
+            }
+            @page { size: 80mm auto; margin: 5mm 0; }
+          }
+        </style>
+      </head>
+      <body>
+        ${receiptHTML}
+      </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+
+    setTimeout(() => {
+      printWindow.focus()
+      printWindow.print()
+    }, 400)
   }
 
   return (
