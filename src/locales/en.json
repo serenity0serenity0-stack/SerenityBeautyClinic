@@ -200,11 +200,16 @@
       "other": "Other"
     },
     "monthly_summary": "Monthly Summary",
-    "total_expenses": "Total Expenses"
+    "total_expenses": "Total Expenses",
+    "month_filter": "Filter by Month",
+    "month": "Month"
   },
   "analytics": {
     "title": "Analytics",
     "date_range": "Date Range",
+    "custom_range": "Custom Range",
+    "from": "From",
+    "to": "To",
     "total_revenue": "Total Revenue",
     "total_expenses": "Total Expenses",
     "net_profit": "Net Profit",

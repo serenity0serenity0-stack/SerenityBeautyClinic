@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
-import { getEgyptDateString } from '../utils/egyptTime'
+import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { motion } from 'framer-motion'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -13,6 +13,8 @@ export const Analytics: React.FC = () => {
   const { expenses } = useExpenses()
 
   const [dateRange, setDateRange] = useState('month')
+  const [customFrom, setCustomFrom] = useState(`${getEgyptYearMonth()}-01`)
+  const [customTo, setCustomTo] = useState(getEgyptDateString())
   const [analyticsData, setAnalyticsData] = useState({
     totalRevenue: 0,
     totalExpenses: 0,
@@ -24,28 +26,41 @@ export const Analytics: React.FC = () => {
   })
 
   useEffect(() => {
-    const today = new Date()
-    let startDate = new Date()
+    let startDateStr: string
+    let endDateStr: string
 
-    switch (dateRange) {
-      case 'week':
-        startDate.setDate(today.getDate() - 7)
-        break
-      case 'month':
-        startDate.setMonth(today.getMonth() - 1)
-        break
-      case 'quarter':
-        startDate.setMonth(today.getMonth() - 3)
-        break
-      case 'year':
-        startDate.setFullYear(today.getFullYear() - 1)
-        break
-      default:
-        break
+    if (dateRange === 'custom') {
+      startDateStr = customFrom || `${getEgyptYearMonth()}-01`
+      endDateStr = customTo || getEgyptDateString()
+      if (startDateStr > endDateStr) {
+        const tmp = startDateStr
+        startDateStr = endDateStr
+        endDateStr = tmp
+      }
+    } else {
+      const today = new Date()
+      const startDate = new Date()
+
+      switch (dateRange) {
+        case 'week':
+          startDate.setDate(today.getDate() - 7)
+          break
+        case 'month':
+          startDate.setMonth(today.getMonth() - 1)
+          break
+        case 'quarter':
+          startDate.setMonth(today.getMonth() - 3)
+          break
+        case 'year':
+          startDate.setFullYear(today.getFullYear() - 1)
+          break
+        default:
+          break
+      }
+
+      startDateStr = getEgyptDateString(startDate)
+      endDateStr = getEgyptDateString(today)
     }
-
-    const startDateStr = getEgyptDateString(startDate)
-    const endDateStr = getEgyptDateString(today)
 
     // Filter transactions and expenses for date range
     const filteredTransactions = transactions.filter(
@@ -69,7 +84,7 @@ export const Analytics: React.FC = () => {
       avgTicket: filteredTransactions.length > 0 ? totalRevenue / filteredTransactions.length : 0,
       chartData: filteredTransactions as any,
     })
-  }, [dateRange, transactions, expenses])
+  }, [dateRange, customFrom, customTo, transactions, expenses])
 
   const KPICard = ({ label, value, color = 'gold' }: any) => (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -87,20 +102,63 @@ export const Analytics: React.FC = () => {
       </motion.div>
 
       {/* Date Range Selector */}
-      <div className="flex gap-2 flex-wrap">
-        {['week', 'month', 'quarter', 'year'].map((range) => (
+      <div className="space-y-3">
+        <div className="flex gap-2 flex-wrap">
+          {['week', 'month', 'quarter', 'year'].map((range) => (
+            <button
+              key={range}
+              onClick={() => setDateRange(range)}
+              className={`px-4 py-2 rounded-lg transition ${
+                dateRange === range
+                  ? 'bg-gold-400/20 text-gold-400 border border-gold-400/20'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              {t(`common.${range}`)}
+            </button>
+          ))}
           <button
-            key={range}
-            onClick={() => setDateRange(range)}
+            onClick={() => setDateRange('custom')}
             className={`px-4 py-2 rounded-lg transition ${
-              dateRange === range
+              dateRange === 'custom'
                 ? 'bg-gold-400/20 text-gold-400 border border-gold-400/20'
                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
           >
-            {t(`common.${range}`)}
+            {t('analytics.custom_range')}
           </button>
-        ))}
+        </div>
+
+        {/* Custom From/To date range */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">{t('analytics.from')}</label>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value)
+                setDateRange('custom')
+              }}
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">{t('analytics.to')}</label>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value)
+                setDateRange('custom')
+              }}
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            {customFrom} → {customTo}
+          </p>
+        </div>
       </div>
 
       {/* KPI Cards */}

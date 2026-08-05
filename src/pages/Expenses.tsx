@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { useExpenses } from '../db/hooks/useExpenses'
-import { getEgyptDateString } from '../utils/egyptTime'
+import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { motion } from 'framer-motion'
 import { Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,6 +12,7 @@ export const Expenses: React.FC = () => {
   const { t } = useTranslation()
   const { expenses, addExpense, deleteExpense } = useExpenses()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(getEgyptYearMonth())
   const [formData, setFormData] = useState({
     category: 'supplies',
     amount: 0,
@@ -54,7 +55,8 @@ export const Expenses: React.FC = () => {
     }
   }
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const monthExpenses = expenses.filter((e) => e.date?.startsWith(selectedMonth))
+  const totalExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0)
 
   return (
     <div className="space-y-6">
@@ -71,11 +73,22 @@ export const Expenses: React.FC = () => {
         </motion.button>
       </motion.div>
 
+      {/* Month Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-sm text-gray-400">{t('expenses.month_filter')}</label>
+        <input
+          type="month"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
+        />
+      </div>
+
       {/* Total Card */}
       <GlassCard>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-400">{t('expenses.total_expenses')}</p>
+            <p className="text-sm text-gray-400">{t('expenses.total_expenses')} - {t('expenses.month')} {selectedMonth}</p>
             <h2 className="text-3xl font-bold text-gold-400">{totalExpenses.toFixed(2)} ج.م</h2>
           </div>
         </div>
@@ -83,7 +96,7 @@ export const Expenses: React.FC = () => {
 
       {/* Expenses List */}
       <div className="space-y-3">
-        {expenses.map((expense, idx) => (
+        {monthExpenses.map((expense, idx) => (
           <motion.div
             key={expense.id || idx}
             initial={{ opacity: 0, y: 10 }}

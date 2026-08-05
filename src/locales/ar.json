@@ -189,11 +189,16 @@
       "other": "أخرى"
     },
     "monthly_summary": "ملخص الشهر",
-    "total_expenses": "إجمالي المصروفات"
+    "total_expenses": "إجمالي المصروفات",
+    "month_filter": "تصفية حسب الشهر",
+    "month": "الشهر"
   },
   "analytics": {
     "title": "التحليلات",
     "date_range": "نطاق التاريخ",
+    "custom_range": "فترة مخصصة",
+    "from": "من",
+    "to": "إلى",
     "total_revenue": "إجمالي الإيراد",
     "total_expenses": "إجمالي المصروفات",
     "net_profit": "الربح الصافي",
