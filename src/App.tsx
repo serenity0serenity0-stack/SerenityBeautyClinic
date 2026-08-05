@@ -16,7 +16,7 @@ import { Expenses } from './pages/Expenses'
 import { Analytics } from './pages/Analytics'
 import { Settings } from './pages/Settings'
 import { DailyLogs } from './pages/DailyLogs'
-import { Barbers as Therapists } from './pages/Barbers' // Renamed from Barbers to Therapists
+import { Staff } from './pages/Staff'
 import { Bookings } from './pages/Bookings'
 import { QueueDisplay } from './pages/QueueDisplay'
 
@@ -101,11 +101,11 @@ function App() {
             }
           />
           <Route
-            path="/therapists"
+            path="/staff"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Therapists />
+                  <Staff />
                 </Layout>
               </ProtectedRoute>
             }

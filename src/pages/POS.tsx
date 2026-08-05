@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Modal } from '../components/ui/Modal'
 import { ReceiptTemplate } from '../components/receipt/ReceiptTemplate'
-import { X, Search, Trash2, Printer, Check } from 'lucide-react'
+import { X, Search, Trash2, Printer, Check, ChevronUp, ChevronDown } from 'lucide-react'
 import { useClients } from '../db/hooks/useClients'
 import { useServices } from '../db/hooks/useServices'
 import { useTransactions } from '../db/hooks/useTransactions'
@@ -48,18 +48,18 @@ interface CartItem {
 
 interface CompletedTransaction {
   transactionId: string
-  clientName: string
-  clientPhone: string
-  barberName?: string
+  client_name: string
+  client_phone: string
+  barber_name?: string
   barberPhone?: string
   date: string
   time: string
   items: CartItem[]
   subtotal: number
   discount: number
-  discountType: 'percentage' | 'fixed'
+  discount_type: 'percentage' | 'fixed'
   total: number
-  paymentMethod: string
+  payment_method: string
 }
 
 export const POS: React.FC = () => {
@@ -70,20 +70,21 @@ export const POS: React.FC = () => {
   const { getVariantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
   const { getTodayBookings, updateBooking } = useBookings()
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [discount, setDiscount] = useState(0)
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed')
+  const [discount_type, setdiscount_type] = useState<'percentage' | 'fixed'>('fixed')
   const [allVariants, setAllVariants] = useState<{[key: string]: any[]}>({})
-  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [payment_method, setpayment_method] = useState('cash')
   const [showClientSearch, setShowClientSearch] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
   const [completedTransaction, setCompletedTransaction] = useState<CompletedTransaction | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [selectedBarber, setSelectedBarber] = useState<any>(null)
+  const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
   const receiptRef = useRef<HTMLDivElement>(null)
 
   // Load variants
@@ -137,19 +138,21 @@ export const POS: React.FC = () => {
 
   const handleAddService = async (service: any) => {
     const variants = allVariants[service.id]
+    const serviceName = service.nameAr || service.name || 'خدمة'
 
     if (variants && variants.length > 0) {
       // Show variant picker
       const variantPrice = variants[0].price
-      addToCart(service.nameAr, variantPrice)
+      addToCart(serviceName, variantPrice)
     } else {
       // Add with default price
-      addToCart(service.nameAr, service.price)
+      addToCart(serviceName, service.price)
     }
   }
 
   const handleAddVariant = (service: any, variant: any) => {
-    addToCart(`${service.nameAr} - ${variant.nameAr}`, variant.price)
+    const variantName = variant.name || 'خدمة'
+    addToCart(`${service.nameAr} - ${variantName}`, variant.price)
   }
 
   const addToCart = (name: string, price: number) => {
@@ -164,7 +167,7 @@ export const POS: React.FC = () => {
 
   const calculateSubtotal = () => cart.reduce((sum, item) => sum + item.price, 0)
   const calculateDiscount = () =>
-    discountType === 'percentage'
+    discount_type === 'percentage'
       ? (calculateSubtotal() * discount) / 100
       : discount
 
@@ -185,7 +188,7 @@ export const POS: React.FC = () => {
 
     // Check subscription status before allowing transaction
     try {
-      const subStatus = await checkSubscriptionStatus(shopId || '')
+      const subStatus = await checkSubscriptionStatus(clinicId || '')
       if (!subStatus.isActive) {
         const messages: Record<string, string> = {
           'inactive': 'اشتراكك غير نشط. يرجى تفعيل الاشتراك',
@@ -208,46 +211,45 @@ export const POS: React.FC = () => {
 
       // Create transaction
       const newTransaction = await addTransaction({
-        clientId: selectedClient.id,
-        clientName: selectedClient.name,
-        clientPhone: selectedClient.phone,
-        visitNumber: (selectedClient.totalVisits || 0) + 1,
+        client_id: selectedClient.id,
+        client_name: selectedClient.name,
+        client_phone: selectedClient.phone,
+        visit_number: (selectedClient.total_visits || 0) + 1,
         date: dateStr,
         time: timeStr,
         items: cart,
         subtotal,
         discount: discountAmount,
-        discountType,
+        discount_type,
         total,
-        paymentMethod: paymentMethod as 'cash' | 'card' | 'wallet',
-        barberId: selectedBarber?.id || undefined,
+        payment_method: payment_method as 'cash' | 'card' | 'wallet',
+        barber_id: selectedBarber?.id || undefined,
       })
 
       const transactionId = newTransaction?.id || 'unknown'
 
       // Update client
       await updateClient(selectedClient.id, {
-        totalVisits: (selectedClient.totalVisits || 0) + 1,
-        totalSpent: (selectedClient.totalSpent || 0) + total,
-        lastVisit: dateStr,
+        total_visits: (selectedClient.total_visits || 0) + 1,
+        total_spent: (selectedClient.total_spent || 0) + total,
+        last_visit: dateStr,
       })
 
       // Create visit log
       await addVisitLog({
-        clientId: selectedClient.id,
-        clientName: selectedClient.name,
+        client_id: selectedClient.id,
         visitDate: dateStr,
         visitTime: timeStr,
         servicesCount: cart.length,
-        totalSpent: total,
-        notes: `${cart.length} services - ${paymentMethod}`,
+        total_spent: total,
+        notes: `${cart.length} services - ${payment_method}`,
       })
 
       // Auto-complete bookings: Update today's pending/ongoing bookings for this client to "completed"
       try {
         const todayBookings = getTodayBookings()
         const clientBookingsToday = todayBookings.filter((b: any) => 
-          b.clientId === selectedClient.id && 
+          b.client_id === selectedClient.id && 
           (b.status === 'pending' || b.status === 'ongoing')
         )
 
@@ -269,18 +271,18 @@ export const POS: React.FC = () => {
       // Show receipt
       setCompletedTransaction({
         transactionId,
-        clientName: selectedClient.name,
-        clientPhone: selectedClient.phone,
-        barberName: selectedBarber?.name || '',
+        client_name: selectedClient.name,
+        client_phone: selectedClient.phone,
+        barber_name: selectedBarber?.name || '',
         barberPhone: selectedBarber?.phone || '',
         date: dateStr,
         time: timeStr,
         items: cart,
         subtotal,
         discount: discountAmount,
-        discountType,
+        discount_type,
         total,
-        paymentMethod,
+        payment_method,
       })
       setShowReceipt(true)
       toast.success('✅ تمت العملية بنجاح!')
@@ -376,7 +378,7 @@ export const POS: React.FC = () => {
         </div>
         <div className="text-right">
           <p className="text-gray-400 text-xs">الإجمالي</p>
-          <p className="text-3xl md:text-4xl font-bold text-gold-400">
+          <p className="text-3xl md:text-4xl font-bold text-pink-400">
             {total.toFixed(2)}
           </p>
           <p className="text-xs text-gray-400">ج.م</p>
@@ -393,7 +395,7 @@ export const POS: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-gold-400/10 to-yellow-500/10 border border-gold-400/30 rounded-lg"
+                className="flex items-center gap-3 p-3 bg-gradient-to-r from-gold-400/10 to-yellow-500/10 border border-pink-500/30 rounded-lg"
               >
                 <div className="flex-1">
                   <p className="text-white font-bold text-lg">{selectedClient.name}</p>
@@ -411,7 +413,7 @@ export const POS: React.FC = () => {
               <motion.button
                 onClick={() => setShowClientSearch(true)}
                 whileHover={{ scale: 1.01 }}
-                className="w-full p-4 border-2 border-dashed border-gold-400/40 hover:border-gold-400 rounded-lg transition flex items-center justify-center gap-2 text-gold-400 font-bold text-center"
+                className="w-full p-4 border-2 border-dashed border-pink-500/40 hover:border-pink-500 rounded-lg transition flex items-center justify-center gap-2 text-pink-400 font-bold text-center"
               >
                 <Search size={20} />
                 <span>اختر عميل</span>
@@ -425,71 +427,90 @@ export const POS: React.FC = () => {
               📋 الخدمات
             </h2>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="space-y-2">
               <AnimatePresence mode="popLayout">
-                {services.map((service) => {
+                {services.map((service, idx) => {
+                  const serviceId = service.id || String(idx)
                   const variants = (service.id && allVariants[service.id]) || []
+                  const isExpanded = expandedServiceId === serviceId
 
                   return (
                     <motion.div
-                      key={service.id}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
+                      key={serviceId}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: idx * 0.02 }}
                       className="group"
                     >
-                      {variants.length > 0 ? (
-                        // Show first variant as main button, others nested
-                        <div className="space-y-1.5">
-                          <motion.button
-                            onClick={() => handleAddVariant(service, variants[0])}
-                            whileHover={{ scale: 1.05, y: -2 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="w-full p-3 bg-gradient-to-br from-white/15 to-white/5 hover:from-gold-400/20 hover:to-yellow-500/15 border border-white/20 hover:border-gold-400/40 rounded-lg transition shadow-lg"
-                          >
-                            <p className="text-white font-bold text-xs md:text-sm line-clamp-2">
-                              {service.nameAr}
+                      {/* Service Header - CLICKABLE DROPDOWN */}
+                      <button
+                        onClick={() =>
+                          setExpandedServiceId(isExpanded ? null : serviceId)
+                        }
+                        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 border border-white/20 hover:border-pink-500/40 rounded-lg transition group"
+                      >
+                        <div className="flex-1 text-right">
+                          <h3 className="text-white font-bold text-sm md:text-base group-hover:text-pink-400 transition">
+                            {service.nameAr}
+                          </h3>
+                          {variants.length > 0 && (
+                            <p className="text-xs text-pink-400 mt-1">
+                              📦 {variants.length} خيار متاح
                             </p>
-                            <p className="text-gold-400 font-bold text-sm mt-1">
-                              {variants[0].price} ج.م
-                            </p>
-                          </motion.button>
-
-                          {/* Show other variants */}
-                          {variants.length > 1 && (
-                            <div className="space-y-1">
-                              {variants.slice(1, 3).map((variant: any) => (
-                                <motion.button
-                                  key={variant.id}
-                                  onClick={() => handleAddVariant(service, variant)}
-                                  whileHover={{ scale: 1.05, x: 2 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  className="w-full p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-gold-400/30 rounded text-left transition text-xs"
-                                >
-                                  <p className="text-gray-300 truncate">{variant.nameAr}</p>
-                                  <p className="text-gold-400 font-bold text-xs">
-                                    {variant.price} ج.م
-                                  </p>
-                                </motion.button>
-                              ))}
-                            </div>
                           )}
                         </div>
-                      ) : (
-                        // Show default service
+                        <div className="flex items-center gap-2 mr-3">
+                          {isExpanded ? (
+                            <ChevronUp size={20} className="text-pink-400" />
+                          ) : (
+                            <ChevronDown size={20} className="text-gray-400" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded Variants List */}
+                      <AnimatePresence>
+                        {isExpanded && variants.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-1 mt-1 ml-2 border-l-2 border-pink-500/30 pl-2"
+                          >
+                            {variants.map((variant: any) => (
+                              <motion.button
+                                key={variant.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                onClick={() => handleAddVariant(service, variant)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full flex items-center justify-between p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-left"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-sm truncate">{variant.name}</p>
+                                  <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
+                                </div>
+                                <p className="text-pink-400 font-bold text-sm ml-2 flex-shrink-0">
+                                  {variant.price} ج.م
+                                </p>
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Add button for services without variants */}
+                      {variants.length === 0 && (
                         <motion.button
                           onClick={() => handleAddService(service)}
-                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.95 }}
-                          className="w-full p-3 bg-gradient-to-br from-white/15 to-white/5 hover:from-gold-400/20 hover:to-yellow-500/15 border border-white/20 hover:border-gold-400/40 rounded-lg transition shadow-lg space-y-1"
+                          className="w-full p-2 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-sm text-white"
                         >
-                          <p className="text-white font-bold text-xs md:text-sm line-clamp-2">
-                            {service.nameAr}
-                          </p>
-                          <p className="text-gold-400 font-bold text-sm">
-                            {service.price} ج.م
-                          </p>
+                          أضف للسلة
                         </motion.button>
                       )}
                     </motion.div>
@@ -509,7 +530,7 @@ export const POS: React.FC = () => {
           {/* Cart Header */}
           <div className="flex items-center justify-between sticky top-0 bg-gradient-to-b from-black to-transparent -mx-4 md:-mx-6 px-4 md:px-6 py-2">
             <h2 className="text-lg md:text-xl font-bold text-white">🛒 السلة</h2>
-            <span className="text-sm font-semibold bg-gold-400/20 text-gold-400 px-3 py-1 rounded-full">
+            <span className="text-sm font-semibold bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 px-3 py-1 rounded-full">
               {cart.length} عنصر
             </span>
           </div>
@@ -536,7 +557,7 @@ export const POS: React.FC = () => {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-semibold truncate">{item.name}</p>
-                      <p className="text-gold-400 font-bold text-sm">{item.price} ج.م</p>
+                      <p className="text-pink-400 font-bold text-sm">{item.price} ج.م</p>
                     </div>
                     <motion.button
                       onClick={() => removeFromCart(idx)}
@@ -575,8 +596,8 @@ export const POS: React.FC = () => {
                   className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500"
                 />
                 <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
+                  value={discount_type}
+                  onChange={(e) => setdiscount_type(e.target.value as 'percentage' | 'fixed')}
                   className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
                 >
                   <option value="fixed">ج.م</option>
@@ -587,13 +608,13 @@ export const POS: React.FC = () => {
               {/* Final Total */}
               <div className="flex justify-between pt-2 border-t border-white/10">
                 <span className="text-white font-bold">الإجمالي</span>
-                <span className="text-2xl font-bold text-gold-400">{total.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-pink-400">{total.toFixed(2)}</span>
               </div>
 
               {/* Payment Method */}
               <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
+                value={payment_method}
+                onChange={(e) => setpayment_method(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
               >
                 <option value="cash">💵 نقد</option>
@@ -601,7 +622,7 @@ export const POS: React.FC = () => {
                 <option value="wallet">📱 محفظة</option>
               </select>
 
-              {/* Barber Selection */}
+              {/* Staff Selection */}
               <select
                 value={selectedBarber?.id || ''}
                 onChange={(e) => {
@@ -610,7 +631,7 @@ export const POS: React.FC = () => {
                 }}
                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
               >
-                <option value="">اختر الحلاق (اختياري)</option>
+                <option value="">اختر الموظف (اختياري)</option>
                 {barbers.filter(b => b.active).map((barber) => (
                   <option key={barber.id} value={barber.id}>
                     ✂️ {barber.name}
@@ -624,7 +645,7 @@ export const POS: React.FC = () => {
                 disabled={isCheckingOut || !selectedClient || cart.length === 0}
                 whileHover={!isCheckingOut && selectedClient ? { scale: 1.02, y: -2 } : {}}
                 whileTap={!isCheckingOut && selectedClient ? { scale: 0.98 } : {}}
-                className="w-full p-4 bg-gradient-to-r from-gold-400 to-yellow-400 text-black font-bold text-base md:text-lg rounded-xl hover:shadow-2xl hover:shadow-gold-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition transform"
+                className="w-full p-4 bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold text-base md:text-lg rounded-xl hover:shadow-2xl hover:shadow-pink-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition transform"
               >
                 {isCheckingOut ? (
                   <span className="flex items-center justify-center gap-2">
@@ -689,12 +710,12 @@ export const POS: React.FC = () => {
                       setSearchQuery('')
                     }}
                     whileHover={{ scale: 1.02, x: 8 }}
-                    className="w-full p-4 bg-white/5 hover:bg-gold-400/10 border border-white/10 hover:border-gold-400/30 rounded-lg text-left transition"
+                    className="w-full p-4 bg-white/5 hover:bg-gradient-to-r from-pink-600 to-pink-700/10 border border-white/10 hover:border-pink-500/30 rounded-lg text-left transition"
                   >
                     <p className="text-white font-semibold">{item.name}</p>
                     <p className="text-xs text-gray-400">📞 {item.phone}</p>
-                    <p className="text-xs text-gold-400 mt-1">
-                      {item.totalVisits} زيارات • {item.totalSpent?.toFixed(2)} ج.م
+                    <p className="text-xs text-pink-400 mt-1">
+                      {item.total_visits} زيارات • {item.total_spent?.toFixed(2)} ج.م
                     </p>
                   </motion.button>
                 ))
@@ -737,17 +758,17 @@ export const POS: React.FC = () => {
               <ReceiptTemplate
                 ref={receiptRef}
                 transactionId={completedTransaction.transactionId}
-                clientName={completedTransaction.clientName}
-                clientPhone={completedTransaction.clientPhone}
-                barberName={completedTransaction.barberName}
+                client_name={completedTransaction.client_name}
+                client_phone={completedTransaction.client_phone}
+                barber_name={completedTransaction.barber_name}
                 date={completedTransaction.date}
                 time={completedTransaction.time}
                 items={completedTransaction.items}
                 subtotal={completedTransaction.subtotal}
                 discount={completedTransaction.discount}
-                discountType={completedTransaction.discountType}
+                discount_type={completedTransaction.discount_type}
                 total={completedTransaction.total}
-                paymentMethod={completedTransaction.paymentMethod}
+                payment_method={completedTransaction.payment_method}
               />
             </div>
 
@@ -772,7 +793,7 @@ export const POS: React.FC = () => {
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold-400 to-yellow-400 text-black font-bold rounded-lg hover:shadow-lg hover:shadow-gold-400/40 transition"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-pink-500/40 transition"
               >
                 <Check size={20} />
                 <span>معاملة جديدة</span>

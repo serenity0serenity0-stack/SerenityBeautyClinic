@@ -25,12 +25,8 @@ export function useAuth() {
 
   const checkIfAdmin = useCallback(async (userId: string): Promise<string | null> => {
     try {
-      const { data } = await supabase
-        .from('admin_auth')
-        .select('clinic_id')
-        .eq('auth_user_id', userId)
-        .maybeSingle()
-      return data?.clinic_id || null
+      const { data } = await supabase.rpc('get_clinic_id_for_user', { user_id: userId })
+      return data || null
     } catch { return null }
   }, [])
 

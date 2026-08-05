@@ -5,19 +5,18 @@ import toast from 'react-hot-toast'
 
 export interface VisitLog {
   id: string
-  clientId: string
-  clientName: string
+  client_id: string
   visitDate: string
   visitTime: string
   servicesCount: number
-  totalSpent: number
+  total_spent: number
   notes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export const useVisitLogs = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [visitLogs, setVisitLogs] = useState<VisitLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +24,7 @@ export const useVisitLogs = () => {
   const fetchVisitLogs = async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setVisitLogs([])
         return
       }
@@ -33,8 +32,8 @@ export const useVisitLogs = () => {
       const { data, error } = await supabase
         .from('visit_logs')
         .select('*')
-        .eq('shop_id', shopId)
-        .order('createdAt', { ascending: false })
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       setVisitLogs(data || [])
@@ -49,21 +48,33 @@ export const useVisitLogs = () => {
 
   useEffect(() => {
     fetchVisitLogs()
-  }, [shopId])
+  }, [clinicId])
 
-  const addVisitLog = async (log: Omit<VisitLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addVisitLog = async (log: Omit<VisitLog, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!shopId) {
-        throw new Error('Shop ID is required')
+      if (!clinicId) {
+        throw new Error('Clinic ID is required')
       }
 
+      // Ensure visitDate is provided - this is CRITICAL
+      if (!log.visitDate) {
+        throw new Error('Visit date is required')
+      }
+
+      // Map camelCase visitDate to snake_case visit_date for database
       const { data, error } = await supabase
         .from('visit_logs')
         .insert({
-          ...log,
-          shop_id: shopId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          client_id: log.client_id,
+          visit_date: log.visitDate,  // Map visitDate → visit_date
+          visitDate: log.visitDate,   // Keep both for compatibility
+          visitTime: log.visitTime,
+          servicesCount: log.servicesCount,
+          total_spent: log.total_spent,
+          notes: log.notes || '',
+          clinic_id: clinicId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -76,21 +87,37 @@ export const useVisitLogs = () => {
     }
   }
 
-  const getClientVisitLogs = async (clientId: string) => {
+  const getClientVisitLogs = async (client_id: string) => {
     try {
-      if (!shopId) {
+      if (!clinicId) {
         return []
       }
       
       const { data, error } = await supabase
         .from('visit_logs')
         .select('*')
-        .eq('shop_id', shopId)
-        .eq('clientId', clientId)
+        .eq('clinic_id', clinicId)
+        .eq('client_id', client_id)
         .order('visitDate', { ascending: false })
 
       if (error) throw error
       return data || []
+    } catch (err: any) {
+      toast.error(err.message)
+      throw err
+    }
+  }
+
+  const deleteVisitLog = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('visit_logs')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      toast.success('تم حذف السجل بنجاح')
+      await fetchVisitLogs()
     } catch (err: any) {
       toast.error(err.message)
       throw err
@@ -104,5 +131,6 @@ export const useVisitLogs = () => {
     fetchVisitLogs,
     addVisitLog,
     getClientVisitLogs,
+    deleteVisitLog,
   }
 }

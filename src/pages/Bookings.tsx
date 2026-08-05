@@ -19,18 +19,19 @@ import {
   CheckCircle2,
   Zap,
 } from 'lucide-react'
+import { formatDateEgypt, formatTimeEgypt } from '../utils/formatCurrency'
 import toast from 'react-hot-toast'
 import { QueueStatus } from '../components/ui/QueueStatus'
 
 interface NewBooking {
   searchQuery: string
-  clientId: string | null
-  clientName: string
-  clientPhone: string
-  barberId: string | null
-  serviceType: string
-  bookingDate: string
-  bookingTime: string
+  client_id: string | null
+  client_name: string
+  client_phone: string
+  barber_id: string | null
+  service_type: string
+  booking_date: string
+  booking_time: string
   duration: number
 }
 
@@ -48,6 +49,7 @@ export const Bookings: React.FC = () => {
   const { loading, getTodayBookings, getUpcomingBookings, addBooking, updateBooking, deleteBooking } = useBookings()
   const { clients } = useClients()
   const { barbers } = useBarbers()
+  const isMountedRef = React.useRef(true)
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -61,29 +63,36 @@ export const Bookings: React.FC = () => {
 
   const [formData, setFormData] = useState<NewBooking>({
     searchQuery: '',
-    clientId: null,
-    clientName: '',
-    clientPhone: '',
-    barberId: null,
-    serviceType: '',
-    bookingDate: getEgyptDateString(),
-    bookingTime: '10:00',
+    client_id: null,
+    client_name: '',
+    client_phone: '',
+    barber_id: null,
+    service_type: '',
+    booking_date: getEgyptDateString(),
+    booking_time: '10:00',
     duration: 30,
   })
 
   const todayBookings = getTodayBookings()
   const upcomingBookings = getUpcomingBookings()
 
-  // حساب الأوقات المتاحة والمشغولة لحلاق محدد
-  const calculateAvailableSlots = (date: string, selectedBarberId?: string) => {
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  // حساب الأوقات المتاحة والمشغولة لموظف محدد (Memoized)
+  const calculateAvailableSlots = React.useCallback((date: string, selectedbarber_id?: string) => {
     const slots: TimeSlot[] = []
     const intervalMinutes = 30
     const now = new Date()
 
-    // الحجوزات في هذا اليوم للحلاق المحدد (فقط pending/ongoing)
+    // الحجوزات في هذا اليوم للموظف المحدد (فقط pending/ongoing)
     const dayBookings = getTodayBookings().filter((b: any) => {
-      const isCorrectDate = new Date(b.bookingTime).toLocaleDateString('en-CA') === date
-      const isCorrectBarber = !selectedBarberId || b.barberId === selectedBarberId
+      const isCorrectDate = new Date(b.booking_time).toLocaleDateString('en-CA') === date
+      const isCorrectBarber = !selectedbarber_id || b.barber_id === selectedbarber_id
       // استبعد الحجوزات المكتملة والملغاة - لا تحجز الوقت
       const isActive = b.status !== 'completed' && b.status !== 'cancelled'
       return isCorrectDate && isCorrectBarber && isActive
@@ -103,7 +112,7 @@ export const Bookings: React.FC = () => {
         const slotEnd = slotStart + 30 * 60000 // 30 minute service duration
 
         const hasConflict = dayBookings.some((booking: any) => {
-          const bookingStart = new Date(booking.bookingTime).getTime()
+          const bookingStart = new Date(booking.booking_time).getTime()
           const bookingEnd = bookingStart + (booking.duration || 30) * 60000
 
           // Check overlap: slot starts before booking ends AND slot ends after booking starts
@@ -123,15 +132,15 @@ export const Bookings: React.FC = () => {
           available: !hasConflict && !timeHasPassed,
           reason: timeHasPassed ? 'الوقت عدا بالفعل' : (hasConflict ? 'محجوز بالفعل' : undefined),
           bookingCount: dayBookings.filter((b: any) => {
-            const bHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
+            const bHour = parseInt(b.booking_time.split('T')[1].substring(0, 2))
             return bHour === hour
           }).length,
           hasCompletedBooking: !!dayBookings.find((b: any) => {
-            const bookingHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
+            const bookingHour = parseInt(b.booking_time.split('T')[1].substring(0, 2))
             return bookingHour === hour && b.status === 'completed'
           }),
           hasPendingBooking: !!dayBookings.find((b: any) => {
-            const bookingHour = parseInt(b.bookingTime.split('T')[1].substring(0, 2))
+            const bookingHour = parseInt(b.booking_time.split('T')[1].substring(0, 2))
             return bookingHour === hour && b.status !== 'completed' && b.status !== 'cancelled'
           }),
         })
@@ -139,56 +148,62 @@ export const Bookings: React.FC = () => {
     }
 
     return slots
-  }
+  }, [workingHours])
 
-  // تحديث الأوقات عند تغيير التاريخ أو الحلاق أو عند تحديث الحجوزات
+  // تحديث الأوقات عند تغيير التاريخ أو الموظف أو عند تحديث الحجوزات
   React.useEffect(() => {
-    if (formData.bookingDate) {
-      const slots = calculateAvailableSlots(formData.bookingDate, formData.barberId || undefined)
-      setAvailableSlots(slots)
+    if (!isMountedRef.current) return
+    if (formData.booking_date) {
+      const slots = calculateAvailableSlots(formData.booking_date, formData.barber_id || undefined)
+      if (isMountedRef.current) {
+        setAvailableSlots(slots)
+      }
     }
-  }, [formData.bookingDate, formData.barberId, todayBookings])
+  }, [formData.booking_date, formData.barber_id, todayBookings])
 
   // تحديث معاينة الدور عند تغيير الوقت
   React.useEffect(() => {
-    if (formData.bookingTime) {
+    if (formData.booking_time) {
       const dayBookings = getTodayBookings().filter(
-        (b: any) => new Date(b.bookingTime).toLocaleDateString('en-CA') === formData.bookingDate
+        (b: any) => new Date(b.booking_time).toLocaleDateString('en-CA') === formData.booking_date
       )
-      const queueNumber = (dayBookings.filter((b: any) => 
-        parseInt(b.bookingTime.split('T')[1]) < parseInt(formData.bookingTime)
+      const queue_number = (dayBookings.filter((b: any) => 
+        parseInt(b.booking_time.split('T')[1]) < parseInt(formData.booking_time)
       ).length || 0) + 1
 
       const totalWaitMinutes = dayBookings
-        .filter((b: any) => parseInt(b.bookingTime.split('T')[1]) < parseInt(formData.bookingTime))
+        .filter((b: any) => parseInt(b.booking_time.split('T')[1]) < parseInt(formData.booking_time))
         .reduce((sum, b: any) => sum + (b.duration || 30), 0)
 
       setPreviewInfo({
-        queueNumber,
+        queue_number,
         estimatedWait: totalWaitMinutes,
       })
     }
-  }, [formData.bookingTime, formData.bookingDate])
+  }, [formData.booking_time, formData.booking_date])
 
   // Listen for real-time booking status changes and refresh slots
   React.useEffect(() => {
     const handleStatusChange = () => {
-      if (formData.bookingDate) {
-        const slots = calculateAvailableSlots(formData.bookingDate, formData.barberId || undefined)
-        setAvailableSlots(slots)
+      if (!isMountedRef.current) return
+      if (formData.booking_date) {
+        const slots = calculateAvailableSlots(formData.booking_date, formData.barber_id || undefined)
+        if (isMountedRef.current) {
+          setAvailableSlots(slots)
+        }
       }
     }
     appEmitter.on('booking:statusChanged', handleStatusChange)
     return () => {
       appEmitter.off('booking:statusChanged', handleStatusChange)
     }
-  }, [formData.bookingDate, formData.barberId])
+  }, [formData.booking_date, formData.barber_id, calculateAvailableSlots])
 
-  // اختيار ذكي - إيجاد أفضل حلاق متاح
-  const findBestBarberOption = (date: string): { barberId: string; barberName: string; firstAvailableTime: string; earliestHour: number } | null => {
+  // اختيار ذكي - إيجاد أفضل موظف متاح
+  const findBestBarberOption = (date: string): { barber_id: string; barber_name: string; firstAvailableTime: string; earliestHour: number } | null => {
     if (!barbers || barbers.length === 0) return null
 
-    let bestOption: { barberId: string; barberName: string; firstAvailableTime: string; earliestHour: number } | null = null
+    let bestOption: { barber_id: string; barber_name: string; firstAvailableTime: string; earliestHour: number } | null = null
     let earliestHour = 24
 
     barbers?.forEach((barber) => {
@@ -202,8 +217,8 @@ export const Bookings: React.FC = () => {
         if (hour < earliestHour) {
           earliestHour = hour
           bestOption = {
-            barberId: barber.id,
-            barberName: barber.name || '',
+            barber_id: barber.id,
+            barber_name: barber.name || '',
             firstAvailableTime: firstAvailable.time,
             earliestHour: hour,
           }
@@ -237,9 +252,9 @@ export const Bookings: React.FC = () => {
     setFormData({
       ...formData,
       searchQuery: '',
-      clientId: client.id || null,
-      clientName: client.name,
-      clientPhone: client.phone,
+      client_id: client.id || null,
+      client_name: client.name,
+      client_phone: client.phone,
     })
     setShowSearchResults(false)
   }
@@ -247,23 +262,23 @@ export const Bookings: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Order: Barber → Client → Date/Time
-    if (!formData.barberId) {
-      toast.error('❌ الرجاء اختيار الحلاق أولاً')
+    // Order: Staff → Client → Date/Time
+    if (!formData.barber_id) {
+      toast.error('❌ الرجاء اختيار الموظف أولاً')
       return
     }
 
-    if (!formData.clientId) {
+    if (!formData.client_id) {
       toast.error('❌ الرجاء البحث عن العميل واختياره من القائمة')
       return
     }
 
-    if (!formData.bookingDate || formData.bookingDate.trim() === '') {
+    if (!formData.booking_date || formData.booking_date.trim() === '') {
       toast.error('❌ الرجاء تحديد التاريخ')
       return
     }
 
-    if (!formData.bookingTime || formData.bookingTime.trim() === '') {
+    if (!formData.booking_time || formData.booking_time.trim() === '') {
       toast.error('❌ الرجاء تحديد الوقت من القائمة أعلاه')
       return
     }
@@ -272,28 +287,28 @@ export const Bookings: React.FC = () => {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     const timeRegex = /^\d{2}:\d{2}$/
     
-    if (!dateRegex.test(formData.bookingDate)) {
+    if (!dateRegex.test(formData.booking_date)) {
       toast.error('❌ صيغة التاريخ غير صحيحة')
       return
     }
 
-    if (!timeRegex.test(formData.bookingTime)) {
+    if (!timeRegex.test(formData.booking_time)) {
       toast.error('❌ صيغة الوقت غير صحيحة')
       return
     }
 
     // فحص إذا كان الوقت متاح
-    const selectedSlot = availableSlots.find((s) => s.time === formData.bookingTime)
+    const selectedSlot = availableSlots.find((s) => s.time === formData.booking_time)
     if (selectedSlot && !selectedSlot.available) {
       toast.error(`⚠️ للأسف هذا الوقت ${selectedSlot.reason}!\nاختر أوقات أخرى في نفس اليوم`)
       return
     }
 
     try {
-      const bookingTime = `${formData.bookingDate}T${formData.bookingTime}:00+02:00`
+      const booking_time = `${formData.booking_date}T${formData.booking_time}:00+02:00`
 
       // تحقق نهائي من صحة الوقت قبل الإرسال
-      if (!bookingTime || bookingTime.trim() === '') {
+      if (!booking_time || booking_time.trim() === '') {
         toast.error('❌ خطأ في إنشاء الوقت - يرجى المحاولة مرة أخرى')
         return
       }
@@ -301,12 +316,12 @@ export const Bookings: React.FC = () => {
       if (editingId) {
         // تعديل الحجز
         const updates: Partial<Booking> = {
-          clientId: formData.clientId,
-          clientName: formData.clientName,
-          clientPhone: formData.clientPhone,
-          barberId: formData.barberId || undefined,
-          serviceType: formData.serviceType || undefined,
-          bookingTime: bookingTime,
+          client_id: formData.client_id,
+          client_name: formData.client_name,
+          client_phone: formData.client_phone,
+          barber_id: formData.barber_id || undefined,
+          service_type: formData.service_type || undefined,
+          booking_time: booking_time,
           duration: formData.duration,
         }
 
@@ -316,18 +331,18 @@ export const Bookings: React.FC = () => {
       } else {
         // إنشاء حجز جديد
         await addBooking({
-          clientId: formData.clientId,
-          clientName: formData.clientName,
-          clientPhone: formData.clientPhone,
-          barberId: formData.barberId || undefined,
-          barberName: formData.barberId
-            ? barbers?.find((b) => b.id === formData.barberId)?.name
+          client_id: formData.client_id,
+          client_name: formData.client_name,
+          client_phone: formData.client_phone,
+          barber_id: formData.barber_id || undefined,
+          barber_name: formData.barber_id
+            ? barbers?.find((b) => b.id === formData.barber_id)?.name
             : undefined,
-          serviceType: formData.serviceType || undefined,
-          bookingTime: bookingTime,
+          service_type: formData.service_type || undefined,
+          booking_time: booking_time,
           duration: formData.duration,
           status: 'pending',
-          queueNumber: 0, // Will be calculated by addBooking
+          queue_number: 0, // Will be calculated by addBooking
         } as any)
         toast.success('✅ تم إنشاء الحجز بنجاح')
       }
@@ -335,13 +350,13 @@ export const Bookings: React.FC = () => {
       // إعادة تعيين النموذج
       setFormData({
         searchQuery: '',
-        clientId: null,
-        clientName: '',
-        clientPhone: '',
-        barberId: null,
-        serviceType: '',
-        bookingDate: getEgyptDateString(),
-        bookingTime: '10:00',
+        client_id: null,
+        client_name: '',
+        client_phone: '',
+        barber_id: null,
+        service_type: '',
+        booking_date: getEgyptDateString(),
+        booking_time: '10:00',
         duration: 30,
       })
       setShowModal(false)
@@ -349,7 +364,7 @@ export const Bookings: React.FC = () => {
       console.error('Error saving booking:', error)
       
       // معالجة أخطاء قاعدة البيانات
-      if (error.message?.includes('bookingtime') || error.message?.includes('NOT NULL')) {
+      if (error.message?.includes('booking_time') || error.message?.includes('NOT NULL')) {
         toast.error('❌ خطأ: الرجاء تحديد التاريخ والوقت بشكل صحيح')
       } else if (error.message?.includes('محجوز') || error.message?.includes('booked')) {
         toast.error('⚠️ هذا الموعد محجوز بالفعل - اختر وقت آخر')
@@ -362,18 +377,18 @@ export const Bookings: React.FC = () => {
   }
 
   const handleEdit = (booking: any) => {
-    const bookingDate = booking.bookingTime.split('T')[0]
-    const bookingTime = booking.bookingTime.split('T')[1]?.substring(0, 5) || '10:00'
+    const booking_date = booking.booking_time.split('T')[0]
+    const booking_time = booking.booking_time.split('T')[1]?.substring(0, 5) || '10:00'
 
     setFormData({
       searchQuery: '',
-      clientId: booking.clientId,
-      clientName: booking.clientName,
-      clientPhone: booking.clientPhone,
-      barberId: booking.barberId || null,
-      serviceType: booking.serviceType || '',
-      bookingDate,
-      bookingTime,
+      client_id: booking.client_id,
+      client_name: booking.client_name,
+      client_phone: booking.client_phone,
+      barber_id: booking.barber_id || null,
+      service_type: booking.service_type || '',
+      booking_date,
+      booking_time,
       duration: booking.duration || 30,
     })
     setEditingId(booking.id || null)
@@ -389,8 +404,8 @@ export const Bookings: React.FC = () => {
   const handleStatusChange = async (id: string, status: Booking['status']) => {
     await updateBooking(id, { status })
     // Refresh available slots after status change
-    if (formData.bookingDate) {
-      const slots = calculateAvailableSlots(formData.bookingDate, formData.barberId || undefined)
+    if (formData.booking_date) {
+      const slots = calculateAvailableSlots(formData.booking_date, formData.barber_id || undefined)
       setAvailableSlots(slots)
     }
   }
@@ -401,7 +416,7 @@ export const Bookings: React.FC = () => {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin">
-          <Calendar className="text-gold-400" size={40} />
+          <Calendar className="text-pink-400" size={40} />
         </div>
       </div>
     )
@@ -433,20 +448,20 @@ export const Bookings: React.FC = () => {
               setEditingId(null)
               setFormData({
                 searchQuery: '',
-                clientId: null,
-                clientName: '',
-                clientPhone: '',
-                barberId: null,
-                serviceType: '',
-                bookingDate: getEgyptDateString(),
-                bookingTime: '10:00',
+                client_id: null,
+                client_name: '',
+                client_phone: '',
+                barber_id: null,
+                service_type: '',
+                booking_date: getEgyptDateString(),
+                booking_time: '10:00',
                 duration: 30,
               })
               setShowModal(true)
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 bg-gold-400 text-dark px-6 py-2 rounded-lg font-semibold hover:bg-gold-500 transition"
+            className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-pink-600 hover:to-pink-700 transition shadow-lg hover:shadow-pink-500/50"
           >
             <Plus size={20} />
             حجز جديد
@@ -462,7 +477,7 @@ export const Bookings: React.FC = () => {
           whileTap={{ scale: 0.95 }}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
             viewMode === 'today'
-              ? 'bg-gold-400 text-dark'
+              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
               : 'bg-white/10 text-gray-300 hover:bg-white/15'
           }`}
         >
@@ -475,7 +490,7 @@ export const Bookings: React.FC = () => {
           whileTap={{ scale: 0.95 }}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
             viewMode === 'upcoming'
-              ? 'bg-gold-400 text-dark'
+              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
               : 'bg-white/10 text-gray-300 hover:bg-white/15'
           }`}
         >
@@ -493,7 +508,7 @@ export const Bookings: React.FC = () => {
               animate={{ opacity: 1 }}
               className="text-center py-12 text-gray-400"
             >
-              <AlertCircle className="mx-auto mb-4 text-gold-400/50" size={40} />
+              <AlertCircle className="mx-auto mb-4 text-pink-400/50" size={40} />
               <p>لا توجد حجوزات في هذا الوقت</p>
             </motion.div>
           ) : (
@@ -515,8 +530,8 @@ export const Bookings: React.FC = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="flex gap-2">
-                      <div className="bg-gold-400/20 rounded-lg px-3 py-1">
-                        <span className="text-gold-400 font-bold">#{booking.queueNumber}</span>
+                      <div className="bg-gradient-to-r from-pink-600 to-pink-700/20 rounded-lg px-3 py-1">
+                        <span className="text-pink-400 font-bold">#{booking.queue_number}</span>
                       </div>
                       <div
                         className={`rounded-lg px-3 py-1 text-xs font-bold ${
@@ -539,8 +554,8 @@ export const Bookings: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-white font-semibold">{booking.clientName}</h3>
-                      <p className="text-gray-400 text-sm">{booking.clientPhone}</p>
+                      <h3 className="text-white font-semibold">{booking.client_name}</h3>
+                      <p className="text-gray-400 text-sm">{booking.client_phone}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -562,7 +577,7 @@ export const Bookings: React.FC = () => {
                           ? 'bg-green-500/20 text-green-300 border-green-500/40'
                           : booking.status === 'cancelled'
                           ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                          : 'bg-white/10 text-white border-white/20 focus:border-gold-400'
+                          : 'bg-white/10 text-white border-white/20 focus:border-pink-500'
                       }`}
                     >
                       <option value="pending">قيد الانتظار</option>
@@ -591,13 +606,10 @@ export const Bookings: React.FC = () => {
                   <div className="bg-white/5 rounded-lg p-3">
                     <p className="text-gray-400 text-xs mb-1">الموعد</p>
                     <p className="text-white font-semibold">
-                      {new Date(booking.bookingTime).toLocaleDateString('ar-EG')}
+                      {formatDateEgypt(booking.booking_time, 'ar')}
                     </p>
-                    <p className="text-gold-400">
-                      {new Date(booking.bookingTime).toLocaleTimeString('ar-EG', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                    <p className="text-pink-400">
+                      {formatTimeEgypt(booking.booking_time, 'ar')}
                     </p>
                   </div>
 
@@ -621,7 +633,7 @@ export const Bookings: React.FC = () => {
 
                       <div className="bg-white/5 rounded-lg p-3">
                         <p className="text-gray-400 text-xs mb-1">الوقت المتوقع</p>
-                        <p className="text-gold-400 font-semibold text-sm">
+                        <p className="text-pink-400 font-semibold text-sm">
                           {booking.queueInfo.estimatedStartTime}
                         </p>
                       </div>
@@ -637,18 +649,18 @@ export const Bookings: React.FC = () => {
                   )}
                 </div>
 
-                {(booking.barberName || booking.serviceType) && (
+                {(booking.barber_name || booking.service_type) && (
                   <div className="flex gap-4 text-sm">
-                    {booking.barberName && (
+                    {booking.barber_name && (
                       <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded">
-                        <span className="text-gray-400">الحلاق:</span>
-                        <span className="text-white font-semibold">{booking.barberName}</span>
+                        <span className="text-gray-400">الموظف:</span>
+                        <span className="text-white font-semibold">{booking.barber_name}</span>
                       </div>
                     )}
-                    {booking.serviceType && (
+                    {booking.service_type && (
                       <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded">
                         <span className="text-gray-400">النوع:</span>
-                        <span className="text-white font-semibold">{booking.serviceType}</span>
+                        <span className="text-white font-semibold">{booking.service_type}</span>
                       </div>
                     )}
                   </div>
@@ -674,7 +686,7 @@ export const Bookings: React.FC = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-dark rounded-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gold-400/20"
+              className="glass-dark rounded-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-pink-500/20"
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">
@@ -692,43 +704,43 @@ export const Bookings: React.FC = () => {
                 {/* Barber Selection - FIRST STEP */}
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    ✂️ اختر الحلاق *
+                    💼 اختر الموظف *
                   </label>
                   <div className="space-y-2">
                     <select
-                      value={formData.barberId || ''}
+                      value={formData.barber_id || ''}
                       onChange={(e) => {
                         if (e.target.value) {
-                          setFormData({ ...formData, barberId: e.target.value })
+                          setFormData({ ...formData, barber_id: e.target.value })
                           setAvailableSlots([]) // إعادة تعيين الأوقات
                         }
                       }}
-                      className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
+                      className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                     >
-                      <option value="">-- اختر الحلاق --</option>
+                      <option value="">-- اختر الموظف --</option>
                       {barbers
                         ?.filter((b) => b.active)
                         .map((barber) => (
                           <option key={barber.id} value={barber.id}>
-                            ✂️ {barber.name}
+                            💼 {barber.name}
                           </option>
                         ))}
                     </select>
 
                     {/* Smart Choice Button */}
-                    {formData.bookingDate && !formData.barberId && (
+                    {formData.booking_date && !formData.barber_id && (
                       <motion.button
                         type="button"
                         onClick={() => {
-                          const best = findBestBarberOption(formData.bookingDate)
+                          const best = findBestBarberOption(formData.booking_date)
                           if (best) {
                             setFormData({
                               ...formData,
-                              barberId: best.barberId,
-                              bookingTime: best.firstAvailableTime,
+                              barber_id: best.barber_id,
+                              booking_time: best.firstAvailableTime,
                             })
                             toast.success(
-                              `⚡ اختيار ذكي: ${best.barberName} متاح الساعة ${best.firstAvailableTime}`
+                              `⚡ اختيار ذكي: ${best.barber_name} متاح الساعة ${best.firstAvailableTime}`
                             )
                           } else {
                             toast.error('❌ لا توجد أوقات متاحة في هذا اليوم')
@@ -743,10 +755,10 @@ export const Bookings: React.FC = () => {
                     )}
                   </div>
 
-                  {formData.barberId && (
+                  {formData.barber_id && (
                     <div className="mt-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                       <p className="text-green-400 text-sm font-semibold">
-                        ✓ {barbers?.find((b) => b.id === formData.barberId)?.name}
+                        ✓ {barbers?.find((b) => b.id === formData.barber_id)?.name}
                       </p>
                     </div>
                   )}
@@ -763,20 +775,20 @@ export const Bookings: React.FC = () => {
                       placeholder="ابحث عن الاسم أو رقم الهاتف"
                       value={formData.searchQuery}
                       onChange={(e) => handleClientSearch(e.target.value)}
-                      className="w-full bg-white/15 text-white px-4 py-2 rounded-lg border-2 border-white/30 focus:border-gold-400 focus:outline-none focus:bg-white/20 transition placeholder-gray-300"
+                      className="w-full bg-white/15 text-white px-4 py-2 rounded-lg border-2 border-white/30 focus:border-pink-500 focus:outline-none focus:bg-white/20 transition placeholder-gray-300"
                     />
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
 
                     {/* Search Results Dropdown */}
                     {showSearchResults && searchResults.length > 0 && (
-                      <div className="absolute top-full right-0 w-full mt-1 bg-gray-900 border-2 border-gold-400 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto">
+                      <div className="absolute top-full right-0 w-full mt-1 bg-gray-900 border-2 border-pink-500 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto">
                         {searchResults.map((client) => (
                           <motion.button
                             key={client.id}
                             type="button"
                             onClick={() => selectClient(client)}
                             whileHover={{ backgroundColor: '#D4AF37' }}
-                            className="w-full text-right px-4 py-3 text-white hover:bg-gold-400 hover:text-dark transition border-b border-gray-700 last:border-b-0 font-medium"
+                            className="w-full text-right px-4 py-3 text-white hover:bg-gradient-to-r from-pink-600 to-pink-700 hover:text-dark transition border-b border-gray-700 last:border-b-0 font-medium"
                           >
                             <div className="font-semibold text-base">{client.name}</div>
                             <div className="text-xs text-gray-300">{client.phone}</div>
@@ -786,10 +798,10 @@ export const Bookings: React.FC = () => {
                     )}
                   </div>
 
-                  {formData.clientId && (
+                  {formData.client_id && (
                     <div className="mt-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                       <p className="text-green-400 text-sm font-semibold">
-                        ✓ {formData.clientName} ({formData.clientPhone})
+                        ✓ {formData.client_name} ({formData.client_phone})
                       </p>
                     </div>
                   )}
@@ -804,9 +816,9 @@ export const Bookings: React.FC = () => {
                       </label>
                       <input
                         type="date"
-                        value={formData.bookingDate}
-                        onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value })}
-                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
+                        value={formData.booking_date}
+                        onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
+                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                       />
                     </div>
                     <div>
@@ -814,13 +826,13 @@ export const Bookings: React.FC = () => {
                         ⏰ الوقت (اختر من القائمة) *
                       </label>
                       <select
-                        value={formData.bookingTime || ''}
+                        value={formData.booking_time || ''}
                         onChange={(e) => {
                           if (e.target.value) {
-                            setFormData({ ...formData, bookingTime: e.target.value })
+                            setFormData({ ...formData, booking_time: e.target.value })
                           }
                         }}
-                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-gold-400 focus:outline-none"
+                        className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                       >
                         {availableSlots.length === 0 ? (
                           <option value="">-- اختر التاريخ أولاً --</option>
@@ -854,7 +866,7 @@ export const Bookings: React.FC = () => {
                           type="button"
                           onClick={() => {
                             if (slot.available || slot.hasCompletedBooking) {
-                              setFormData({ ...formData, bookingTime: slot.time })
+                              setFormData({ ...formData, booking_time: slot.time })
                             }
                           }}
                           whileHover={slot.available && !slot.hasCompletedBooking ? { scale: 1.05 } : {}}
@@ -862,8 +874,8 @@ export const Bookings: React.FC = () => {
                             slot.hasCompletedBooking
                               ? 'bg-green-500/40 text-green-300 border border-green-500/70 font-bold'
                               : slot.available
-                              ? formData.bookingTime === slot.time
-                                ? 'bg-gold-400 text-dark border-2 border-gold-400'
+                              ? formData.booking_time === slot.time
+                                ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark border-2 border-pink-500'
                                 : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
                               : 'bg-red-500/40 text-red-300 border border-red-500/70 cursor-not-allowed opacity-75'
                           }`}
@@ -883,7 +895,7 @@ export const Bookings: React.FC = () => {
                   </div>
 
                   {/* Preview Info */}
-                  {previewInfo && formData.bookingTime && (
+                  {previewInfo && formData.booking_time && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -896,7 +908,7 @@ export const Bookings: React.FC = () => {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-400">رقمك في الدور:</span>
-                          <p className="text-lg font-bold text-gold-400">#{previewInfo.queueNumber}</p>
+                          <p className="text-lg font-bold text-pink-400">#{previewInfo.queue_number}</p>
                         </div>
                         <div>
                           <span className="text-gray-400">الانتظار المتوقع:</span>
@@ -918,21 +930,21 @@ export const Bookings: React.FC = () => {
                     step="15"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                   />
                 </div>
 
                 {/* Service Type (Optional) */}
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    نوع الخدمة (اختياري)
+                    💇 نوع الخدمة (اختياري)
                   </label>
                   <input
                     type="text"
-                    placeholder="مثل: حلاقة عادية، حلاقة + لحية..."
-                    value={formData.serviceType}
-                    onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    placeholder="مثل: حلاقة عادية، حلاقة + لحية، عناية اللحية..."
+                    value={formData.service_type}
+                    onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border-2 border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                   />
                 </div>
 
@@ -942,9 +954,9 @@ export const Bookings: React.FC = () => {
                     type="submit"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex-1 bg-gold-400 text-dark px-6 py-3 rounded-lg font-semibold hover:bg-gold-500 transition"
+                    className="flex-1 bg-gradient-to-r from-pink-500 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-pink-600 hover:to-pink-700 transition shadow-lg hover:shadow-pink-500/50"
                   >
-                    {editingId ? 'تحديث الحجز' : 'إنشاء الحجز'}
+                    {editingId ? '✅ تحديث الحجز' : '✅ إنشاء الحجز'}
                   </motion.button>
                   <motion.button
                     type="button"
@@ -1002,7 +1014,7 @@ export const Bookings: React.FC = () => {
                         start: Math.min(parseInt(e.target.value), workingHours.end),
                       })
                     }
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>
@@ -1024,7 +1036,7 @@ export const Bookings: React.FC = () => {
                         end: Math.max(parseInt(e.target.value), workingHours.start),
                       })
                     }
-                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-gold-400 focus:outline-none"
+                    className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>
@@ -1050,7 +1062,7 @@ export const Bookings: React.FC = () => {
                   }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-gold-400 text-dark px-6 py-3 rounded-lg font-semibold hover:bg-gold-500 transition mt-6"
+                  className="w-full bg-gradient-to-r from-pink-600 to-pink-700 text-dark px-6 py-3 rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition mt-6"
                 >
                   حفظ ساعات العمل
                 </motion.button>

@@ -1,7 +1,7 @@
 {
-  "name": "💈 Barber Shop Management System",
-  "short_name": "Barber Shop",
-  "description": "Professional Barber Shop Management System powered by Supabase",
+  "name": "✨ Serenity Beauty Clinic",
+  "short_name": "Serenity Clinic",
+  "description": "Professional Beauty Clinic Management System powered by Supabase",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

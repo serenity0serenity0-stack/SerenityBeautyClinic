@@ -114,15 +114,15 @@ html.light .text-gray-500 {
   color: #6b7280 !important;
 }
 
-html.light .text-gold-400 {
+html.light .text-pink-400 {
   color: #E91E63 !important;
 }
 
-html.light .text-gold-300 {
+html.light .text-pink-300 {
   color: #F06292 !important;
 }
 
-html.light .text-gold-500 {
+html.light .text-pink-500 {
   color: #C2185B !important;
 }
 
@@ -156,11 +156,11 @@ html.light .bg-dark-bg {
   background-color: #f5f3f0 !important;
 }
 
-html.light .bg-gold-400 {
+html.light .bg-pink-400 {
   background-color: #F06292 !important;
 }
 
-html.light [class*='bg-gold-400/'] {
+html.light [class*='bg-pink-400/'] {
   background-color: rgba(224, 30, 99, 0.2) !important;
 }
 
@@ -185,11 +185,11 @@ html.light .border-gray-300 {
   border-color: #d1d5db !important;
 }
 
-html.light .border-gold-400 {
+html.light .border-pink-400 {
   border-color: #E91E63 !important;
 }
 
-html.light [class*='border-gold-400/'] {
+html.light [class*='border-pink-400/'] {
   border-color: rgba(233, 30, 99, 0.2) !important;
 }
 
@@ -370,7 +370,7 @@ html.light .py-2 {
   color: #111827 !important;
 }
 
-html.light .hover\:bg-gold-400\/30:hover {
+html.light .hover\:bg-pink-400\/30:hover {
   background-color: rgba(251, 191, 36, 0.3) !important;
 }
 
@@ -411,7 +411,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  @apply outline-none border-gold-400 bg-white/10;
+  @apply outline-none border-pink-400 bg-white/10;
 }
 
 input::placeholder {
@@ -429,7 +429,7 @@ button {
 }
 
 .badge-gold {
-  @apply bg-gold-400/20 text-gold-400 border border-gold-400/20;
+  @apply bg-pink-400/20 text-pink-400 border border-pink-400/20;
 }
 
 .badge-success {
@@ -442,7 +442,7 @@ button {
 
 /* Card animations */
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-gold-400/20;
+  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-pink-400/20;
 }
 
 /* Scroll smooth */
@@ -461,11 +461,11 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gold-400 rounded-full;
+  @apply bg-pink-400 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gold-500;
+  @apply bg-pink-500;
 }
 
 /* Print styles */
@@ -580,7 +580,7 @@ html {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gold-500;
+  @apply bg-pink-500;
 }
 
 /* Print styles */
@@ -692,7 +692,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  @apply outline-none border-gold-400 bg-white/10;
+  @apply outline-none border-pink-400 bg-white/10;
 }
 
 input::placeholder {
@@ -710,7 +710,7 @@ button {
 }
 
 .badge-gold {
-  @apply bg-gold-400/20 text-gold-400 border border-gold-400/20;
+  @apply bg-pink-400/20 text-pink-400 border border-pink-400/20;
 }
 
 .badge-success {
@@ -723,7 +723,7 @@ button {
 
 /* Card animations */
 .card-hover {
-  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-gold-400/20;
+  @apply transition-all duration-300 hover:shadow-2xl hover:shadow-pink-400/20;
 }
 
 /* Confetti animation */
@@ -737,3 +737,5 @@ button {
 .confetti {
   animation: confetti-fall 3s ease-out forwards;
 }
+
+

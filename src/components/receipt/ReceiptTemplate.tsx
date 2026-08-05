@@ -8,39 +8,30 @@ interface ReceiptItem {
 }
 
 interface ReceiptProps {
-  clientName: string
-  clientPhone?: string
-  barberName?: string
+  client_name: string
+  client_phone?: string
+  barber_name?: string
   transactionId: string
   date: string
   time: string
   items: ReceiptItem[]
   subtotal: number
   discount: number
-  discountType: 'percentage' | 'fixed'
+  discount_type: 'percentage' | 'fixed'
   total: number
-  paymentMethod: string
+  payment_method: string
 }
 
-// Convert numbers to Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩)
-const toArabicNumerals = (n: number | string): string => {
-  return String(n).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[+d])
-}
-
-// Format time with Egypt timezone
+// Format time with Egypt timezone and AM/PM in Arabic
 const formatEgyptTime = (time: string): string => {
   try {
-    // If already formatted in Arabic, return as-is
-    if (/[\u0600-\u06FF]/.test(time)) {
-      return time
-    }
-    
     // Parse time string (HH:MM or HH:MM:SS format)
     const parts = time.split(':')
     if (parts.length >= 2) {
-      const hours = toArabicNumerals(parts[0])
-      const minutes = toArabicNumerals(parts[1])
-      const suffix = parseInt(parts[0]) >= 12 ? 'ظهراً' : 'صباحاً'
+      const hours = parseInt(parts[0])
+      const minutes = parts[1]
+      // Use مساءا (PM) or صباحا (AM) without diacritics
+      const suffix = hours >= 12 ? 'مساءا' : 'صباحا'
       return `${hours}:${minutes} ${suffix}`
     }
     return time
@@ -50,7 +41,7 @@ const formatEgyptTime = (time: string): string => {
 }
 
 // Map payment methods to Arabic
-const paymentMethodMap: Record<string, string> = {
+const payment_methodMap: Record<string, string> = {
   cash: 'نقداً',
   card: 'بطاقة بنكية',
   wallet: 'محفظة إلكترونية',
@@ -59,57 +50,72 @@ const paymentMethodMap: Record<string, string> = {
 export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
   (
     {
-      clientName,
-      clientPhone,
-      barberName,
+      client_name,
+      client_phone,
+      barber_name,
       transactionId,
       date,
       time,
       items,
       subtotal,
       discount,
-      discountType,
+      discount_type,
       total,
-      paymentMethod,
+      payment_method,
     },
     ref
   ) => {
-    const { shopId } = useAuth()
-    const [shopName, setShopName] = useState<string>('محل الحلاقة')
+    const { clinicId } = useAuth()
+    const [shopName, setShopName] = useState<string>('عيادة الجمال')
     const [shopPhone, setShopPhone] = useState<string>('')
+    const [shopAddress, setShopAddress] = useState<string>('')
+    const [shopNumber, setShopNumber] = useState<string>('')
     const [formattedTime, setFormattedTime] = useState<string>('')
 
-    // Fetch shop settings directly from database
+    // Fetch clinic settings directly from database
     useEffect(() => {
-      if (!shopId) return
+      if (!clinicId) return
 
       const fetchShopSettings = async () => {
         try {
-          const { data, error } = await supabase
-            .from('settings')
-            .select('key, value')
-            .eq('shop_id', shopId)
-
-          if (error) throw error
+          const [settingsResult, clinicResult] = await Promise.all([
+            supabase
+              .from('settings')
+              .select('key, value')
+              .eq('clinic_id', clinicId),
+            supabase
+              .from('clinic')
+              .select('clinic_number, location, address, name, phone')
+              .eq('id', clinicId)
+              .single()
+          ])
 
           // Parse settings
-          const settingsMap: Record<string, any> = {}
-          data?.forEach((item: any) => {
-            settingsMap[item.key] = item.value
-          })
+          if (settingsResult.data) {
+            const settingsMap: Record<string, any> = {}
+            settingsResult.data.forEach((item: any) => {
+              settingsMap[item.key] = item.value
+            })
+            setShopName(settingsMap['clinicName'] || 'اسم العيادة')
+            setShopPhone(settingsMap['clinicPhone'] || '')
+          }
 
-          // Set shop name and phone from fetched settings
-          setShopName(settingsMap['barbershipName'] || 'محل الحلاقة')
-          setShopPhone(settingsMap['barbershipPhone'] || '')
+          // Get clinic data
+          if (clinicResult.data) {
+            setShopName(clinicResult.data.name || shopName)
+            setShopPhone(clinicResult.data.phone || '')
+            setShopAddress(clinicResult.data.address || clinicResult.data.location || '')
+            setShopNumber(clinicResult.data.clinic_number?.toString() || '')
+          }
         } catch (err) {
           console.error('Error fetching receipt settings:', err)
-          setShopName('محل الحلاقة')
+          setShopName('اسم العيادة')
           setShopPhone('')
         }
       }
 
       fetchShopSettings()
-    }, [shopId])
+    }, [clinicId])
 
     // Format time with proper timezone display
     useEffect(() => {
@@ -121,14 +127,14 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
 
     // Calculate actual discount amount for display
     const discountAmount =
-      discountType === 'percentage'
+      discount_type === 'percentage'
         ? (subtotal * discount) / 100
         : discount
 
     // Format discount label
     const discountLabel =
-      discountType === 'percentage'
-        ? `${toArabicNumerals(discount.toFixed(0))}%`
+      discount_type === 'percentage'
+        ? `${discount.toFixed(0)}%`
         : `ج.م`
 
     return (
@@ -182,8 +188,14 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Header with Separator */}
         <div style={{ textAlign: 'center', marginBottom: '8px', paddingBottom: '8px', borderBottom: '2px solid #000' }}>
           <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>
-            ✂️ {shopName} ✂️
+            💉 {shopName} 💉
           </div>
+          {shopNumber && (
+            <div style={{ fontSize: '10px', marginBottom: '2px' }}>رقم العيادة: {shopNumber}</div>
+          )}
+          {shopAddress && (
+            <div style={{ fontSize: '10px', marginBottom: '2px' }}>📍 {shopAddress}</div>
+          )}
           {shopPhone && (
             <div style={{ fontSize: '11px', marginBottom: '2px' }}>📞 {shopPhone}</div>
           )}
@@ -193,7 +205,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
           <div style={{ fontSize: '12px', fontWeight: 'bold' }}>فاتورة ضريبية مبسطة</div>
           <div style={{ fontSize: '10px', marginTop: '2px' }}>
-            رقم الفاتورة: #{toArabicNumerals(receiptNumber)}
+            رقم الفاتورة: #{receiptNumber}
           </div>
         </div>
 
@@ -202,7 +214,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
 
         {/* Date & Time */}
         <div style={{ textAlign: 'center', fontSize: '10px', marginBottom: '6px' }}>
-          <div>التاريخ: {toArabicNumerals(date)}</div>
+          <div>التاريخ: {date}</div>
           <div>الوقت: {formattedTime}</div>
         </div>
 
@@ -212,25 +224,25 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Client Info */}
         <div style={{ marginBottom: '6px', fontSize: '11px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-            <span>{clientName}</span>
+            <span>{client_name}</span>
             <span style={{ fontWeight: 'bold' }}>العميل :</span>
           </div>
-          {clientPhone && (
+          {client_phone && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <span>{clientPhone}</span>
+              <span>{client_phone}</span>
               <span style={{ fontWeight: 'bold' }}>الهاتف :</span>
             </div>
           )}
         </div>
 
-        {/* Barber Info */}
-        {barberName && (
+        {/* Staff Info */}
+        {barber_name && (
           <>
             <div className="receipt-divider" style={{ borderBottom: '1px dashed #000', margin: '6px 0' }} />
             <div style={{ marginBottom: '6px', fontSize: '11px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{barberName}</span>
-                <span style={{ fontWeight: 'bold' }}>الحلاق :</span>
+                <span>{barber_name}</span>
+                <span style={{ fontWeight: 'bold' }}>الموظف :</span>
               </div>
             </div>
           </>
@@ -257,7 +269,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 marginBottom: '2px',
               }}
             >
-              <span style={{ fontWeight: 'bold' }}>{toArabicNumerals(item.price.toFixed(2))} ج.م</span>
+              <span style={{ fontWeight: 'bold' }}>{item.price.toFixed(2)} ج.م</span>
               <span>{item.name}</span>
             </div>
           ))}
@@ -269,12 +281,12 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Totals */}
         <div style={{ marginBottom: '6px', fontSize: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-            <span style={{ fontWeight: 'bold' }}>{toArabicNumerals(subtotal.toFixed(2))} ج.م</span>
+            <span style={{ fontWeight: 'bold' }}>{subtotal.toFixed(2)} ج.م</span>
             <span>المجموع:</span>
           </div>
           {discountAmount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#c41e3a', marginBottom: '2px' }}>
-              <span style={{ fontWeight: 'bold' }}>-{toArabicNumerals(discountAmount.toFixed(2))} ج.م</span>
+              <span style={{ fontWeight: 'bold' }}>-{discountAmount.toFixed(2)} ج.م</span>
               <span>الخصم ({discountLabel}):</span>
             </div>
           )}
@@ -293,7 +305,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
             padding: '4px 0',
           }}
         >
-          💰 الإجمالي: {toArabicNumerals(total.toFixed(2))} ج.م
+          💰 الإجمالي: {total.toFixed(2)} ج.م
         </div>
 
         {/* Divider */}
@@ -302,7 +314,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Payment Method */}
         <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '10px' }}>
           <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>طريقة الدفع:</div>
-          <div>{paymentMethodMap[paymentMethod] || paymentMethod}</div>
+          <div>{payment_methodMap[payment_method] || payment_method}</div>
         </div>
 
         {/* Divider */}
@@ -321,7 +333,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
         <div style={{ textAlign: 'center', fontSize: '8px', marginTop: '8px', paddingTop: '4px', borderTop: '1px solid #000' }}>
           <div style={{ letterSpacing: '2px', marginBottom: '2px' }}>─────────────────────</div>
           <div style={{ fontWeight: 'bold', marginBottom: '1px' }}>YousefTech</div>
-          <div style={{ marginBottom: '2px' }}>{toArabicNumerals('01000139417')}</div>
+          <div style={{ marginBottom: '2px' }}>01000139417</div>
           <div style={{ marginBottom: '2px' }}>تطوير YousefTech</div>
           <div style={{ letterSpacing: '2px' }}>─────────────────────</div>
         </div>

@@ -10,7 +10,7 @@ interface QueueInfo {
   waitingMinutes: number
   currentTime: string
   estimatedTime: string
-  nextAvailableBarberId?: string
+  nextAvailablebarber_id?: string
   isWaiting: boolean
 }
 
@@ -43,14 +43,14 @@ export const QueueStatus: React.FC = () => {
         // Get all pending and ongoing bookings for today, sorted by time
         const todayBookings = bookings
           .filter((b) => {
-            const bookingDate = new Date(b.bookingTime).toLocaleDateString('en-CA')
+            const booking_date = new Date(b.booking_time).toLocaleDateString('en-CA')
             const todayDate = new Date(today).toLocaleDateString('en-CA')
             return (
-              bookingDate === todayDate &&
+              booking_date === todayDate &&
               (b.status === 'pending' || b.status === 'ongoing')
             )
           })
-          .sort((a, b) => new Date(a.bookingTime).getTime() - new Date(b.bookingTime).getTime())
+          .sort((a, b) => new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime())
 
         if (todayBookings.length === 0) {
           setQueueInfo({
@@ -78,7 +78,7 @@ export const QueueStatus: React.FC = () => {
 
         // Add buffer for bookings that are still ongoing or starting soon
         todayBookings.forEach((booking) => {
-          const bookingStartTime = new Date(booking.bookingTime)
+          const bookingStartTime = new Date(booking.booking_time)
           const duration = booking.duration || 30 // default 30 minutes if not specified
 
           // Only count bookings that haven't finished yet

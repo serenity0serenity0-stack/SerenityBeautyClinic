@@ -4,7 +4,7 @@ import { supabase, Barber } from '../supabase'
 import toast from 'react-hot-toast'
 
 export const useBarbers = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +12,7 @@ export const useBarbers = () => {
   const fetchBarbers = async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setBarbers([])
         return
       }
@@ -20,8 +20,8 @@ export const useBarbers = () => {
       const { data, error } = await supabase
         .from('barbers')
         .select('*')
-        .eq('shop_id', shopId)
-        .order('createdAt', { ascending: false })
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false })
 
       if (error) throw error
       setBarbers(data || [])
@@ -36,17 +36,17 @@ export const useBarbers = () => {
 
   useEffect(() => {
     fetchBarbers()
-  }, [shopId])
+  }, [clinicId])
 
-  const addBarber = async (barber: Omit<Barber, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addBarber = async (barber: Omit<Barber, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('barbers')
         .insert({
           ...barber,
-          shop_id: shopId,
+          clinic_id: clinicId,
           active: true,
         })
         .select()
@@ -66,13 +66,13 @@ export const useBarbers = () => {
 
   const updateBarber = async (id: string, barber: Partial<Barber>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('barbers')
         .update(barber)
         .eq('id', id)
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
         .select()
 
       if (error) throw error
@@ -90,13 +90,13 @@ export const useBarbers = () => {
 
   const deleteBarber = async (id: string) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { error } = await supabase
         .from('barbers')
         .delete()
         .eq('id', id)
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
 
       if (error) throw error
 

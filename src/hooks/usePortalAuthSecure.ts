@@ -3,7 +3,7 @@ import { supabase } from '@/db/supabase'
 
 export interface PortalCustomer {
   id: string // auth.uid()
-  shop_id: string
+  clinic_id: string
   phone: string
   name?: string
   email?: string
@@ -20,7 +20,7 @@ export interface PortalCustomer {
  * - RLS-enforced data isolation
  */
 export function usePortalAuthSecure(slug?: string) {
-  // Helper function to get session key based on shop slug
+  // Helper function to get session key based on clinic slug
   const getSessionKey = () => slug ? `portal_session_${slug}` : 'portal_session'
   
   // Initialize customer from localStorage on mount
@@ -84,7 +84,7 @@ export function usePortalAuthSecure(slug?: string) {
     try {
       const { data, error: err } = await supabase
         .from('portal_users')
-        .select('id, shop_id, phone, name, email')
+        .select('id, clinic_id, phone, name, email')
         .eq('id', userId)
         .single()
 
@@ -109,38 +109,39 @@ export function usePortalAuthSecure(slug?: string) {
 
   // Register new portal user
   const registerPortalUser = useCallback(
-    async (phone: string, password: string, name?: string, email?: string, shopId?: string) => {
+    async (phone: string, password: string, name?: string, email?: string, clinicId?: string) => {
       try {
         setLoading(true)
         setError(null)
 
-        // Determine shop ID
-        let finalShopId = shopId
+        // Determine clinic ID
+        let finalClinicId = clinicId
         
-        if (!finalShopId && slug) {
-          // Look up shop by slug
-          const { data: shops, error: shopsErr } = await supabase
-            .from('shops')
+        if (!finalClinicId && slug) {
+          // Look up clinic by slug
+          const { data: clinic, error: clinicErr } = await supabase
+            .from('clinic')
             .select('id')
             .eq('slug', slug)
             .single()
 
-          if (shopsErr || !shops) {
-            console.error('❌ Shop lookup error:', shopsErr)
-            throw new Error('لم يتم العثور على المتجر')
+          if (clinicErr || !clinic) {
+            console.error('❌ Clinic lookup error:', clinicErr)
+            throw new Error('لم يتم العثور على العيادة')
           }
-          finalShopId = shops.id
-        } else if (!finalShopId) {
-          throw new Error('معرف المتجر مطلوب')
+          finalClinicId = clinic.id
+        } else if (!finalClinicId) {
+          // If no slug and no clinicId provided, this is an error
+          throw new Error('معرف العيادة مطلوب')
         }
         
-        console.log('📱 Registering with phone:', phone, 'for shop:', finalShopId)
+        console.log('📱 Registering with phone:', phone, 'for clinic:', finalClinicId)
 
-        // 1. Check for duplicate phone in THIS shop
+        // 1. Check for duplicate phone in THIS clinic
         const { data: phoneExists, error: phoneCheckErr } = await supabase
           .from('portal_users')
           .select('phone')
-          .eq('shop_id', finalShopId)
+          .eq('clinic_id', finalClinicId)
           .eq('phone', phone)
           .maybeSingle()
 
@@ -149,19 +150,19 @@ export function usePortalAuthSecure(slug?: string) {
         }
 
         if (phoneExists) {
-          console.error('❌ Phone already registered in this shop:', phone)
+          console.error('❌ Phone already registered in this clinic:', phone)
           setError('رقم الهاتف مسجل بالفعل')
           setLoading(false)
           return null
         }
 
-        // 2. Check for duplicate email in THIS shop (only if email provided)
+        // 2. Check for duplicate email in THIS clinic (only if email provided)
         if (email?.trim()) {
           const emailLower = email.toLowerCase().trim()
           const { data: emailExists, error: emailCheckErr } = await supabase
             .from('portal_users')
             .select('email')
-            .eq('shop_id', finalShopId)
+            .eq('clinic_id', finalClinicId)
             .ilike('email', emailLower)
             .maybeSingle()
 
@@ -170,15 +171,15 @@ export function usePortalAuthSecure(slug?: string) {
           }
 
           if (emailExists) {
-            console.error('❌ Email already registered in this shop:', email)
+            console.error('❌ Email already registered in this clinic:', email)
             setError('البريد الإلكتروني مسجل بالفعل')
             setLoading(false)
             return null
           }
         }
 
-        // 3. Create auth email with correct format: phone@shopId.portal
-        const authEmail = email?.trim() || `${phone}@${finalShopId}.portal`
+        // 3. Create auth email with correct format: phone@clinicId.portal
+        const authEmail = email?.trim() || `${phone}@${finalClinicId}.portal`
         console.log('📧 Auth email:', authEmail)
 
         // 4. Create Supabase auth user
@@ -202,7 +203,7 @@ export function usePortalAuthSecure(slug?: string) {
         // 5. Create portal_users record
         const portalUserData = {
           id: authData.user.id,
-          shop_id: finalShopId,
+          clinic_id: finalClinicId,
           phone,
           name: name || null,
           email: authEmail
@@ -224,11 +225,11 @@ export function usePortalAuthSecure(slug?: string) {
 
         // 6. Create/update client record in clients table
         try {
-          // Check if client already exists by phone + shop_id
+          // Check if client already exists by phone + clinic_id
           const { data: existingClient, error: checkErr } = await supabase
             .from('clients')
             .select('id')
-            .eq('shop_id', finalShopId)
+            .eq('clinic_id', finalClinicId)
             .eq('phone', phone)
             .maybeSingle()
 
@@ -239,16 +240,16 @@ export function usePortalAuthSecure(slug?: string) {
             const { error: insertErr } = await supabase
               .from('clients')
               .insert({
-                shop_id: finalShopId,
+                clinic_id: finalClinicId,
                 name: name || phone, // use phone as name if no name provided
                 phone: phone,
                 birthday: null,
-                "totalVisits": 0,
-                "totalSpent": 0,
-                "isVIP": false,
+                total_visits: 0,
+                total_spent: 0,
+                is_vip: false,
                 notes: 'مسجل عبر البوابة الإلكترونية',
-                "createdAt": new Date().toISOString(),
-                "updatedAt": new Date().toISOString()
+                created_at: new Date().toISOString(),
+                "updated_at": new Date().toISOString()
               })
 
             if (insertErr) {
@@ -262,7 +263,7 @@ export function usePortalAuthSecure(slug?: string) {
             const { error: updateErr } = await supabase
               .from('clients')
               .update({
-                "updatedAt": new Date().toISOString()
+                "updated_at": new Date().toISOString()
               })
               .eq('id', existingClient.id)
 
@@ -304,7 +305,7 @@ export function usePortalAuthSecure(slug?: string) {
         // Step 1: Lookup email using phone from portal_users
         const { data: portalUser, error: lookupErr } = await supabase
           .from('portal_users')
-          .select('id, email, phone, name, shop_id')
+          .select('id, email, phone, name, clinic_id')
           .eq('phone', phone)
           .maybeSingle()
 
@@ -318,34 +319,34 @@ export function usePortalAuthSecure(slug?: string) {
           return null
         }
 
-        // ⭐ SECURITY CHECK: Validate user is accessing correct shop via slug
+        // ⭐ SECURITY CHECK: Validate user is accessing correct clinic via slug
         if (slug) {
-          // Look up shop by slug to get actual shop ID
-          const { data: shop, error: shopErr } = await supabase
-            .from('shops')
+          // Look up clinic by slug to get actual clinic ID
+          const { data: clinic, error: clinicErr } = await supabase
+            .from('clinic')
             .select('id')
             .eq('slug', slug)
             .single()
 
-          if (shopErr || !shop) {
-            console.error('❌ Shop not found for slug:', slug)
-            setError('متجر غير صحيح')
+          if (clinicErr || !clinic) {
+            console.error('❌ Clinic not found for slug:', slug)
+            setError('عيادة غير صحيحة')
             return null
           }
 
-          if (portalUser.shop_id !== shop.id) {
-            console.error('❌ SECURITY: Phone registered in different shop', {
+          if (portalUser.clinic_id !== clinic.id) {
+            console.error('❌ SECURITY: Phone registered in different clinic', {
               phone,
-              attemptedShopId: shop.id,
-              actualShopId: portalUser.shop_id
+              attemptedClinicId: clinic.id,
+              actualClinicId: portalUser.clinic_id
             })
-            setError('رقم الهاتف غير مسجل في هذا المتجر')
+            setError('رقم الهاتف غير مسجل في هذه العيادة')
             return null
           }
         }
 
         console.log('✅ Email found for phone:', portalUser.email)
-        console.log('✅ Shop validation passed:', portalUser.shop_id)
+        console.log('✅ Clinic validation passed:', portalUser.clinic_id)
 
         // Step 2: Login using the email we found
         const { data, error: signInErr } = await supabase.auth.signInWithPassword({
@@ -365,7 +366,7 @@ export function usePortalAuthSecure(slug?: string) {
         // Step 3: Set customer data directly and save to session
         const customerData: PortalCustomer = {
           id: data.user.id,
-          shop_id: portalUser.shop_id,
+          clinic_id: portalUser.clinic_id,
           phone: portalUser.phone,
           name: portalUser.name,
           email: portalUser.email

@@ -25,15 +25,15 @@ export interface BookingData {
   id: string
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
   serviceId: string
-  barberId?: string
-  bookingDate: string
-  bookingTime: string
+  barber_id?: string
+  booking_date: string
+  booking_time: string
   serviceName: string
-  barberName?: string
-  createdAt: string
+  barber_name?: string
+  created_at: string
 }
 
-export function usePortalBookings(shopId?: string, customerId?: string) {
+export function usePortalBookings(clinicId?: string, customerId?: string) {
   const [services, setServices] = useState<ServiceData[]>([])
   const [barbers, setBarbers] = useState<BarberData[]>([])
   const [bookings, setBookings] = useState<BookingData[]>([])
@@ -42,13 +42,13 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
 
   // Fetch services for shop
   const fetchServices = useCallback(async () => {
-    if (!shopId) return
+    if (!clinicId) return
     try {
-      console.log('🔍 Fetching services for shop:', shopId)
+      console.log('🔍 Fetching services for shop:', clinicId)
       const { data, error: err } = await supabase
         .from('services')
         .select('id, nameEn, nameAr, duration, price, category')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('active', true)
 
       if (err) {
@@ -61,17 +61,17 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
       console.error('Error fetching services:', err)
       setError('خطأ في تحميل الخدمات')
     }
-  }, [shopId])
+  }, [clinicId])
 
   // Fetch active barbers for shop
   const fetchBarbers = useCallback(async () => {
-    if (!shopId) return
+    if (!clinicId) return
     try {
-      console.log('🔍 Fetching barbers for shop:', shopId)
+      console.log('🔍 Fetching barbers for shop:', clinicId)
       const { data, error: err } = await supabase
         .from('barbers')
         .select('id, name')
-        .eq('shop_id', shopId)
+        .eq('shop_id', clinicId)
         .eq('active', true)
         .order('name', { ascending: true })
 
@@ -82,7 +82,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         const { data: altData, error: altErr } = await supabase
           .from('barbers')
           .select('id, name')
-          .eq('shop_id', shopId)
+          .eq('shop_id', clinicId)
           .order('name', { ascending: true })
 
         if (altErr) throw altErr
@@ -95,11 +95,11 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
       console.error('Error fetching barbers:', err)
       setError('خطأ في تحميل الحلاقين')
     }
-  }, [shopId])
+  }, [clinicId])
 
   // Fetch customer's bookings
   const fetchCustomerBookings = useCallback(async () => {
-    if (!customerId || !shopId) return
+    if (!customerId || !clinicId) return
     try {
       // First, get the customer phone from auth or profile
       const { data: { user } } = await supabase.auth.getUser()
@@ -107,10 +107,10 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
 
       const { data, error: err } = await supabase
         .from('bookings')
-        .select('id, bookingtime, servicetype, barbername, status, notes')
-        .eq('shop_id', shopId)
-        .eq('clientphone', user.phone || '')
-        .order('bookingtime', { ascending: false })
+        .select('id, booking_time, service_type, barber_name, status, notes')
+        .eq('shop_id', clinicId)
+        .eq('client_phone', user.phone || '')
+        .order('booking_time', { ascending: false })
 
       if (err) throw err
       
@@ -119,12 +119,12 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         id: b.id,
         status: b.status,
         serviceId: '',
-        barberId: '',
-        bookingDate: b.bookingtime?.split('T')[0] || '',
-        bookingTime: b.bookingtime?.split('T')[1]?.substring(0, 5) || '',
-        serviceName: b.servicetype || '',
-        barberName: b.barbername,
-        createdAt: new Date().toISOString(),
+        barber_id: '',
+        booking_date: b.booking_time?.split('T')[0] || '',
+        booking_time: b.booking_time?.split('T')[1]?.substring(0, 5) || '',
+        serviceName: b.service_type || '',
+        barber_name: b.barber_name,
+        created_at: new Date().toISOString(),
       }))
       
       setBookings(transformedBookings)
@@ -132,16 +132,16 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
       console.error('Error fetching bookings:', err)
       setError('خطأ في تحميل المواعيد')
     }
-  }, [customerId, shopId])
+  }, [customerId, clinicId])
 
   // Get available time slots for a date
   const getAvailableSlots = useCallback(
     async (
-      bookingDate: string,
-      barberId?: string
+      booking_date: string,
+      barber_id?: string
     ): Promise<string[]> => {
       try {
-        console.log('⏰ Generating slots for:', bookingDate, 'barber:', barberId)
+        console.log('⏰ Generating slots for:', booking_date, 'barber:', barber_id)
         
         // Shop hours: 9 AM to 10 PM, 30-min slots
         const slots: string[] = []
@@ -150,7 +150,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         const slotDuration = 30 // minutes
 
         // Check if date is in future or today
-        const selectedDate = new Date(bookingDate)
+        const selectedDate = new Date(booking_date)
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         
@@ -172,18 +172,18 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         }
 
         // Get booked times for this barber on this date
-        if (barberId) {
-          // Cast bookingtime to text for date comparison (timestamp can't use ILIKE)
-          const dateStart = `${bookingDate}T00:00:00`
-          const dateEnd = `${bookingDate}T23:59:59`
+        if (barber_id) {
+          // Cast booking_time to text for date comparison (timestamp can't use ILIKE)
+          const dateStart = `${booking_date}T00:00:00`
+          const dateEnd = `${booking_date}T23:59:59`
           
           const { data: bookedSlots, error } = await supabase
             .from('bookings')
-            .select('bookingtime')
-            .eq('shop_id', shopId)
-            .gte('bookingtime', dateStart)
-            .lt('bookingtime', dateEnd)
-            .eq('barberid', barberId)
+            .select('booking_time')
+            .eq('shop_id', clinicId)
+            .gte('booking_time', dateStart)
+            .lt('booking_time', dateEnd)
+            .eq('barber_id', barber_id)
             .in('status', ['confirmed', 'pending'])
 
           if (error) {
@@ -192,7 +192,7 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
             const bookedTimes = new Set(
               bookedSlots?.map(b => {
                 // Extract time portion from ISO string (e.g., "14:30" from "2025-03-25T14:30:00")
-                const timeMatch = b.bookingtime?.match(/T(\d{2}:\d{2})/)
+                const timeMatch = b.booking_time?.match(/T(\d{2}:\d{2})/)
                 return timeMatch ? timeMatch[1] : ''
               }) || []
             )
@@ -209,18 +209,18 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         return []
       }
     },
-    [shopId]
+    [clinicId]
   )
 
   // Create new booking
   const createBooking = useCallback(
     async (
       serviceId: string,
-      bookingDate: string,
-      bookingTime: string,
-      barberId?: string
+      booking_date: string,
+      booking_time: string,
+      barber_id?: string
     ) => {
-      if (!customerId || !shopId) {
+      if (!customerId || !clinicId) {
         setError('خطأ في البيانات')
         return null
       }
@@ -236,9 +236,9 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         }
 
         // Get actual client record ID from clients table (not auth UID)
-        let actualClientId: string | undefined
-        let clientPhone = ''
-        let clientName = ''
+        let actualclient_id: string | undefined
+        let client_phone = ''
+        let client_name = ''
 
         // Always lookup client by phone from auth user
         // (customerId is auth user ID, not client ID - don't use it for lookups)
@@ -266,51 +266,51 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
             setError('لم يتم العثور على رقم الهاتف')
             return null
           }
-          clientPhone = phone as string
-          console.log('📞 Using phone from auth metadata:', clientPhone)
+          client_phone = phone as string
+          console.log('📞 Using phone from auth metadata:', client_phone)
         } else {
-          clientPhone = portalUserData.phone
-          console.log('📞 Found portal user phone:', clientPhone)
+          client_phone = portalUserData.phone
+          console.log('📞 Found portal user phone:', client_phone)
         }
 
         // Get client record by phone + shop_id
         const { data: clientData, error: clientErr } = await supabase
           .from('clients')
           .select('id, phone, name')
-          .eq('shop_id', shopId)
-          .eq('phone', clientPhone)
+          .eq('shop_id', clinicId)
+          .eq('phone', client_phone)
           .single()
 
         if (clientErr || !clientData) {
-          console.error('❌ Client record not found:', { clientErr, clientPhone, shopId })
+          console.error('❌ Client record not found:', { clientErr, client_phone, clinicId })
           setError('بيانات العميل غير موجودة')
           return null
         }
 
-        actualClientId = clientData.id
-        clientPhone = clientData.phone
-        clientName = clientData.name
+        actualclient_id = clientData.id
+        client_phone = clientData.phone
+        client_name = clientData.name
 
         // Create booking in bookings table (for staff)
         const bookingData = {
-          shop_id: shopId,
-          clientid: actualClientId,  // ← USE ACTUAL CLIENT RECORD ID
-          clientname: clientName,
-          clientphone: clientPhone,
-          customer_phone: clientPhone,
-          barberid: barberId || null,
-          barbername: barberId ? barbers.find(b => b.id === barberId)?.name || null : null,
-          bookingtime: `${bookingDate}T${bookingTime}:00`,
-          servicetype: service.nameAr || service.nameEn,
+          shop_id: clinicId,
+          client_id: actualclient_id,  // ← USE ACTUAL CLIENT RECORD ID
+          client_name: client_name,
+          client_phone: client_phone,
+          customer_phone: client_phone,
+          barber_id: barber_id || null,
+          barber_name: barber_id ? barbers.find(b => b.id === barber_id)?.name || null : null,
+          booking_time: `${booking_date}T${booking_time}:00`,
+          service_type: service.nameAr || service.nameEn,
           duration: service.duration || 30,
-          queuenumber: 0,
+          queue_number: 0,
           status: 'pending',
           notes: 'Booked via customer portal',
-          createdat: new Date().toISOString(),
-          updatedat: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }
 
-        console.log('📝 Creating booking with:', { actualClientId, clientPhone, clientName })
+        console.log('📝 Creating booking with:', { actualclient_id, client_phone, client_name })
 
         const { data: bookings, error: bookingErr } = await supabase
           .from('bookings')
@@ -339,12 +339,12 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
         setLoading(false)
       }
     },
-    [customerId, shopId, services, fetchCustomerBookings]
+    [customerId, clinicId, services, fetchCustomerBookings]
   )
 
   // Cancel booking
   const cancelBooking = useCallback(
-    async (bookingId: string) => {
+    async (booking_id: string) => {
       try {
         setLoading(true)
 
@@ -354,15 +354,15 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
           throw new Error('Customer phone not found')
         }
 
-        // Update booking with cancelled status and new updatedat timestamp
+        // Update booking with cancelled status and new updated_at timestamp
         const { error: err } = await supabase
           .from('bookings')
           .update({ 
             status: 'cancelled',
-            updatedat: new Date().toISOString()
+            updated_at: new Date().toISOString()
           })
-          .eq('id', bookingId)
-          .eq('clientphone', user.phone) // Security check - only cancel own bookings
+          .eq('id', booking_id)
+          .eq('client_phone', user.phone) // Security check - only cancel own bookings
 
         if (err) throw err
 
@@ -382,21 +382,21 @@ export function usePortalBookings(shopId?: string, customerId?: string) {
 
   // Initial load
   useEffect(() => {
-    if (shopId) {
-      console.log('🚀 Initializing portal bookings for shop:', shopId)
+    if (clinicId) {
+      console.log('🚀 Initializing portal bookings for shop:', clinicId)
       fetchServices()
       fetchBarbers()
     } else {
-      console.warn('⚠️ shopId not available yet, will retry when it becomes available')
+      console.warn('⚠️ clinicId not available yet, will retry when it becomes available')
     }
-  }, [shopId, fetchServices, fetchBarbers])
+  }, [clinicId, fetchServices, fetchBarbers])
 
   useEffect(() => {
-    if (customerId && shopId) {
-      console.log('🚀 Fetching customer bookings for:', customerId, shopId)
+    if (customerId && clinicId) {
+      console.log('🚀 Fetching customer bookings for:', customerId, clinicId)
       fetchCustomerBookings()
     }
-  }, [customerId, shopId, fetchCustomerBookings])
+  }, [customerId, clinicId, fetchCustomerBookings])
 
   return {
     services,

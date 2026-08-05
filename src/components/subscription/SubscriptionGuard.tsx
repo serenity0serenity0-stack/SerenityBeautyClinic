@@ -22,7 +22,7 @@ export const SubscriptionGuard = ({
   children,
   allowedStatuses = ['active', 'inactive'],
 }: SubscriptionGuardProps) => {
-  const { shopId, role } = useAuth()
+  const { clinicId, role } = useAuth()
   const navigate = useNavigate()
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -30,13 +30,13 @@ export const SubscriptionGuard = ({
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        // Only check for shop users
-        if (role !== 'shop' || !shopId) {
+        // Only check for admin users
+        if (role !== 'admin' || !clinicId) {
           setLoading(false)
           return
         }
 
-        const status = await checkSubscriptionStatus(shopId)
+        const status = await checkSubscriptionStatus(clinicId)
         setSubscription(status)
 
         // Redirect if not in allowed statuses
@@ -53,7 +53,7 @@ export const SubscriptionGuard = ({
     }
 
     checkStatus()
-  }, [shopId, role, navigate, allowedStatuses])
+  }, [clinicId, role, navigate, allowedStatuses])
 
   if (loading) {
     return null
@@ -78,14 +78,14 @@ export const SubscriptionGuard = ({
  * Shows alert for inactive subscriptions and expiring soon
  */
 export const SubscriptionBanner = () => {
-  const { shopId, role } = useAuth()
+  const { clinicId, role } = useAuth()
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
 
   useEffect(() => {
     const checkStatus = async () => {
-      if (role !== 'shop' || !shopId) return
+      if (role !== 'admin' || !clinicId) return
       try {
-        const status = await checkSubscriptionStatus(shopId)
+        const status = await checkSubscriptionStatus(clinicId)
         if (status.status === 'inactive') {
           setSubscription(status)
         }
@@ -95,7 +95,7 @@ export const SubscriptionBanner = () => {
     }
 
     checkStatus()
-  }, [shopId, role])
+  }, [clinicId, role])
 
   if (!subscription || subscription.status !== 'inactive') {
     return null

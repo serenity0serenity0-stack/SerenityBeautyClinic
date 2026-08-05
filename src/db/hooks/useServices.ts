@@ -4,7 +4,7 @@ import { supabase, Service } from '../supabase'
 import toast from 'react-hot-toast'
 
 export const useServices = () => {
-  const { shopId } = useAuth()
+  const { clinicId } = useAuth()
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +12,7 @@ export const useServices = () => {
   const fetchServices = async () => {
     try {
       setLoading(true)
-      if (!shopId) {
+      if (!clinicId) {
         setServices([])
         return
       }
@@ -20,7 +20,7 @@ export const useServices = () => {
       const { data, error } = await supabase
         .from('services')
         .select('*')
-        .eq('shop_id', shopId)
+        .eq('clinic_id', clinicId)
         .eq('active', true)
         .order('category', { ascending: true })
 
@@ -37,19 +37,19 @@ export const useServices = () => {
 
   useEffect(() => {
     fetchServices()
-  }, [shopId])
+  }, [clinicId])
 
-  const addService = async (service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addService = async (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (!shopId) throw new Error('Shop ID is required')
+      if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
         .from('services')
         .insert({
           ...service,
-          shop_id: shopId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          clinic_id: clinicId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
 
@@ -68,7 +68,7 @@ export const useServices = () => {
         .from('services')
         .update({
           ...updates,
-          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
 
