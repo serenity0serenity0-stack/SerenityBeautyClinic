@@ -16,6 +16,21 @@ export type PageKey = (typeof PAGE_KEYS)[number]
 
 export type UserRole = 'admin' | 'cashier' | null
 
+// Locale key for each page's display label (logs -> dailyLogs)
+export const PAGE_LABEL_KEYS: Record<PageKey, string> = {
+  dashboard: 'navigation.dashboard',
+  pos: 'navigation.pos',
+  clients: 'navigation.clients',
+  bookings: 'navigation.bookings',
+  services: 'navigation.services',
+  staff: 'navigation.staff',
+  logs: 'navigation.dailyLogs',
+  expenses: 'navigation.expenses',
+  queue: 'navigation.queue',
+  analytics: 'navigation.analytics',
+  settings: 'navigation.settings',
+}
+
 export const ROUTE_TO_PAGE: Record<string, PageKey> = {
   '/dashboard': 'dashboard',
   '/pos': 'pos',

@@ -127,7 +127,7 @@ CREATE OR REPLACE FUNCTION public.create_staff_user(
   p_permissions jsonb DEFAULT '[]'::jsonb
 )
 RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions
 AS $$
 DECLARE
   v_clinic_id uuid := public._is_staff_admin();
@@ -252,7 +252,7 @@ CREATE OR REPLACE FUNCTION public.reset_staff_password(
   p_new_password text
 )
 RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions
 AS $$
 DECLARE
   v_clinic_id uuid := public._is_staff_admin();

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/db/supabase'
 import { GlassCard } from '../components/ui/GlassCard'
-import { PAGE_KEYS, DEFAULT_CASHIER_PAGES } from '../lib/permissions'
+import { PAGE_KEYS, PAGE_LABEL_KEYS, DEFAULT_CASHIER_PAGES } from '../lib/permissions'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
@@ -36,8 +36,8 @@ const inputClass =
   'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-gold-400/40 focus:ring-1 focus:ring-gold-400/30 transition'
 
 const pageLabel = (key: string, t: (key: string) => string): string => {
-  const navKey = `navigation.${key}`
-  return t(navKey)
+  const localeKey = PAGE_LABEL_KEYS[key as keyof typeof PAGE_LABEL_KEYS] ?? 'navigation.dashboard'
+  return t(localeKey)
 }
 
 export const Settings: React.FC = () => {
