@@ -5,9 +5,10 @@ import { Modal } from '../components/ui/Modal'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { motion } from 'framer-motion'
-import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp } from 'lucide-react'
+import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp, UserX } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
+import { getEgyptYearMonth } from '../utils/egyptTime'
 
 interface StaffStats {
   clientCount: number
@@ -43,6 +44,7 @@ export const Staff: React.FC = () => {
   const [staffStats, setStaffStats] = useState<{
     [barberId: string]: StaffStats
   }>({})
+  const [selectedMonth, setSelectedMonth] = useState(getEgyptYearMonth())
 
   // Load transactions on mount
   useEffect(() => {
@@ -63,43 +65,36 @@ export const Staff: React.FC = () => {
     }
   }, [fetchTransactions])
 
-  // Calculate staff statistics
+  // Calculate staff statistics for the selected month.
+  // Doctor totals are scoped to the selected month so the numbers reset
+  // at the start of each month.
   useEffect(() => {
     const stats: typeof staffStats = {}
     
     barbers.forEach(barber => {
-      const barberTransactions = transactions.filter(t => t.barber_id === barber.id)
+      const barberTransactions = transactions.filter(
+        t => t.barber_id === barber.id && String(t.date).startsWith(selectedMonth)
+      )
       
-      // Current month transactions
-      const today = new Date()
-      const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-      const currentMonthTransactions = barberTransactions.filter(t => {
-        const tDate = new Date(String(t.date))
-        return tDate >= currentMonthStart && tDate <= today
-      })
-      
-      // All unique clients
+      // All unique clients in the selected month
       const allUniqueClients = new Set(barberTransactions.map(t => t.client_id))
       
-      // Monthly revenue
-      const monthlyRevenue = currentMonthTransactions.reduce((sum, t) => sum + t.total, 0)
+      // Revenue in the selected month
+      const monthRevenue = barberTransactions.reduce((sum, t) => sum + t.total, 0)
       
-      // Total revenue
-      const totalRevenue = barberTransactions.reduce((sum, t) => sum + t.total, 0)
-      
-      // Last visit
+      // Last visit in the selected month
       const lastTransaction = barberTransactions[0]
       
       stats[barber.id!] = {
         clientCount: allUniqueClients.size,
-        monthlyRevenue,
-        totalRevenue,
+        monthlyRevenue: monthRevenue,
+        totalRevenue: monthRevenue,
         lastVisit: lastTransaction?.date
       }
     })
     
     setStaffStats(stats)
-  }, [barbers, transactions])
+  }, [barbers, transactions, selectedMonth])
 
   const handleEditClick = (barber: any) => {
     setEditingBarberId(barber.id)
@@ -205,7 +200,8 @@ export const Staff: React.FC = () => {
   }
 
   const totalMonthlyRevenue = Object.values(staffStats).reduce((sum, s) => sum + s.monthlyRevenue, 0)
-  const totalRevenue = Object.values(staffStats).reduce((sum, s) => sum + s.totalRevenue, 0)
+  const monthTransactionCount = transactions.filter(t => String(t.date).startsWith(selectedMonth)).length
+  const activeBarbers = barbers.filter(b => b.active).length
 
   return (
     <div className="space-y-6">
@@ -221,6 +217,20 @@ export const Staff: React.FC = () => {
         </button>
       </div>
 
+      {/* Month Filter - totals reset at the start of each month */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-sm text-gray-400">فلترة حسب الشهر</label>
+        <input
+          type="month"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-pink-400/40"
+        />
+        <span className="text-xs text-gray-500">
+          أرباح كل طبيب تُحسب من أول الشهر حتى نهايته ويُصفَّر الإجمالي مع بداية كل شهر
+        </span>
+      </div>
+
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GlassCard className="bg-white/5">
@@ -228,6 +238,7 @@ export const Staff: React.FC = () => {
             <div>
               <p className="text-gray-400 text-sm">{t('pages.staff_count')}</p>
               <p className="text-3xl font-bold text-white mt-2">{barbers.length}</p>
+              <p className="text-xs text-gray-500 mt-1">{activeBarbers} نشط</p>
             </div>
             <Users size={40} className="text-pink-400" />
           </div>
@@ -236,11 +247,11 @@ export const Staff: React.FC = () => {
         <GlassCard className="bg-white/5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-400 text-sm">{t('pages.monthly_revenue')}</p>
+              <p className="text-gray-400 text-sm">أرباح الشهر</p>
               <p className="text-3xl font-bold text-white mt-2">
                 {totalMonthlyRevenue.toLocaleString('en-US')}
               </p>
-              <p className="text-xs text-gray-500 mt-1">{t('common.currency')}</p>
+              <p className="text-xs text-gray-500 mt-1">{t('common.currency')} - {selectedMonth}</p>
             </div>
             <DollarSign size={40} className="text-green-400" />
           </div>
@@ -249,11 +260,11 @@ export const Staff: React.FC = () => {
         <GlassCard className="bg-white/5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-400 text-sm">إجمالي الأرباح</p>
+              <p className="text-gray-400 text-sm">عدد عمليات الشهر</p>
               <p className="text-3xl font-bold text-white mt-2">
-                {totalRevenue.toLocaleString('ar-EG')}
+                {monthTransactionCount}
               </p>
-              <p className="text-xs text-gray-500 mt-1">ج.م</p>
+              <p className="text-xs text-gray-500 mt-1">{selectedMonth}</p>
             </div>
             <TrendingUp size={40} className="text-blue-400" />
           </div>
@@ -289,7 +300,7 @@ export const Staff: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
               >
-                <GlassCard>
+                <GlassCard className={!barber.active ? 'opacity-75' : ''}>
                   <div className="space-y-4">
                     {/* Header */}
                     <div className="flex items-start justify-between">
@@ -316,14 +327,23 @@ export const Staff: React.FC = () => {
                       </div>
                       <div 
                         onClick={() => handleToggleActive(barber.id!, barber.active)}
+                        title="اضغط لتبديل حالة الطبيب"
                         className={`px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap cursor-pointer transition hover:opacity-80 ${
                           barber.active 
                             ? 'bg-green-500/20 text-green-300'
-                            : 'bg-gray-500/20 text-gray-300'
+                            : 'bg-red-500/20 text-red-300'
                         }`}>
                         {barber.active ? 'نشط' : 'غير نشط'}
                       </div>
                     </div>
+
+                    {/* Inactive banner */}
+                    {!barber.active && (
+                      <div className="bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-semibold rounded-lg px-3 py-2 flex items-center gap-2">
+                        <UserX size={14} className="shrink-0" />
+                        هذا الطبيب غير نشط ولا يظهر في قائمة أطباء الكاشير
+                      </div>
+                    )}
 
                     {/* Stats */}
                     <div className="space-y-3 border-t border-white/10 pt-3">
@@ -332,15 +352,9 @@ export const Staff: React.FC = () => {
                         <span className="text-white font-bold">{stats.clientCount}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-sm">الأرباح هذا الشهر</span>
+                        <span className="text-gray-400 text-sm">أرباح الشهر</span>
                         <span className="text-green-400 font-bold">
                           {stats.monthlyRevenue.toLocaleString('ar-EG')} ج.م
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-sm">إجمالي الأرباح</span>
-                        <span className="text-blue-400 font-bold">
-                          {stats.totalRevenue.toLocaleString('ar-EG')} ج.م
                         </span>
                       </div>
                       {stats.lastVisit && (
