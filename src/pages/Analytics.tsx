@@ -22,47 +22,48 @@ export const Analytics: React.FC = () => {
     totalTransactions: 0,
     uniqueClients: 0,
     avgTicket: 0,
-    chartData: [],
+    chartData: [] as any[],
+    chartKey: 'date',
   })
 
   useEffect(() => {
+    const today = getEgyptDateString()
     let startDateStr: string
     let endDateStr: string
+    let chartKey = 'date'
 
     if (dateRange === 'custom') {
       startDateStr = customFrom || `${getEgyptYearMonth()}-01`
-      endDateStr = customTo || getEgyptDateString()
+      endDateStr = customTo || today
       if (startDateStr > endDateStr) {
         const tmp = startDateStr
         startDateStr = endDateStr
         endDateStr = tmp
       }
+    } else if (dateRange === 'day') {
+      startDateStr = today
+      endDateStr = today
+      chartKey = 'time'
     } else {
-      const today = new Date()
-      const startDate = new Date()
-
+      const start = new Date()
       switch (dateRange) {
         case 'week':
-          startDate.setDate(today.getDate() - 7)
+          start.setDate(start.getDate() - 7)
           break
         case 'month':
-          startDate.setMonth(today.getMonth() - 1)
+          start.setMonth(start.getMonth() - 1)
           break
         case 'quarter':
-          startDate.setMonth(today.getMonth() - 3)
+          start.setMonth(start.getMonth() - 3)
           break
         case 'year':
-          startDate.setFullYear(today.getFullYear() - 1)
-          break
-        default:
+          start.setFullYear(start.getFullYear() - 1)
           break
       }
-
-      startDateStr = getEgyptDateString(startDate)
-      endDateStr = getEgyptDateString(today)
+      startDateStr = getEgyptDateString(start)
+      endDateStr = today
     }
 
-    // Filter transactions and expenses for date range
     const filteredTransactions = transactions.filter(
       (t) => t.date >= startDateStr && t.date <= endDateStr
     )
@@ -75,6 +76,26 @@ export const Analytics: React.FC = () => {
     const netProfit = totalRevenue - totalExpenses
     const uniqueClientsCount = new Set(filteredTransactions.map((t) => t.client_id)).size
 
+    let chartData: any[] = []
+
+    if (dateRange === 'day') {
+      const hourly: Record<string, number> = {}
+      for (let h = 0; h < 24; h++) {
+        const label = `${String(h).padStart(2, '0')}:00`
+        hourly[label] = 0
+      }
+      filteredTransactions.forEach((t) => {
+        const hour = (t.time || '').slice(0, 2)
+        if (hour) {
+          const label = `${hour}:00`
+          hourly[label] = (hourly[label] || 0) + t.total
+        }
+      })
+      chartData = Object.entries(hourly).map(([time, income]) => ({ time, income }))
+    } else {
+      chartData = filteredTransactions as any[]
+    }
+
     setAnalyticsData({
       totalRevenue,
       totalExpenses,
@@ -82,7 +103,8 @@ export const Analytics: React.FC = () => {
       totalTransactions: filteredTransactions.length,
       uniqueClients: uniqueClientsCount,
       avgTicket: filteredTransactions.length > 0 ? totalRevenue / filteredTransactions.length : 0,
-      chartData: filteredTransactions as any,
+      chartData,
+      chartKey,
     })
   }, [dateRange, customFrom, customTo, transactions, expenses])
 
@@ -104,7 +126,7 @@ export const Analytics: React.FC = () => {
       {/* Date Range Selector */}
       <div className="space-y-3">
         <div className="flex gap-2 flex-wrap">
-          {['week', 'month', 'quarter', 'year'].map((range) => (
+          {['day', 'week', 'month', 'quarter', 'year'].map((range) => (
             <button
               key={range}
               onClick={() => setDateRange(range)}
@@ -177,11 +199,13 @@ export const Analytics: React.FC = () => {
 
       {/* Charts */}
       <GlassCard>
-        <h2 className="text-lg font-bold text-white mb-4">{t('analytics.revenue_trend')}</h2>
+        <h2 className="text-lg font-bold text-white mb-4">
+          {dateRange === 'day' ? 'الدخل حسب الوقت' : t('analytics.revenue_trend')}
+        </h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={analyticsData.chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="date" stroke="rgba(255,255,255,0.5)" />
+            <XAxis dataKey={analyticsData.chartKey} stroke="rgba(255,255,255,0.5)" />
             <YAxis stroke="rgba(255,255,255,0.5)" />
             <Tooltip
               contentStyle={{
@@ -189,7 +213,12 @@ export const Analytics: React.FC = () => {
                 border: '1px solid rgba(255,255,255,0.1)',
               }}
             />
-            <Line type="monotone" dataKey="total" stroke="#B794CE" dot={false} />
+            <Line
+              type="monotone"
+              dataKey={dateRange === 'day' ? 'income' : 'total'}
+              stroke="#B794CE"
+              dot={dateRange === 'day'}
+            />
           </LineChart>
         </ResponsiveContainer>
       </GlassCard>
