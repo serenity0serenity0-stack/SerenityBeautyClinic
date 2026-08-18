@@ -777,10 +777,6 @@ export const Clients: React.FC = () => {
                           <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
                             <div className="text-xs text-gray-400 space-y-0.5">
                               <p>
-                                <span className="text-gray-500">أنشأ:</span>{' '}
-                                {note.created_by_name || 'غير معروف'}
-                              </p>
-                              <p>
                                 <span className="text-gray-500">بتاريخ:</span>{' '}
                                 {formatNoteDateTime(note.created_at || '')}
                               </p>
