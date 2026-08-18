@@ -47,22 +47,26 @@ export const Clients: React.FC = () => {
   // Fetch the client's paid appointments (transactions carry the real
   // service names, doctor, price, payment and booking status).
   useEffect(() => {
-    if (isDetailModalOpen && selectedClientForDetail?.id) {
-      const fetchHistory = async () => {
-        try {
-          if (barbers.length === 0) {
-            await fetchBarbers()
-          }
-          const txs = await getTransactionsByclient_id(selectedClientForDetail.id)
-          setClientTransactions(txs || [])
-          await fetchNotes(selectedClientForDetail.id)
-        } catch (err) {
-          toast.error('Failed to load visit history')
+    if (!isDetailModalOpen || !selectedClientForDetail?.id) return
+
+    let cancelled = false
+
+    const fetchHistory = async () => {
+      try {
+        if (barbers.length === 0) {
+          await fetchBarbers()
         }
+        const txs = await getTransactionsByclient_id(selectedClientForDetail.id)
+        if (!cancelled) setClientTransactions(txs || [])
+        await fetchNotes(selectedClientForDetail.id)
+      } catch (err) {
+        if (!cancelled) toast.error('Failed to load visit history')
       }
-      fetchHistory()
     }
-  }, [isDetailModalOpen, selectedClientForDetail, getTransactionsByclient_id])
+    fetchHistory()
+
+    return () => { cancelled = true }
+  }, [isDetailModalOpen, selectedClientForDetail?.id])
 
   const handleAddClient = async () => {
     if (!formData.name || !formData.phone) {
