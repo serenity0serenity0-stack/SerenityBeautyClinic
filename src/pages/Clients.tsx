@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useClients } from '../db/hooks/useClients'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useBarbers } from '../db/hooks/useBarbers'
+import { useCustomerNotes } from '../db/hooks/useCustomerNotes'
 import { Client } from '../db/supabase'
 import { motion } from 'framer-motion'
-import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User } from 'lucide-react'
+import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type SortBy = 'name' | 'visits' | 'spent' | 'recent'
@@ -18,6 +20,7 @@ export const Clients: React.FC = () => {
   const { clients, addClient, updateClient, deleteClient } = useClients()
   const { getTransactionsByclient_id } = useTransactions()
   const { barbers, fetchBarbers } = useBarbers()
+  const { notes, loading: notesLoading, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -27,6 +30,14 @@ export const Clients: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', birthday: '', is_vip: false })
   const [editFormData, setEditFormData] = useState({ name: '', phone: '', email: '', birthday: '', is_vip: false })
+
+  // Notes state
+  const [newNoteText, setNewNoteText] = useState('')
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editingNoteText, setEditingNoteText] = useState('')
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
+  const [isDeleteNoteConfirmOpen, setIsDeleteNoteConfirmOpen] = useState(false)
+  const [isAddingNote, setIsAddingNote] = useState(false)
 
   // Filter states
   const [vipFilter, setVipFilter] = useState<'all' | 'vip' | 'regular'>('all')
@@ -44,6 +55,7 @@ export const Clients: React.FC = () => {
           }
           const txs = await getTransactionsByclient_id(selectedClientForDetail.id)
           setClientTransactions(txs || [])
+          await fetchNotes(selectedClientForDetail.id)
         } catch (err) {
           toast.error('Failed to load visit history')
         }
@@ -169,6 +181,66 @@ export const Clients: React.FC = () => {
     const suffix = hours >= 12 ? 'مساءً' : 'صباحاً'
     hours = hours % 12 || 12
     return `${String(hours).padStart(2, '0')}:${parts[1]} ${suffix}`
+  }
+
+  const formatNoteDateTime = (dateStr: string): string => {
+    try {
+      return new Intl.DateTimeFormat('ar-EG', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(dateStr))
+    } catch {
+      return dateStr
+    }
+  }
+
+  const handleAddNote = async () => {
+    if (!newNoteText.trim() || !selectedClientForDetail?.id) return
+    setIsAddingNote(true)
+    try {
+      await addNote(selectedClientForDetail.id, newNoteText.trim())
+      setNewNoteText('')
+    } catch {
+      // error already toasted
+    } finally {
+      setIsAddingNote(false)
+    }
+  }
+
+  const handleStartEditNote = (noteId: string, currentText: string) => {
+    setEditingNoteId(noteId)
+    setEditingNoteText(currentText)
+  }
+
+  const handleSaveEditNote = async (noteId: string) => {
+    if (!editingNoteText.trim() || !selectedClientForDetail?.id) return
+    try {
+      await updateNote(noteId, editingNoteText.trim(), selectedClientForDetail.id)
+      setEditingNoteId(null)
+      setEditingNoteText('')
+    } catch {
+      // error already toasted
+    }
+  }
+
+  const handleCancelEditNote = () => {
+    setEditingNoteId(null)
+    setEditingNoteText('')
+  }
+
+  const handleDeleteNoteConfirm = async () => {
+    if (!deletingNoteId || !selectedClientForDetail?.id) return
+    try {
+      await deleteNote(deletingNoteId, selectedClientForDetail.id)
+    } catch {
+      // error already toasted
+    } finally {
+      setDeletingNoteId(null)
+      setIsDeleteNoteConfirmOpen(false)
+    }
   }
 
   const filteredClients = clients
@@ -541,6 +613,9 @@ export const Clients: React.FC = () => {
           setIsDetailModalOpen(false)
           setSelectedClientForDetail(null)
           setClientTransactions([])
+          setNewNoteText('')
+          setEditingNoteId(null)
+          setEditingNoteText('')
         }}
         title={`${selectedClientForDetail?.name} - ${t('clients.visit_history')}`}
         size="lg"
@@ -633,9 +708,134 @@ export const Clients: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Customer Notes Section */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <MessageSquare size={20} className="text-pink-400" />
+                ملاحظات العميل
+              </h3>
+
+              {/* Add Note */}
+              <div className="mb-4">
+                <textarea
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="اكتب ملاحظة عن العميل..."
+                  rows={3}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 resize-none focus:outline-none focus:border-pink-500/50 transition"
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={!newNoteText.trim() || isAddingNote}
+                  className="mt-2 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/30 rounded-lg hover:bg-pink-600/20 transition font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus size={16} />
+                  {isAddingNote ? 'جاري...' : 'إضافة ملاحظة'}
+                </button>
+              </div>
+
+              {/* Notes List */}
+              {notesLoading ? (
+                <div className="text-center py-6 text-gray-400">جاري تحميل الملاحظات...</div>
+              ) : notes.length > 0 ? (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {notes.map((note) => (
+                    <div key={note.id} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                      {editingNoteId === note.id ? (
+                        <div>
+                          <textarea
+                            value={editingNoteText}
+                            onChange={(e) => setEditingNoteText(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 bg-white/10 border border-pink-500/30 rounded-lg text-white placeholder-gray-400 resize-none focus:outline-none focus:border-pink-500/50 transition"
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => handleSaveEditNote(note.id!)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-600/30 transition text-sm font-medium"
+                            >
+                              <Save size={14} />
+                              حفظ
+                            </button>
+                            <button
+                              onClick={handleCancelEditNote}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-white/10 text-gray-300 border border-white/20 rounded-lg hover:bg-white/20 transition text-sm font-medium"
+                            >
+                              <X size={14} />
+                              إلغاء
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-white whitespace-pre-wrap">{note.note}</p>
+                          <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
+                            <div className="text-xs text-gray-400 space-y-0.5">
+                              <p>
+                                <span className="text-gray-500">أنشأ:</span>{' '}
+                                {note.created_by_name || 'غير معروف'}
+                              </p>
+                              <p>
+                                <span className="text-gray-500">بتاريخ:</span>{' '}
+                                {formatNoteDateTime(note.created_at || '')}
+                              </p>
+                              {note.updated_at && note.updated_at !== note.created_at && (
+                                <p>
+                                  <span className="text-gray-500">آخر تعديل:</span>{' '}
+                                  {formatNoteDateTime(note.updated_at)}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleStartEditNote(note.id!, note.note)}
+                                className="p-1.5 hover:bg-white/10 rounded transition"
+                                title="تعديل"
+                              >
+                                <Edit2 size={14} className="text-gray-400" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeletingNoteId(note.id!)
+                                  setIsDeleteNoteConfirmOpen(true)
+                                }}
+                                className="p-1.5 hover:bg-red-500/10 rounded transition"
+                                title="حذف"
+                              >
+                                <Trash2 size={14} className="text-red-400" />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-400">
+                  <p>لا توجد ملاحظات بعد</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>
+
+      {/* Delete Note Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isDeleteNoteConfirmOpen}
+        onClose={() => {
+          setIsDeleteNoteConfirmOpen(false)
+          setDeletingNoteId(null)
+        }}
+        onConfirm={handleDeleteNoteConfirm}
+        title="حذف الملاحظة"
+        message="هل أنت متأكد من حذف هذه الملاحظة؟"
+        confirmText="حذف"
+        cancelText="إلغاء"
+        isDangerous
+      />
     </div>
   )
 }

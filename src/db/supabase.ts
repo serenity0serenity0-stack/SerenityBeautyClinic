@@ -140,3 +140,14 @@ export interface WaitingList {
   created_at?: string
   updated_at?: string
 }
+
+export interface CustomerNote {
+  id?: string
+  customer_id: string
+  clinic_id?: string
+  note: string
+  created_by?: string
+  created_by_name?: string | null
+  created_at?: string
+  updated_at?: string
+}
