@@ -15,6 +15,7 @@ export const Analytics: React.FC = () => {
   const [dateRange, setDateRange] = useState('month')
   const [customFrom, setCustomFrom] = useState(`${getEgyptYearMonth()}-01`)
   const [customTo, setCustomTo] = useState(getEgyptDateString())
+  const [selectedDay, setSelectedDay] = useState(getEgyptDateString())
   const [analyticsData, setAnalyticsData] = useState({
     totalRevenue: 0,
     totalExpenses: 0,
@@ -41,8 +42,8 @@ export const Analytics: React.FC = () => {
         endDateStr = tmp
       }
     } else if (dateRange === 'day') {
-      startDateStr = today
-      endDateStr = today
+      startDateStr = selectedDay
+      endDateStr = selectedDay
       chartKey = 'time'
     } else {
       const start = new Date()
@@ -106,7 +107,7 @@ export const Analytics: React.FC = () => {
       chartData,
       chartKey,
     })
-  }, [dateRange, customFrom, customTo, transactions, expenses])
+  }, [dateRange, customFrom, customTo, selectedDay, transactions, expenses])
 
   const KPICard = ({ label, value, color = 'gold' }: any) => (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -151,36 +152,54 @@ export const Analytics: React.FC = () => {
           </button>
         </div>
 
+        {/* Day picker */}
+        {dateRange === 'day' && (
+          <div className="flex items-end gap-3">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">اختر اليوم</label>
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
+              />
+            </div>
+            <p className="text-xs text-gray-500">{selectedDay}</p>
+          </div>
+        )}
+
         {/* Custom From/To date range */}
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">{t('analytics.from')}</label>
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => {
-                setCustomFrom(e.target.value)
-                setDateRange('custom')
-              }}
-              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
-            />
+        {dateRange !== 'day' && (
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">{t('analytics.from')}</label>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => {
+                  setCustomFrom(e.target.value)
+                  setDateRange('custom')
+                }}
+                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">{t('analytics.to')}</label>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => {
+                  setCustomTo(e.target.value)
+                  setDateRange('custom')
+                }}
+                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              {customFrom} → {customTo}
+            </p>
           </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">{t('analytics.to')}</label>
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => {
-                setCustomTo(e.target.value)
-                setDateRange('custom')
-              }}
-              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-gold-400/40"
-            />
-          </div>
-          <p className="text-xs text-gray-500">
-            {customFrom} → {customTo}
-          </p>
-        </div>
+        )}
       </div>
 
       {/* KPI Cards */}
