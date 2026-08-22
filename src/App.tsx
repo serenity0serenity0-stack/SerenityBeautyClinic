@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { useTheme } from './hooks/useTheme'
 import { useLanguage } from './hooks/useLanguage'
 import { useAuth } from './hooks/useAuth'
+import { AuthProvider } from './contexts/AuthContext'
 import { canAccess, firstAllowedPage, ROUTE_TO_PAGE } from './lib/permissions'
 
 // Pages
@@ -73,7 +74,8 @@ function App() {
 
   return (
     <div className={theme === 'dark' ? 'dark' : 'light'}>
-      <Router>
+      <AuthProvider>
+        <Router>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
@@ -194,7 +196,8 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Router>
+        </Router>
+      </AuthProvider>
       <Toaster position="bottom-center" />
     </div>
   )
