@@ -469,10 +469,30 @@ export const POS: React.FC = () => {
                         >
                           {/* Service header */}
                           <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              if (variants.length > 0) {
+                                setExpandedServiceId(isExpanded ? null : serviceId)
+                              } else {
+                                addToCart(service)
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                if (variants.length > 0) {
+                                  setExpandedServiceId(isExpanded ? null : serviceId)
+                                } else {
+                                  addToCart(service)
+                                }
+                              }
+                            }}
                             className={
-                              isPackage
-                                ? 'w-full p-3 rounded-lg border bg-gradient-to-r from-purple-500/20 to-pink-500/10 border-purple-500/40'
-                                : 'w-full p-3 rounded-lg border bg-gradient-to-r from-white/10 to-white/5 border-white/20'
+                              'w-full p-3 rounded-lg border cursor-pointer transition ' +
+                              (isPackage
+                                ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/10 border-purple-500/40 hover:border-purple-500/70'
+                                : 'bg-gradient-to-r from-white/10 to-white/5 border-white/20 hover:border-pink-500/40 hover:bg-white/10')
                             }
                           >
                             <div className="flex items-center justify-between">
@@ -515,8 +535,12 @@ export const POS: React.FC = () => {
                               <div className="flex items-center gap-2 mr-3 text-left flex-shrink-0">
                                 {variants.length > 0 ? (
                                   <button
-                                    onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
-                                    className="p-2 hover:bg-white/10 rounded-lg transition"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setExpandedServiceId(isExpanded ? null : serviceId)
+                                    }}
+                                    className="p-2 hover:bg-white/10 rounded-lg transition flex-shrink-0"
+                                    aria-label="عرض الخيارات"
                                   >
                                     {isExpanded ? (
                                       <ChevronUp size={20} className="text-pink-400" />
@@ -526,7 +550,10 @@ export const POS: React.FC = () => {
                                   </button>
                                 ) : (
                                   <motion.button
-                                    onClick={() => addToCart(service)}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      addToCart(service)
+                                    }}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     className="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white text-sm font-bold rounded-lg transition flex-shrink-0"
@@ -534,7 +561,9 @@ export const POS: React.FC = () => {
                                     + أضف
                                   </motion.button>
                                 )}
-                                <p className="text-pink-400 font-bold text-sm">{service.price} ج.م</p>
+                                {variants.length === 0 && (
+                                  <p className="text-pink-400 font-bold text-sm">{service.price} ج.م</p>
+                                )}
                               </div>
                             </div>
                           </div>
