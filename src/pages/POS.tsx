@@ -213,10 +213,10 @@ export const POS: React.FC = () => {
           name,
           unit_price: price,
           quantity: 1,
-          service_type: service.service_type || 'regular',
-          unit_label: service.unit_label || null,
-          package_quantity: service.package_quantity ?? null,
-          bonus_quantity: service.bonus_quantity ?? null,
+          service_type: variant?.service_type || service.service_type || 'regular',
+          unit_label: variant?.unit_label || service.unit_label || null,
+          package_quantity: variant?.package_quantity ?? service.package_quantity ?? null,
+          bonus_quantity: variant?.bonus_quantity ?? service.bonus_quantity ?? 0,
         },
       ]
     })
@@ -568,6 +568,14 @@ export const POS: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                       <p className="text-white text-sm truncate">{variant.name}</p>
                                       <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
+                                      {(variant.service_type === 'package' || variant.service_type == null && isPackage) && (variant.package_quantity || (isPackage && service.package_quantity)) ? (
+                                        <p className="text-[10px] text-purple-300 mt-0.5">
+                                          {variant.package_quantity ?? service.package_quantity} {variant.unit_label || service.unit_label || ''}
+                                          {((variant.bonus_quantity ?? service.bonus_quantity) || 0) > 0
+                                            ? ` + ${variant.bonus_quantity ?? service.bonus_quantity} بونص`
+                                            : ''}
+                                        </p>
+                                      ) : null}
                                     </div>
                                     <p className="text-pink-400 font-bold text-sm ml-2 flex-shrink-0">
                                       {variant.price} ج.م

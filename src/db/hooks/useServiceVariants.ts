@@ -10,6 +10,12 @@ export interface ServiceVariant {
   price: number
   duration?: number
   isActive: boolean
+  service_type?: 'regular' | 'package' | null
+  unit_label?: string | null
+  package_quantity?: number | null
+  bonus_quantity?: number | null
+  expiry_value?: number | null
+  expiry_unit?: 'days' | 'weeks' | 'months' | null
   created_at: string
   updated_at: string
 }

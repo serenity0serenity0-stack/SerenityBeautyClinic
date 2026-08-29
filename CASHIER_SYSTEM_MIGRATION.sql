@@ -2,8 +2,8 @@
 -- CASHIER + SERVICE PACKAGES + CLIENT BALANCE SYSTEM
 -- Run this in the Supabase SQL Editor.
 -- Do NOT run it multiple times blindly - it is idempotent (IF NOT EXISTS).
--- (Optional) run CASHIER_RESET_LEGACY_DATA.sql BEFORE this if you want to
--- wipe old transactions/visits first. Recommended before go-live.
+-- RECOMMENDED ORDER: run this migration FIRST, then CASHIER_RESET_LEGACY_DATA.sql
+-- (the reset clears legacy transactions/visits and restarts invoice numbering).
 -- ============================================================================
 
 BEGIN;
@@ -38,6 +38,19 @@ BEGIN
       CHECK (expiry_unit IS NULL OR expiry_unit IN ('days', 'weeks', 'months'));
   END IF;
 END $$;
+
+-- ============================================================================
+-- 1b. VARIANT-LEVEL PACKAGE OVERRIDES
+--     Some packages differ per variant (e.g. نبضات bundles: 1000+100 هديه,
+--     1000+150 هديه, 2300+100 ... each with its own quantity & bonus).
+--     NULL/inherited values fall back to the parent service's package fields.
+-- ============================================================================
+ALTER TABLE service_variants ADD COLUMN IF NOT EXISTS service_type VARCHAR(20);
+ALTER TABLE service_variants ADD COLUMN IF NOT EXISTS unit_label VARCHAR(20);
+ALTER TABLE service_variants ADD COLUMN IF NOT EXISTS package_quantity INT;
+ALTER TABLE service_variants ADD COLUMN IF NOT EXISTS bonus_quantity INT NOT NULL DEFAULT 0;
+ALTER TABLE service_variants ADD COLUMN IF NOT EXISTS expiry_value INT;
+ALTER TABLE service_variants ADD COLUMN IF NOT EXISTS expiry_unit VARCHAR(10);
 
 -- ============================================================================
 -- 2) INVOICE NUMBERING ON TRANSACTIONS
@@ -198,6 +211,12 @@ DECLARE
   v_qty INT;
   v_price DECIMAL(10,2);
   v_name VARCHAR;
+  v_type VARCHAR(20);
+  v_unit VARCHAR(20);
+  v_pkg_qty INT := 0;
+  v_bonus INT := 0;
+  v_exp_val INT;
+  v_exp_unit VARCHAR(10);
   v_line_total DECIMAL(10,2);
   v_expiry DATE;
   v_purchase_ids JSONB;
@@ -280,7 +299,7 @@ BEGIN
   ) VALUES (
     p_clinic_id, p_client_id, v_booking_id, v_client.name, v_client.phone,
     p_barber_id, v_barber_name, v_subtotal, v_discount_amount, p_discount_type, v_total,
-    p_payment_method, 'completed', p_notes, v_date, v_time, p_items, v_subtotal,
+    p_payment_method, 'completed', p_notes, v_date, v_time::TIME, p_items, v_subtotal,
     v_visit_number, v_invoice_no
   )
   RETURNING id INTO v_tx_id;
@@ -296,6 +315,12 @@ BEGIN
     v_qty := GREATEST(COALESCE((v_line.item->>'quantity')::INT, 1), 1);
     v_price := COALESCE(v_service.price, 0);
     v_name := COALESCE(v_service.nameAr, v_service.name, 'خدمة');
+    v_type := v_service.service_type;
+    v_unit := v_service.unit_label;
+    v_pkg_qty := COALESCE(v_service.package_quantity, 0);
+    v_bonus := COALESCE(v_service.bonus_quantity, 0);
+    v_exp_val := v_service.expiry_value;
+    v_exp_unit := v_service.expiry_unit;
 
     IF (v_line.item->>'variant_id') IS NOT NULL THEN
       SELECT * INTO v_variant FROM service_variants
@@ -304,6 +329,12 @@ BEGIN
       IF FOUND THEN
         v_price := COALESCE(v_variant.price, v_price);
         v_name := v_name || ' - ' || COALESCE(v_variant.name, '');
+        v_type  := COALESCE(v_variant.service_type, v_type);
+        v_unit  := COALESCE(v_variant.unit_label, v_unit);
+        v_pkg_qty := COALESCE(v_variant.package_quantity, v_pkg_qty);
+        v_bonus := COALESCE(v_variant.bonus_quantity, v_bonus);
+        v_exp_val := COALESCE(v_variant.expiry_value, v_exp_val);
+        v_exp_unit := COALESCE(v_variant.expiry_unit, v_exp_unit);
       END IF;
     END IF;
 
@@ -314,9 +345,9 @@ BEGIN
       'name', v_name,
       'price', v_price,
       'quantity', v_qty,
-      'unit_label', v_service.unit_label,
-      'bonus_quantity', COALESCE(v_service.bonus_quantity, 0),
-      'service_type', v_service.service_type,
+      'unit_label', v_unit,
+      'bonus_quantity', v_bonus,
+      'service_type', v_type,
       'line_total', v_line_total
     ));
 
@@ -324,16 +355,16 @@ BEGIN
       clinic_id, transaction_id, service_id, service_name, service_type,
       unit_label, unit_price, quantity, bonus_quantity, line_total
     ) VALUES (
-      p_clinic_id, v_tx_id, v_service.id, v_name, v_service.service_type,
-      v_service.unit_label, v_price, v_qty, COALESCE(v_service.bonus_quantity, 0), v_line_total
+      p_clinic_id, v_tx_id, v_service.id, v_name, v_type,
+      v_unit, v_price, v_qty, v_bonus, v_line_total
     );
 
     -- Create purchase rows for packages (one per bundle, each with its own expiry)
-    IF v_service.service_type = 'package'
-       AND COALESCE(v_service.package_quantity, 0) > 0 THEN
+    IF v_type = 'package'
+       AND v_pkg_qty > 0 THEN
       v_expiry := NULL;
-      IF v_service.expiry_value IS NOT NULL AND v_service.expiry_unit IS NOT NULL THEN
-        v_expiry := v_date + (v_service.expiry_value || ' ' || v_service.expiry_unit)::INTERVAL;
+      IF v_exp_val IS NOT NULL AND v_exp_unit IS NOT NULL THEN
+        v_expiry := v_date + (v_exp_val || ' ' || v_exp_unit)::INTERVAL;
       END IF;
 
       FOR i IN 1..v_qty LOOP
@@ -342,10 +373,10 @@ BEGIN
           paid_quantity, bonus_quantity, total_quantity, remaining_quantity,
           unit_price, amount, expiry_date, status
         ) VALUES (
-          p_clinic_id, p_client_id, v_tx_id, v_service.id, v_name, v_service.unit_label,
-          v_service.package_quantity, COALESCE(v_service.bonus_quantity, 0),
-          v_service.package_quantity + COALESCE(v_service.bonus_quantity, 0),
-          v_service.package_quantity + COALESCE(v_service.bonus_quantity, 0),
+          p_clinic_id, p_client_id, v_tx_id, v_service.id, v_name, v_unit,
+          v_pkg_qty, v_bonus,
+          v_pkg_qty + v_bonus,
+          v_pkg_qty + v_bonus,
           v_price, v_price, v_expiry, 'active'
         );
       END LOOP;
@@ -426,7 +457,7 @@ BEGIN
        AND sp.service_id = p_service_id
        AND sp.status = 'active' AND sp.remaining_quantity > 0
      ORDER BY sp.expiry_date ASC NULLS LAST, sp.created_at ASC
-    FOR UPDATE
+    FOR UPDATE OF sp
   LOOP
     IF v_qty <= 0 THEN EXIT; END IF;
 
