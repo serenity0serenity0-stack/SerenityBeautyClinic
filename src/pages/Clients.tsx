@@ -558,11 +558,14 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
-          <input
-            type="date"
-            value={formData.birthday}
-            onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-          />
+          <div>
+            <input
+              type="date"
+              value={formData.birthday}
+              onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+            />
+            <div className="text-center text-gray-400 text-xs mt-1">تاريخ الميلاد (اختياري)</div>
+          </div>
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
             <label className="text-white text-sm font-medium">VIP عميل</label>
             <button
@@ -642,11 +645,14 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
             value={editFormData.email}
             onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
           />
-          <input
-            type="date"
-            value={editFormData.birthday}
-            onChange={(e) => setEditFormData({ ...editFormData, birthday: e.target.value })}
-          />
+          <div>
+            <input
+              type="date"
+              value={editFormData.birthday}
+              onChange={(e) => setEditFormData({ ...editFormData, birthday: e.target.value })}
+            />
+            <div className="text-center text-gray-400 text-xs mt-1">تاريخ الميلاد (اختياري)</div>
+          </div>
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
             <label className="text-white text-sm font-medium">VIP عميل</label>
             <button

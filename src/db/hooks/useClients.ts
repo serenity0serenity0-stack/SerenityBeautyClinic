@@ -46,6 +46,7 @@ export const useClients = () => {
         .from('clients')
         .insert({
           ...client,
+          birthday: client.birthday || null,
           clinic_id: clinicId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -67,6 +68,7 @@ export const useClients = () => {
         .from('clients')
         .update({
           ...updates,
+          birthday: updates.birthday || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
