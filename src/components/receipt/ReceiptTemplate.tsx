@@ -6,6 +6,8 @@ interface ReceiptItem {
   name: string
   price: number
   quantity?: number
+  unitLabel?: string
+  bonusQuantity?: number
 }
 
 interface ReceiptProps {
@@ -228,7 +230,14 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
               const qty = item.quantity || 1
               return (
                 <tr key={idx}>
-                  <td style={{ textAlign: 'right', padding: '1px 0', verticalAlign: 'top' }}>{item.name}</td>
+                  <td style={{ textAlign: 'right', padding: '1px 0', verticalAlign: 'top' }}>
+                    {item.name}
+                    {(item.bonusQuantity || 0) > 0 && (
+                      <div style={{ fontSize: '9px', color: '#555555', fontWeight: '600' }}>
+                        + {item.bonusQuantity} {item.unitLabel || ''} بونص أُضيفت للرصيد
+                      </div>
+                    )}
+                  </td>
                   <td style={{ textAlign: 'center', padding: '1px 0' }}>{qty}</td>
                   <td style={{ textAlign: 'center', padding: '1px 0' }}>{formatMoney(item.price)}</td>
                   <td style={{ textAlign: 'left', padding: '1px 0', fontWeight: '700', whiteSpace: 'nowrap' }}>

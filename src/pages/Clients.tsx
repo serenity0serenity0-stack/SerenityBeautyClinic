@@ -8,9 +8,11 @@ import { useClients } from '../db/hooks/useClients'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useCustomerNotes } from '../db/hooks/useCustomerNotes'
-import { Client } from '../db/supabase'
+import { useBalanceData } from '../db/hooks/useBalanceData'
+import { useSales } from '../db/hooks/useSales'
+import type { Client, ServiceConsumption, BalanceAdjustment, ClientBalanceSummary } from '../db/supabase'
 import { motion } from 'framer-motion'
-import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X } from 'lucide-react'
+import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X, Receipt, MinusCircle, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type SortBy = 'name' | 'visits' | 'spent' | 'recent'
@@ -21,11 +23,16 @@ export const Clients: React.FC = () => {
   const { getTransactionsByclient_id } = useTransactions()
   const { barbers, fetchBarbers } = useBarbers()
   const { notes, loading: notesLoading, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
+  const { getBalanceSummaryByClient, getConsumptionsByClient, getAdjustmentsByClient } = useBalanceData()
+  const { consumeService } = useSales()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<any>(null)
   const [clientTransactions, setClientTransactions] = useState<any[]>([])
+  const [clientBalance, setClientBalance] = useState<ClientBalanceSummary[]>([])
+  const [clientConsumptions, setClientConsumptions] = useState<ServiceConsumption[]>([])
+  const [clientAdjustments, setClientAdjustments] = useState<BalanceAdjustment[]>([])
   const [editingclient_id, setEditingclient_id] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', birthday: '', is_vip: false })
@@ -56,9 +63,22 @@ export const Clients: React.FC = () => {
         if (barbers.length === 0) {
           await fetchBarbers()
         }
-        const txs = await getTransactionsByclient_id(selectedClientForDetail.id)
-        if (!cancelled) setClientTransactions(txs || [])
-        await fetchNotes(selectedClientForDetail.id)
+
+        const clientId = selectedClientForDetail.id
+const [txs, balance, consumptions, adjustments] = await Promise.all([
+          getTransactionsByclient_id(clientId),
+          getBalanceSummaryByClient(clientId),
+          getConsumptionsByClient(clientId),
+          getAdjustmentsByClient(clientId),
+        ])
+
+        if (cancelled) return
+
+        setClientTransactions(txs || [])
+        setClientBalance(balance || [])
+        setClientConsumptions(consumptions || [])
+        setClientAdjustments(adjustments || [])
+        await fetchNotes(clientId)
       } catch (err) {
         if (!cancelled) toast.error('Failed to load visit history')
       }
@@ -244,6 +264,31 @@ export const Clients: React.FC = () => {
     } finally {
       setDeletingNoteId(null)
       setIsDeleteNoteConfirmOpen(false)
+    }
+  }
+
+  const handleConsumeBalance = async (b: ClientBalanceSummary) => {
+    if (!selectedClientForDetail?.id || !b || (b.remaining || 0) <= 0) return
+    const qtyInput = prompt(
+      `صرف من رصيد "${b.service_name}"\nالمتوفر: ${b.remaining} ${b.unit_label || ''}\nأدخل الكمية:`,
+      '1'
+    )
+    if (qtyInput === null) return
+    const num = parseInt(qtyInput, 10)
+    if (isNaN(num) || num <= 0) {
+      toast.error('أدخل كمية صحيحة')
+      return
+    }
+    try {
+      await consumeService(selectedClientForDetail.id, b.service_id, num, 'صرف يدوي من لوحة العميل')
+      const [bal, cons] = await Promise.all([
+        getBalanceSummaryByClient(selectedClientForDetail.id),
+        getConsumptionsByClient(selectedClientForDetail.id),
+      ])
+      setClientBalance(bal || [])
+      setClientConsumptions(cons || [])
+    } catch {
+      // error already toasted
     }
   }
 
@@ -642,6 +687,46 @@ export const Clients: React.FC = () => {
               </div>
             </div>
 
+            {/* Client Balance (sessions/pulses) */}
+            {clientBalance.length > 0 && (
+              <div>
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <RefreshCw size={20} className="text-purple-400" />
+                  أرصدة العميل
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {clientBalance.map((b) => (
+                    <div key={b.service_id} className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 p-4 rounded-lg border border-purple-500/20">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-white font-semibold text-sm">{b.service_name}</p>
+                        <button
+                          onClick={() => handleConsumeBalance(b)}
+                          className="text-[11px] flex items-center gap-1 px-2 py-1 bg-pink-600/20 text-pink-300 border border-pink-500/30 rounded-lg hover:bg-pink-600/30 transition whitespace-nowrap"
+                          title="صرف من رصيد العميل"
+                        >
+                          <MinusCircle size={12} />
+                          صرف
+                        </button>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-3">
+                        <span className="text-3xl font-bold text-purple-300">{b.remaining}</span>
+                        <span className="text-sm text-gray-400">{b.unit_label || ''}</span>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-2 space-y-0.5">
+                        <p>
+                          تم شراؤها: {b.purchased} {b.unit_label || ''}
+                          {(b.bonus || 0) > 0 && ` + ${b.bonus} ${b.unit_label || ''} بونص`}
+                        </p>
+                        {b.earliest_expiry && (
+                          <p className="text-amber-300/80">⏰ أقرب انتهاء صلاحية: {formatArabicDate(b.earliest_expiry)}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Appointment History */}
             <div>
               <h3 className="text-lg font-bold text-white mb-4">سجل المواعيد</h3>
@@ -711,6 +796,151 @@ export const Clients: React.FC = () => {
                   <p>لا يوجد سجل مواعيد بعد</p>
                 </div>
               )}
+            </div>
+
+            {/* Unified History Timeline (sales + consumptions + adjustments) */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4">📜 سجل العميل</h3>
+
+              {(() => {
+                const entries: {
+                  key: string
+                  ts: number
+                  kind: 'sale' | 'consumption' | 'adjustment'
+                  tx?: any
+                  cons?: ServiceConsumption
+                  adj?: BalanceAdjustment
+                }[] = []
+
+                clientTransactions.forEach((t) => {
+                  const raw = t.created_at || `${t.date}T${t.time || '12:00'}:00`
+                  entries.push({
+                    key: `tx-${t.id}`,
+                    ts: new Date(raw).getTime() || 0,
+                    kind: 'sale',
+                    tx: t,
+                  })
+                })
+
+                clientConsumptions.forEach((c) => {
+                  entries.push({
+                    key: `c-${c.id}`,
+                    ts: new Date(c.created_at || '').getTime() || 0,
+                    kind: 'consumption',
+                    cons: c,
+                  })
+                })
+
+                clientAdjustments.forEach((a) => {
+                  entries.push({
+                    key: `a-${a.id}`,
+                    ts: new Date(a.created_at || '').getTime() || 0,
+                    kind: 'adjustment',
+                    adj: a,
+                  })
+                })
+
+                entries.sort((x, y) => y.ts - x.ts)
+
+                if (entries.length === 0) {
+                  return <div className="text-center py-8 text-gray-400">لا يوجد سجل بعد</div>
+                }
+
+                return (
+                  <div className="space-y-3 max-h-[30rem] overflow-y-auto pr-1">
+                    {entries.map((e) => {
+                      if (e.kind === 'sale' && e.tx) {
+                        const t = e.tx
+                        const serviceNames = getTransactionServiceNames(t)
+                        const doctorName = getDoctorName(t)
+                        return (
+                          <div key={e.key} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                            <div className="flex items-start justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Receipt size={16} className="text-pink-400" />
+                                <span className="text-white font-semibold">{formatArabicDate(t.date)}</span>
+                                <Clock size={13} className="text-pink-400" />
+                                <span className="text-gray-300 text-xs">{formatArabicTime(t.time)}</span>
+                              </div>
+                              {t.invoice_no && (
+                                <span className="text-xs text-gray-500">فاتورة INV-{String(t.invoice_no).padStart(6, '0')}</span>
+                              )}
+                            </div>
+
+                            {doctorName && (
+                              <p className="text-sm text-gray-400 mt-2 flex items-center gap-1">
+                                <User size={13} className="text-pink-400" />
+                                الطبيب: <span className="text-white font-semibold">{doctorName}</span>
+                              </p>
+                            )}
+
+                            <div className="mt-2 space-y-0.5">
+                              {serviceNames.length === 0 ? (
+                                <p className="text-sm text-gray-500">—</p>
+                              ) : (
+                                serviceNames.map((s: string, i: number) => <p key={i} className="text-sm text-gray-200">• {s}</p>)
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-pink-400">{formatMoney(t.total)}</span>
+                                <Badge
+                                  label={t.payment_method === 'card' ? '💳 بطاقة' : t.payment_method === 'wallet' ? '📱 محفظة' : '💵 نقد'}
+                                  variant="info"
+                                  size="sm"
+                                />
+                              </div>
+                              <Badge label="دفع" variant="success" size="sm" />
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      if (e.kind === 'consumption' && e.cons) {
+                        const c = e.cons
+                        return (
+                          <div key={e.key} className="bg-amber-500/5 p-4 rounded-lg border border-amber-500/20">
+                            <div className="flex items-start justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <MinusCircle size={16} className="text-amber-400" />
+                                <span className="text-white font-semibold">{formatNoteDateTime(c.created_at || '')}</span>
+                              </div>
+                              <span className="text-sm font-bold text-amber-300">
+                                -{c.quantity} {c.unit_label || ''}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-300 mt-1">استهلاك من رصيد: {c.service_name}</p>
+                            {c.note && <p className="text-xs text-gray-500 mt-1">{c.note}</p>}
+                          </div>
+                        )
+                      }
+
+                      if (e.kind === 'adjustment' && e.adj) {
+                        const a = e.adj
+                        const positive = (a.delta || 0) > 0
+                        return (
+                          <div key={e.key} className="bg-sky-500/5 p-4 rounded-lg border border-sky-500/20">
+                            <div className="flex items-start justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <RefreshCw size={16} className="text-sky-400" />
+                                <span className="text-white font-semibold">{formatNoteDateTime(a.created_at || '')}</span>
+                              </div>
+                              <span className={`text-sm font-bold ${positive ? 'text-green-400' : 'text-red-400'}`}>
+                                {positive ? '+' : ''}{a.delta} {a.unit_label || ''}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-300 mt-1">تعديل رصيد: {a.service_name}</p>
+                            {a.reason && <p className="text-xs text-gray-500 mt-1">{a.reason}</p>}
+                          </div>
+                        )
+                      }
+
+                      return null
+                    })}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Customer Notes Section */}

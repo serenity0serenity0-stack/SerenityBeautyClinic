@@ -6,29 +6,57 @@ import { useServices } from '../db/hooks/useServices'
 import { useServiceVariants } from '../db/hooks/useServiceVariants'
 import { useAuth } from '../hooks/useAuth'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react'
+import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Boxes } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+interface ServiceForm {
+  nameAr: string
+  nameEn: string
+  price: number
+  category: string
+  serviceType: 'regular' | 'package'
+  unitLabel: string
+  packageQuantity: number
+  bonusQuantity: number
+  expiryValue: number
+  expiryUnit: 'days' | 'weeks' | 'months'
+  active: boolean
+}
+
+const emptyForm: ServiceForm = {
+  nameAr: '',
+  nameEn: '',
+  price: 0,
+  category: 'packages',
+  serviceType: 'regular',
+  unitLabel: '',
+  packageQuantity: 1,
+  bonusQuantity: 0,
+  expiryValue: 0,
+  expiryUnit: 'months',
+  active: true,
+}
+
+const categorySuggestions = ['hair', 'skincare', 'body', 'nails', 'makeup', 'packages', 'pulses', 'sessions', 'custom']
 
 export const Services: React.FC = () => {
   const { t } = useTranslation()
-  const { services, addService, deleteService } = useServices()
+  const { services, addService, updateService, deleteService } = useServices()
   const { addVariant, deleteVariant, updateVariant, getVariantsByServiceId } = useServiceVariants()
   const { clinicId } = useAuth()
-  
+
   // Modals
-  const [isAddBaseServiceOpen, setIsAddBaseServiceOpen] = useState(false)
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
+  const [editingService, setEditingService] = useState<any>(null)
   const [isAddVariantOpen, setIsAddVariantOpen] = useState(false)
   const [isEditVariantOpen, setIsEditVariantOpen] = useState(false)
   const [selectedServiceForVariant, setSelectedServiceForVariant] = useState<any>(null)
   const [editingVariant, setEditingVariant] = useState<any>(null)
-  
+
   // States
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
-  const [serviceVariantsMap, setServiceVariantsMap] = useState<{[key: string]: any[]}>({})
-  const [baseServiceForm, setBaseServiceForm] = useState({
-    nameAr: '',
-    nameEn: '',
-  })
+  const [serviceVariantsMap, setServiceVariantsMap] = useState<{ [key: string]: any[] }>({})
+  const [serviceForm, setServiceForm] = useState<ServiceForm>(emptyForm)
   const [variantForm, setVariantForm] = useState({
     name: '',
     price: 0,
@@ -43,8 +71,8 @@ export const Services: React.FC = () => {
   // Load all service variants on mount and when services change
   useEffect(() => {
     const loadAllVariants = async () => {
-      const variantsMap: {[key: string]: any[]} = {}
-      
+      const variantsMap: { [key: string]: any[] } = {}
+
       for (const service of services) {
         if (!service.id) continue
         try {
@@ -55,7 +83,7 @@ export const Services: React.FC = () => {
           variantsMap[service.id] = []
         }
       }
-      
+
       setServiceVariantsMap(variantsMap)
     }
 
@@ -64,37 +92,80 @@ export const Services: React.FC = () => {
     }
   }, [services, getVariantsByServiceId])
 
-  // Add base service
-  const handleAddBaseService = async () => {
-    if (!baseServiceForm.nameAr || !baseServiceForm.nameEn) {
+  const openAddService = () => {
+    setEditingService(null)
+    setServiceForm(emptyForm)
+    setIsServiceModalOpen(true)
+  }
+
+  const openEditService = (service: any) => {
+    setEditingService(service)
+    setServiceForm({
+      nameAr: service.nameAr || '',
+      nameEn: service.nameEn || '',
+      price: service.price || 0,
+      category: service.category || 'custom',
+      serviceType: service.service_type || 'regular',
+      unitLabel: service.unit_label || (service.service_type === 'package' ? 'جلسة' : ''),
+      packageQuantity: service.package_quantity || 1,
+      bonusQuantity: service.bonus_quantity || 0,
+      expiryValue: service.expiry_value || 0,
+      expiryUnit: service.expiry_unit || 'months',
+      active: service.active,
+    })
+    setIsServiceModalOpen(true)
+  }
+
+  // Add or update a service (regular or package)
+  const handleSaveService = async () => {
+    const f = serviceForm
+    if (!f.nameAr || !f.nameEn) {
       toast.error('الرجاء تعبئة اسم الخدمة بالعربية والإنجليزية')
       return
     }
+    if (f.price <= 0) {
+      toast.error('برجاء إدخال السعر')
+      return
+    }
+    if (f.serviceType === 'package') {
+      if (!f.unitLabel || f.packageQuantity <= 0) {
+        toast.error('برجاء إدخال وحدة الباقة وعدد الوحدات (مثال: 1000 نبضة)')
+        return
+      }
+    }
+
+    const payload = {
+      nameAr: f.nameAr,
+      nameEn: f.nameEn,
+      price: f.price,
+      duration: 30,
+      category: f.category,
+      active: f.active,
+      service_type: f.serviceType,
+      unit_label: f.serviceType === 'package' ? f.unitLabel : null,
+      package_quantity: f.serviceType === 'package' ? f.packageQuantity : null,
+      bonus_quantity: f.serviceType === 'package' ? f.bonusQuantity || 0 : 0,
+      expiry_value: f.serviceType === 'package' && f.expiryValue > 0 ? f.expiryValue : null,
+      expiry_unit: f.serviceType === 'package' && f.expiryValue > 0 ? f.expiryUnit : null,
+    }
 
     try {
-      const newService = await addService({
-        nameAr: baseServiceForm.nameAr,
-        nameEn: baseServiceForm.nameEn,
-        price: 0, // Base service has no price, only variants do
-        duration: 0,
-        category: 'custom',
-        active: true,
-      })
-
-      if (newService?.id) {
-        // Set this service to add variants
-        setSelectedServiceForVariant(newService)
-        setIsAddBaseServiceOpen(false)
-        setBaseServiceForm({ nameAr: '', nameEn: '' })
-        setIsAddVariantOpen(true)
-      toast.success('✅ الخدمة الأساسية جاهزة - الآن أضف التفاصيل!', {
-        duration: 3000,
-        icon: '🎯'
-      })
+      if (editingService?.id) {
+        await updateService(editingService.id, payload)
+        toast.success('✅ تم تحديث الخدمة بنجاح', { duration: 2500 })
+      } else {
+        await addService(payload)
+        toast.success(
+          f.serviceType === 'package'
+            ? `✅ تم إنشاء الباقة: ${f.packageQuantity} ${f.unitLabel}${f.bonusQuantity > 0 ? ` + ${f.bonusQuantity} بونص` : ''}`
+            : '✅ تم إنشاء الخدمة بنجاح',
+          { duration: 3000 }
+        )
       }
+      setIsServiceModalOpen(false)
     } catch (err) {
       toast.error(t('errors.database_error'))
-      console.error('Error adding service:', err)
+      console.error('Error saving service:', err)
     }
   }
 
@@ -120,25 +191,17 @@ export const Services: React.FC = () => {
         isActive: true,
       })
 
-      // Reset form
       setVariantForm({ name: '', price: 0, duration: 30 })
-      toast.success('✨ تم إضافة التفاصيل بنجاح!', {
-        duration: 2500,
-        icon: '💚'
-      })
-      
-      // ✅ RELOAD VARIANTS FOR THIS SERVICE IMMEDIATELY
+      toast.success('✨ تم إضافة التفاصيل بنجاح!', { duration: 2500, icon: '💚' })
+
       try {
         const freshVariants = await getVariantsByServiceId(selectedServiceForVariant.id)
-        setServiceVariantsMap(prev => ({
+        setServiceVariantsMap((prev) => ({
           ...prev,
-          [selectedServiceForVariant.id]: freshVariants || []
+          [selectedServiceForVariant.id]: freshVariants || [],
         }))
-      } catch (reloadErr) {
-        console.error('Error reloading variants:', reloadErr)
-      }
-      
-      // Auto-close modal after successful add
+      } catch { /* ignore reload error */ }
+
       setIsAddVariantOpen(false)
       setSelectedServiceForVariant(null)
     } catch (err) {
@@ -152,15 +215,11 @@ export const Services: React.FC = () => {
     if (confirm('🗑️ هل تريد حذف هذا التفصيل؟')) {
       try {
         await deleteVariant(variantId)
-        toast.success('✨ تم حذف التفصيل بنجاح', {
-          duration: 2000,
-          icon: '🗑️'
-        })
-        
-        // Update the variant map
+        toast.success('✨ تم حذف التفصيل بنجاح', { duration: 2000, icon: '🗑️' })
+
         const updated = { ...serviceVariantsMap }
-        Object.keys(updated).forEach(serviceId => {
-          updated[serviceId] = updated[serviceId].filter(v => v.id !== variantId)
+        Object.keys(updated).forEach((serviceId) => {
+          updated[serviceId] = updated[serviceId].filter((v) => v.id !== variantId)
         })
         setServiceVariantsMap(updated)
       } catch (err) {
@@ -189,20 +248,16 @@ export const Services: React.FC = () => {
         isActive: editingVariant.isActive,
       })
 
-      toast.success('✅ تم تحديث التفصيل بنجاح!', {
-        duration: 2500,
-        icon: '📝'
-      })
+      toast.success('✅ تم تحديث التفصيل بنجاح!', { duration: 2500, icon: '📝' })
       setIsEditVariantOpen(false)
       setEditingVariant(null)
       setEditVariantForm({ name: '', price: 0, duration: 30 })
 
-      // Reload variants
       if (selectedServiceForVariant?.id) {
         const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
-        setServiceVariantsMap(prev => ({
+        setServiceVariantsMap((prev) => ({
           ...prev,
-          [selectedServiceForVariant.id]: variants || []
+          [selectedServiceForVariant.id]: variants || [],
         }))
       }
     } catch (err) {
@@ -211,15 +266,12 @@ export const Services: React.FC = () => {
     }
   }
 
-  // Delete base service
+  // Delete service
   const handleDeleteService = async (id: string) => {
     if (confirm('⚠️ هل تريد حذف هذه الخدمة وجميع تفاصيلها؟')) {
       try {
         await deleteService(id)
-        toast.success('✅ تم حذف الخدمة بنجاح', {
-          duration: 2000,
-          icon: '🗑️'
-        })
+        toast.success('✅ تم حذف الخدمة بنجاح', { duration: 2000, icon: '🗑️' })
       } catch (err) {
         toast.error(t('errors.database_error'))
       }
@@ -251,10 +303,7 @@ export const Services: React.FC = () => {
         }
 
         if (errors.length === 0) {
-          toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`, {
-            duration: 3000,
-            icon: '🎉'
-          })
+          toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`, { duration: 3000, icon: '🎉' })
         } else {
           toast.error(`تم حذف ${deletedCount} خدمة. فشل: ${errors.length}`)
         }
@@ -267,14 +316,16 @@ export const Services: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }} 
-        animate={{ opacity: 1, x: 0 }} 
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
         className="flex items-center justify-between"
       >
         <div>
           <h1 className="text-3xl font-bold text-white">الخدمات والأسعار</h1>
-          <p className="text-sm text-gray-400 mt-1">أضف خدمة اساسية ثم أضف التفاصيل والأسعار</p>
+          <p className="text-sm text-gray-400 mt-1">
+            الخدمات العادية تُباع مرة واحدة • الباقات تُضاف لرصيد العميل (جلسات / نبضات) مع بونص وصلاحية
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {services.length > 0 && (
@@ -290,7 +341,7 @@ export const Services: React.FC = () => {
             </motion.button>
           )}
           <motion.button
-            onClick={() => setIsAddBaseServiceOpen(true)}
+            onClick={openAddService}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/20 rounded-lg hover:bg-gradient-to-r from-pink-600 to-pink-700/30 transition"
@@ -301,7 +352,7 @@ export const Services: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Services List  */}
+      {/* Services List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatePresence>
           {services && services.length > 0 ? (
@@ -309,6 +360,7 @@ export const Services: React.FC = () => {
               const serviceId = service.id || String(idx)
               const serviceVariants = serviceVariantsMap[serviceId] || []
               const isExpanded = expandedServiceId === serviceId
+              const isPackage = service.service_type === 'package'
 
               return (
                 <motion.div
@@ -318,27 +370,60 @@ export const Services: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ delay: idx * 0.05 }}
                 >
-                  <GlassCard className="hover:border-pink-500/50 transition">
+                  <GlassCard className={isPackage ? 'hover:border-purple-500/50 transition' : 'hover:border-pink-500/50 transition'}>
                     <div className="space-y-4">
-                      {/* Base Service Header - CLICKABLE DROPDOWN */}
+                      {/* Service Header - CLICKABLE DROPDOWN */}
                       <button
-                        onClick={() =>
-                          setExpandedServiceId(isExpanded ? null : serviceId)
-                        }
+                        onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
                         className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition group"
                       >
-                        <div className="flex-1">
-                          <h3 className="text-white font-bold text-lg group-hover:text-pink-400 transition">
-                            {service.nameAr}
-                          </h3>
-                          <p className="text-xs text-gray-400">{service.nameEn}</p>
-                          {serviceVariants.length > 0 && (
-                            <p className="text-xs text-pink-400 mt-1">
-                              📦 {serviceVariants.length} خيار متاح
-                            </p>
-                          )}
+                        <div className="flex-1 text-right">
+                          <div className="flex items-center gap-2">
+                            {isPackage && <Boxes size={18} className="text-purple-400" />}
+                            <h3 className="text-white font-bold text-lg group-hover:text-pink-400 transition">
+                              {service.nameAr}
+                            </h3>
+                            <p className="text-xs text-gray-400">{service.nameEn}</p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {isPackage && service.package_quantity ? (
+                              <span className="text-[11px] font-bold bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded-full px-2 py-0.5">
+                                {service.package_quantity} {service.unit_label || ''}
+                                {(service.bonus_quantity || 0) > 0
+                                  ? ` + ${service.bonus_quantity} ${service.unit_label || ''} بونص`
+                                  : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] bg-white/5 border border-white/10 text-gray-300 rounded-full px-2 py-0.5">
+                                خدمة عادية
+                              </span>
+                            )}
+                            {isPackage && (service.expiry_value ?? 0) > 0 ? (
+                              <span className="text-[11px] bg-amber-500/15 border border-amber-500/30 text-amber-300 rounded-full px-2 py-0.5">
+                                ⏰ صالحة {service.expiry_value}{' '}
+                                {service.expiry_unit === 'days' ? 'يوم' : service.expiry_unit === 'weeks' ? 'أسبوع' : 'شهر'}
+                              </span>
+                            ) : null}
+                            <span className="text-[11px] text-gray-400">🏷️ {service.category}</span>
+                            {serviceVariants.length > 0 && (
+                              <span className="text-[11px] text-pink-400">📦 {serviceVariants.length} تفصيل</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 ms-3">
+
+                        <div className="flex items-center gap-2 ms-3 flex-shrink-0">
+                          <p className="text-pink-400 font-bold text-lg">{service.price} ج.م</p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEditService(service)
+                            }}
+                            className="p-2 hover:bg-blue-500/10 rounded transition"
+                            title="تعديل"
+                          >
+                            <Edit2 size={18} className="text-blue-400" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -377,7 +462,7 @@ export const Services: React.FC = () => {
                               className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-500/10 text-green-400 border border-green-400/30 rounded hover:bg-green-500/20 transition text-sm"
                             >
                               <Plus size={16} />
-                              أضف تفصيل جديد
+                              أضف تفصيل جديد (خيار اختياري بالكاشير)
                             </motion.button>
 
                             {/* Variants List */}
@@ -398,21 +483,15 @@ export const Services: React.FC = () => {
                                     <div className="flex-1 min-w-0">
                                       <p
                                         className={`text-sm font-medium truncate ${
-                                          !variant.isActive
-                                            ? 'text-gray-400 line-through'
-                                            : 'text-white'
+                                          !variant.isActive ? 'text-gray-400 line-through' : 'text-white'
                                         }`}
                                       >
                                         {variant.name}
                                       </p>
-                                      <p className="text-xs text-gray-400">
-                                        ⏱️ {variant.duration || 30} دقيقة
-                                      </p>
+                                      <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
                                     </div>
                                     <div className="flex items-center gap-3 ms-3 flex-shrink-0">
-                                      <p className="text-pink-400 font-bold text-lg">
-                                        {variant.price} ج.م
-                                      </p>
+                                      <p className="text-pink-400 font-bold text-lg">{variant.price} ج.م</p>
                                       <button
                                         onClick={() => {
                                           setEditingVariant(variant)
@@ -430,9 +509,7 @@ export const Services: React.FC = () => {
                                         <Edit2 size={16} className="text-blue-400" />
                                       </button>
                                       <button
-                                        onClick={() =>
-                                          handleDeleteVariant(variant.id)
-                                        }
+                                        onClick={() => handleDeleteVariant(variant.id)}
                                         className="p-1 hover:bg-red-500/10 rounded transition"
                                         title="حذف"
                                       >
@@ -456,7 +533,7 @@ export const Services: React.FC = () => {
               <div className="text-center py-12">
                 <p className="text-gray-400 mb-4">لا توجد خدمات حالياً</p>
                 <motion.button
-                  onClick={() => setIsAddBaseServiceOpen(true)}
+                  onClick={openAddService}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 border border-pink-500/20 rounded-lg hover:bg-gradient-to-r from-pink-600 to-pink-700/30 transition mx-auto"
@@ -470,55 +547,213 @@ export const Services: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* Add Base Service Modal */}
+      {/* Add / Edit Service Modal */}
       <Modal
-        isOpen={isAddBaseServiceOpen}
-        onClose={() => {
-          setIsAddBaseServiceOpen(false)
-          setBaseServiceForm({ nameAr: '', nameEn: '' })
-        }}
-        title="أضف خدمة اساسية جديدة"
-        size="md"
+        isOpen={isServiceModalOpen}
+        onClose={() => setIsServiceModalOpen(false)}
+        title={editingService ? `تعديل: ${editingService.nameAr || ''}` : 'أضف خدمة جديدة'}
+        size="lg"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-2">اسم الخدمة بالعربية *</label>
-            <input
-              type="text"
-              placeholder="مثال: عناية البشرة، قص الشعر، تشذيب اللحية"
-              value={baseServiceForm.nameAr}
-              onChange={(e) => setBaseServiceForm({ ...baseServiceForm, nameAr: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
-              autoFocus
-            />
-            <p className="text-xs text-gray-500 mt-1">المّ الخدمة الرئيسية (بدون سعر)</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">اسم الخدمة بالعربية *</label>
+              <input
+                type="text"
+                placeholder="مثال: نبضات، جلسات ميزوثيرابي، تقشير"
+                value={serviceForm.nameAr}
+                onChange={(e) => setServiceForm({ ...serviceForm, nameAr: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Service Name in English *</label>
+              <input
+                type="text"
+                placeholder="Example: Pulses, Mesotherapy Sessions"
+                value={serviceForm.nameEn}
+                onChange={(e) => setServiceForm({ ...serviceForm, nameEn: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+              />
+            </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
+              <input
+                type="number"
+                placeholder="مثال: 400"
+                value={serviceForm.price}
+                onChange={(e) => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">التصنيف</label>
+              <input
+                type="text"
+                list="category-suggestions"
+                placeholder="مثال: pulses, sessions, skincare"
+                value={serviceForm.category}
+                onChange={(e) => setServiceForm({ ...serviceForm, category: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+              />
+              <datalist id="category-suggestions">
+                {categorySuggestions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+
+          {/* Service type toggle */}
           <div>
-            <label className="block text-sm text-gray-300 mb-2">Service Name in English *</label>
+            <label className="block text-sm text-gray-300 mb-2 mt-2">نوع الخدمة</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setServiceForm({ ...serviceForm, serviceType: 'regular' })}
+                className={`px-4 py-3 rounded-lg border text-sm font-bold transition ${
+                  serviceForm.serviceType === 'regular'
+                    ? 'bg-pink-600/30 border-pink-500 text-pink-300'
+                    : 'bg-white/5 border-white/15 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                خدمة عادية (تُباع مرة واحدة)
+              </button>
+              <button
+                type="button"
+                onClick={() => setServiceForm({ ...serviceForm, serviceType: 'package' })}
+                className={`px-4 py-3 rounded-lg border text-sm font-bold transition ${
+                  serviceForm.serviceType === 'package'
+                    ? 'bg-purple-600/30 border-purple-500 text-purple-300'
+                    : 'bg-white/5 border-white/15 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                باقة / اشتراك (يُضاف لرصيد العميل)
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              الباقات تُخزن في رصيد العميل وتُستهلك لاحقاً (جلسات / نبضات). مثال: 1000 نبضة + 150 بونص = 1150 في الرصيد.
+            </p>
+          </div>
+
+          {/* Package config */}
+          {serviceForm.serviceType === 'package' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">اسم الوحدة *</label>
+                  <input
+                    type="text"
+                    placeholder="جلسة | نبضة"
+                    value={serviceForm.unitLabel}
+                    onChange={(e) => setServiceForm({ ...serviceForm, unitLabel: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">عدد الوحدات (المدفوعة) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="مثال: 1000"
+                    value={serviceForm.packageQuantity || ''}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, packageQuantity: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">البونص (إضافي)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="مثال: 150"
+                    value={serviceForm.bonusQuantity || ''}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, bonusQuantity: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">الصلاحية (كل)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="مثال: 3"
+                    value={serviceForm.expiryValue || ''}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, expiryValue: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">وحدة الصلاحية</label>
+                  <select
+                    value={serviceForm.expiryUnit}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, expiryUnit: e.target.value as any })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="days">يوم</option>
+                    <option value="weeks">أسبوع</option>
+                    <option value="months">شهر</option>
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-purple-300">
+                ملخص: يشتري العميل {serviceForm.packageQuantity || 0} {serviceForm.unitLabel || '...'} بسعر{' '}
+                {serviceForm.price} ج.م
+                {serviceForm.bonusQuantity > 0
+                  ? ` + ${serviceForm.bonusQuantity} ${serviceForm.unitLabel || '...'} بونص`
+                  : ''}
+                {serviceForm.expiryValue > 0
+                  ? ` - صالحة ${serviceForm.expiryValue} ${
+                      serviceForm.expiryUnit === 'days' ? 'يوم' : serviceForm.expiryUnit === 'weeks' ? 'أسبوع' : 'شهر'
+                    }`
+                  : ' (بدون تاريخ صلاحية)'}
+              </p>
+            </motion.div>
+          )}
+
+          <div className="flex items-center gap-3">
             <input
-              type="text"
-              placeholder="Example: Skincare, Haircut, Beard Trim"
-              value={baseServiceForm.nameEn}
-              onChange={(e) => setBaseServiceForm({ ...baseServiceForm, nameEn: e.target.value })}
-              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+              type="checkbox"
+              checked={serviceForm.active}
+              onChange={(e) => setServiceForm({ ...serviceForm, active: e.target.checked })}
+              className="w-4 h-4 accent-pink-500"
+              id="service-active"
             />
+            <label htmlFor="service-active" className="text-sm text-gray-300">
+              الخدمة مفعلة (ظاهرة في الكاشير)
+            </label>
           </div>
 
           <div className="flex gap-3 pt-4">
             <motion.button
-              onClick={handleAddBaseService}
+              onClick={handleSaveService}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-700 text-white rounded-lg font-semibold hover:from-pink-700 hover:to-pink-800 transition shadow-lg"
             >
-              ✅ التالي (أضف التفاصيل)
+              {editingService ? '💾 حفظ التعديلات' : '✅ إضافة الخدمة'}
             </motion.button>
             <motion.button
-              onClick={() => {
-                setIsAddBaseServiceOpen(false)
-                setBaseServiceForm({ nameAr: '', nameEn: '' })
-              }}
+              onClick={() => setIsServiceModalOpen(false)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 px-4 py-2 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition"
@@ -560,9 +795,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="مثال: 150"
                 value={variantForm.price}
-                onChange={(e) =>
-                  setVariantForm({ ...variantForm, price: parseFloat(e.target.value) || 0 })
-                }
+                onChange={(e) => setVariantForm({ ...variantForm, price: parseFloat(e.target.value) || 0 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
@@ -573,9 +806,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="30"
                 value={variantForm.duration}
-                onChange={(e) =>
-                  setVariantForm({ ...variantForm, duration: parseInt(e.target.value) || 30 })
-                }
+                onChange={(e) => setVariantForm({ ...variantForm, duration: parseInt(e.target.value) || 30 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
@@ -637,9 +868,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="مثال: 150"
                 value={editVariantForm.price}
-                onChange={(e) =>
-                  setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value) || 0 })
-                }
+                onChange={(e) => setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value) || 0 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
@@ -650,9 +879,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="30"
                 value={editVariantForm.duration}
-                onChange={(e) =>
-                  setEditVariantForm({ ...editVariantForm, duration: parseInt(e.target.value) || 30 })
-                }
+                onChange={(e) => setEditVariantForm({ ...editVariantForm, duration: parseInt(e.target.value) || 30 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>

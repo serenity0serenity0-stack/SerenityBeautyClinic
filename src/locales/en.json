@@ -116,10 +116,11 @@
     "select_type": "Select Service Type",
     "services": "Services",
     "categories": {
-      "haircut": "Haircut",
-      "beard": "Beard Trim",
+      "hair": "Hair Care",
       "skincare": "Skincare",
-      "kids": "Kids",
+      "body": "Body",
+      "nails": "Nails",
+      "makeup": "Makeup",
       "packages": "Special Packages"
     },
     "cart": "Cart",

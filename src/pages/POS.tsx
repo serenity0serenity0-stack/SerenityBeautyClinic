@@ -3,59 +3,69 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Modal } from '../components/ui/Modal'
 import { ReceiptTemplate } from '../components/receipt/ReceiptTemplate'
-import { X, Search, Trash2, Printer, Check, ChevronUp, ChevronDown } from 'lucide-react'
+import {
+  X, Search, Trash2, Printer, Check, ChevronUp, ChevronDown,
+  Plus, Minus, AlertTriangle, Boxes,
+} from 'lucide-react'
 import { useClients } from '../db/hooks/useClients'
 import { useServices } from '../db/hooks/useServices'
-import { useTransactions } from '../db/hooks/useTransactions'
-import { useVisitLogs } from '../db/hooks/useVisitLogs'
 import { useServiceVariants } from '../db/hooks/useServiceVariants'
 import { useBarbers } from '../db/hooks/useBarbers'
-import { useBookings } from '../db/hooks/useBookings'
+import { useSales } from '../db/hooks/useSales'
+import { useBalanceData } from '../db/hooks/useBalanceData'
 import { checkSubscriptionStatus } from '../utils/subscriptionChecker'
 import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptDateString, getEgyptTimeString } from '../utils/egyptTime'
+import type { ClientBalanceSummary } from '../db/supabase'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 
 // ✅ Normalize search input - fix Arabic keyboard/IME issues
 const normalizeSearchInput = (value: string): string => {
   if (!value) return ''
-  
-  // Map Arabic numerals to English
+
   const arabicToEnglish: Record<string, string> = {
     '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
     '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
   }
-  
+
   let normalized = value
-  
-  // Convert Arabic numerals to English
   for (const [arabic, english] of Object.entries(arabicToEnglish)) {
     normalized = normalized.replace(new RegExp(arabic, 'g'), english)
   }
-  
-  // Remove any control characters or encoding issues
-  // Keep only letters, numbers, and common symbols (+ - space)
   normalized = normalized.replace(/[^\u0621-\u064Ea-zA-Z0-9\s\-+]/g, '')
-  
+
   return normalized.trim()
 }
 
 interface CartItem {
-  id: string
+  key: string
+  service_id: string
+  variant_id?: string | null
+  name: string
+  unit_price: number
+  quantity: number
+  service_type: string
+  unit_label?: string | null
+  package_quantity?: number | null
+  bonus_quantity?: number | null
+}
+
+interface ReceiptLine {
   name: string
   price: number
+  quantity: number
 }
 
 interface CompletedTransaction {
   transactionId: string
+  invoiceNo: number
   client_name: string
   client_phone: string
   barber_name?: string
-  barberPhone?: string
   date: string
   time: string
-  items: CartItem[]
+  items: ReceiptLine[]
   subtotal: number
   discount: number
   discount_type: 'percentage' | 'fixed'
@@ -63,22 +73,33 @@ interface CompletedTransaction {
   payment_method: string
 }
 
+const categoryLabels: Record<string, string> = {
+  hair: 'الشعر',
+  skincare: 'العناية بالبشرة',
+  body: 'الجسم',
+  nails: 'الأظافر',
+  makeup: 'المكياج',
+  packages: 'الاشتراكات والباقات',
+  pulses: 'نبضات (Pulses)',
+  sessions: 'الجلسات',
+}
+
 export const POS: React.FC = () => {
   const { clients, updateClient } = useClients()
   const { services } = useServices()
-  const { addTransaction } = useTransactions()
-  const { addVisitLog } = useVisitLogs()
   const { getVariantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
-  const { getTodayBookings } = useBookings()
+  const { completeSale } = useSales()
+  const { getBalanceSummaryByClient } = useBalanceData()
   const { clinicId } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState<any>(null)
+  const [clientBalance, setClientBalance] = useState<ClientBalanceSummary[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [discount, setDiscount] = useState(0)
   const [discount_type, setdiscount_type] = useState<'percentage' | 'fixed'>('fixed')
-  const [allVariants, setAllVariants] = useState<{[key: string]: any[]}>({})
+  const [allVariants, setAllVariants] = useState<{ [key: string]: any[] }>({})
   const [payment_method, setpayment_method] = useState('cash')
   const [showClientSearch, setShowClientSearch] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -103,10 +124,10 @@ export const POS: React.FC = () => {
     el.textContent = `@media print { @page { size: ${paperWidth} auto; margin: 0; } }`
   }, [paperWidth])
 
-  // Load variants
+  // Load variants per service
   useEffect(() => {
     const loadAllVariants = async () => {
-      const variants: {[key: string]: any[]} = {}
+      const variants: { [key: string]: any[] } = {}
       for (const service of services) {
         if (!service.id) continue
         try {
@@ -114,9 +135,7 @@ export const POS: React.FC = () => {
           if (serviceVariants && serviceVariants.length > 0) {
             variants[service.id] = serviceVariants
           }
-        } catch (err) {
-          // No variants
-        }
+        } catch { /* no variants */ }
       }
       setAllVariants(variants)
     }
@@ -126,96 +145,130 @@ export const POS: React.FC = () => {
     }
   }, [services, getVariantsByServiceId])
 
-  // ✅ Simple, accurate search logic
-  // Phone search is EXACT substring match
-  // Name search can include partial matches
+  // Load the selected client's balance so the cashier can warn about existing balances
+  useEffect(() => {
+    if (!selectedClient) {
+      setClientBalance([])
+      return
+    }
+    let cancelled = false
+    getBalanceSummaryByClient(selectedClient.id).then((rows) => {
+      if (!cancelled) setClientBalance(rows)
+    })
+    return () => { cancelled = true }
+  }, [selectedClient, getBalanceSummaryByClient])
+
+  // Group services by category
+  const groupedServices = services.reduce<Record<string, typeof services>>((acc, s) => {
+    const key = s.category || 'other'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(s)
+    return acc
+  }, {})
+
+  const balanceFor = (serviceId: string) =>
+    clientBalance.find((b) => b.service_id === serviceId)
+
   const searchResults = (() => {
     const normalized = normalizeSearchInput(searchQuery)
     if (!normalized) return []
-    
+
     const q = normalized.trim().toLowerCase()
-    const isNumeric = /^\d+$/.test(q)  // All digits = phone search only
-    
-    const filtered = clients.filter(client => {
+    const isNumeric = /^\d+$/.test(q)
+
+    const filtered = clients.filter((client) => {
       if (isNumeric) {
-        // ✅ Phone search: exact substring match only
         return client.phone?.toLowerCase().includes(q) || false
       }
-      // ✅ Name/mixed search: fuzzy by name, exact by phone
       return (
         client.name?.toLowerCase().includes(q) ||
         client.phone?.toLowerCase().includes(q)
       )
     })
-    
-    // Convert to Fuse result format for consistency with UI
-    return filtered.map(item => ({ item, score: 0 } as any))
+
+    return filtered.map((item) => ({ item, score: 0 } as any))
   })()
 
-  const handleAddService = async (service: any) => {
-    const variants = allVariants[service.id]
-    const serviceName = service.nameAr || service.name || 'خدمة'
+  const addToCart = (service: any, variant?: any) => {
+    const name = variant
+      ? `${service.nameAr || service.name || 'خدمة'} - ${variant.name}`
+      : service.nameAr || service.name || 'خدمة'
+    const price = variant ? variant.price : service.price
 
-    if (variants && variants.length > 0) {
-      // Show variant picker
-      const variantPrice = variants[0].price
-      addToCart(serviceName, variantPrice)
+    setCart((prev) => {
+      const existing = prev.find((i) =>
+        i.service_id === service.id && (i.variant_id || null) === (variant?.id || null)
+      )
+      if (existing) {
+        return prev.map((i) =>
+          i.key === existing.key ? { ...i, quantity: i.quantity + 1 } : i
+        )
+      }
+      return [
+        ...prev,
+        {
+          key: Math.random().toString(36).slice(2),
+          service_id: service.id,
+          variant_id: variant?.id || null,
+          name,
+          unit_price: price,
+          quantity: 1,
+          service_type: service.service_type || 'regular',
+          unit_label: service.unit_label || null,
+          package_quantity: service.package_quantity ?? null,
+          bonus_quantity: service.bonus_quantity ?? null,
+        },
+      ]
+    })
+
+    const bal = balanceFor(service.id)
+    if (bal && bal.remaining > 0) {
+      toast(`⚠️ العميل لديه رصيد متبقي: ${bal.remaining} ${bal.unit_label || ''}`)
     } else {
-      // Add with default price
-      addToCart(serviceName, service.price)
+      toast.success('✅ تم اضافة الخدمة')
     }
   }
 
-  const handleAddVariant = (service: any, variant: any) => {
-    const variantName = variant.name || 'خدمة'
-    addToCart(`${service.nameAr} - ${variantName}`, variant.price)
+  const changeQty = (key: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((i) => (i.key === key ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i))
+    )
   }
 
-  const addToCart = (name: string, price: number) => {
-    setCart([...cart, { id: Math.random().toString(), name, price }])
-    toast.success('✅ تم اضافة الخدمة')
+  const removeFromCart = (key: string) => {
+    setCart((prev) => prev.filter((i) => i.key !== key))
   }
 
-  const removeFromCart = (idx: number) => {
-    setCart(cart.filter((_, i) => i !== idx))
-    toast.success('تم الحذف')
-  }
-
-  const calculateSubtotal = () => cart.reduce((sum, item) => sum + item.price, 0)
-  const calculateDiscount = () =>
+  const subtotal = cart.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
+  const discountAmount =
     discount_type === 'percentage'
-      ? (calculateSubtotal() * discount) / 100
+      ? (subtotal * Math.min(Math.max(discount, 0), 100)) / 100
       : discount
-
-  const subtotal = calculateSubtotal()
-  const discountAmount = calculateDiscount()
-  const total = subtotal - discountAmount
+  const total = Math.max(subtotal - discountAmount, 0)
 
   const handleCompleteSale = async () => {
     if (!selectedClient) {
       toast.error('اختر العميل أولاً')
       return
     }
-
     if (cart.length === 0) {
       toast.error('السلة فارغة')
       return
     }
 
-    // Check subscription status before allowing transaction
     try {
       const subStatus = await checkSubscriptionStatus(clinicId || '')
       if (!subStatus.isActive) {
         const messages: Record<string, string> = {
-          'inactive': 'اشتراكك غير نشط. يرجى تفعيل الاشتراك',
-          'suspended': 'تم إيقاف اشتراكك. يرجى التواصل مع الدعم',
-          'expired': 'انتهى صلاحية اشتراكك. يرجى تجديد الاشتراك',
+          inactive: 'اشتراكك غير نشط. يرجى تفعيل الاشتراك',
+          suspended: 'تم إيقاف اشتراكك. يرجى التواصل مع الدعم',
+          expired: 'انتهى صلاحية اشتراكك. يرجى تجديد الاشتراك',
         }
         toast.error(messages[subStatus.status] || 'اشتراكك غير صالح')
         return
       }
-    } catch (err) {
-      console.error('Error checking subscription:', err)
+    } catch {
       toast.error('فشل التحقق من صلاحية الاشتراك')
       return
     }
@@ -225,64 +278,50 @@ export const POS: React.FC = () => {
       const dateStr = getEgyptDateString()
       const timeStr = getEgyptTimeString()
 
-      // Create transaction (linked to the client's active booking when present;
-      // addTransaction auto-completes the booking after payment).
-      const clientBookingsToday = getTodayBookings()
-        .filter((b: any) => b.client_id === selectedClient.id)
-        .filter((b: any) =>
-          ['pending', 'confirmed', 'checked_in', 'ongoing'].includes(b.status)
-        )
-        .sort((a: any, b: any) => a.booking_time.localeCompare(b.booking_time))
-
-      const targetBooking = clientBookingsToday[0]
-
-      const newTransaction = await addTransaction({
+      const result = await completeSale({
         client_id: selectedClient.id,
-        booking_id: targetBooking?.id,
-        client_name: selectedClient.name,
-        client_phone: selectedClient.phone,
-        visit_number: (selectedClient.total_visits || 0) + 1,
-        date: dateStr,
-        time: timeStr,
-        items: cart,
-        subtotal,
-        discount: discountAmount,
+        items: cart.map((i) => ({
+          service_id: i.service_id,
+          quantity: i.quantity,
+          variant_id: i.variant_id,
+        })),
+        discount,
         discount_type,
-        total,
         payment_method: payment_method as 'cash' | 'card' | 'wallet',
-        barber_id: selectedBarber?.id || undefined,
-        barber_name: selectedBarber?.name || undefined,
+        barber_id: selectedBarber?.id || null,
+        notes: '',
       })
 
-      const transactionId = newTransaction?.id || 'unknown'
+      if (!result) throw new Error('فشلت عملية البيع')
 
-      // Update client
+      const transactionId = result.transaction_id
+      const invoiceNo = result.invoice_no
+
+      // Update client (optimistic; server-side RPC also updates totals)
       await updateClient(selectedClient.id, {
         total_visits: (selectedClient.total_visits || 0) + 1,
         total_spent: (selectedClient.total_spent || 0) + total,
         last_visit: dateStr,
       })
 
-      // Create visit log
-      await addVisitLog({
-        client_id: selectedClient.id,
-        visitDate: dateStr,
-        visitTime: timeStr,
-        servicesCount: cart.length,
-        total_spent: total,
-        notes: `${cart.length} services - ${payment_method}`,
-      })
-
-      // Show receipt
       setCompletedTransaction({
         transactionId,
+        invoiceNo,
         client_name: selectedClient.name,
         client_phone: selectedClient.phone,
         barber_name: selectedBarber?.name || '',
-        barberPhone: selectedBarber?.phone || '',
         date: dateStr,
         time: timeStr,
-        items: cart,
+        items: cart.map((item) => ({
+          name:
+            item.service_type === 'package' && item.package_quantity
+              ? `${item.name} (باقة ${item.package_quantity}${item.unit_label || ''})`
+              : item.name,
+          price: item.unit_price,
+          quantity: item.quantity,
+          unitLabel: item.unit_label || '',
+          bonusQuantity: item.service_type === 'package' ? item.bonus_quantity || 0 : 0,
+        })),
         subtotal,
         discount: discountAmount,
         discount_type,
@@ -296,6 +335,7 @@ export const POS: React.FC = () => {
       setCart([])
       setDiscount(0)
       setSelectedClient(null)
+      setClientBalance([])
       appEmitter.emit('transaction:created', { total, date: dateStr })
     } catch (err: any) {
       toast.error(err.message || 'حدث خطأ')
@@ -308,11 +348,8 @@ export const POS: React.FC = () => {
     if (printInProgress.current) return
     printInProgress.current = true
 
-    const release = () => {
-      printInProgress.current = false
-    }
+    const release = () => { printInProgress.current = false }
 
-    // Guard: only one print dialog per click. Reset on close + safety timeout.
     window.addEventListener('afterprint', release, { once: true })
     window.setTimeout(release, 5000)
 
@@ -324,7 +361,6 @@ export const POS: React.FC = () => {
       }
     }
 
-    // Wait for the Cairo font to be ready so the receipt renders correctly.
     if (document.fonts?.ready) {
       document.fonts.ready.then(doPrint).catch(doPrint)
     } else {
@@ -353,7 +389,7 @@ export const POS: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-0 md:gap-4 p-0 md:p-4">
-        {/* Left: Services - Full width on mobile, 2/3 on desktop */}
+        {/* Left: Services */}
         <div className="flex-1 flex flex-col overflow-hidden md:rounded-lg md:border md:border-white/10 md:bg-white/5">
           {/* Client Selection Bar */}
           <div className="px-4 py-3 md:px-6 md:py-4 border-b border-white/10 flex-shrink-0">
@@ -361,19 +397,38 @@ export const POS: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-pink-400/10 to-sky-blue/10 border border-pink-500/30 rounded-lg"
+                className="p-3 bg-gradient-to-r from-pink-400/10 to-sky-blue/10 border border-pink-500/30 rounded-lg"
               >
-                <div className="flex-1">
-                  <p className="text-white font-bold text-lg">{selectedClient.name}</p>
-                  <p className="text-xs text-gray-300">{selectedClient.phone}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-white font-bold text-lg">{selectedClient.name}</p>
+                    <p className="text-xs text-gray-300">{selectedClient.phone}</p>
+                  </div>
+                  <motion.button
+                    onClick={() => setSelectedClient(null)}
+                    whileHover={{ scale: 1.1 }}
+                    className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition"
+                  >
+                    <X size={20} />
+                  </motion.button>
                 </div>
-                <motion.button
-                  onClick={() => setSelectedClient(null)}
-                  whileHover={{ scale: 1.1 }}
-                  className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition"
-                >
-                  <X size={20} />
-                </motion.button>
+
+                {/* Existing balance warning strip */}
+                {clientBalance.filter((b) => b.remaining > 0).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {clientBalance
+                      .filter((b) => b.remaining > 0)
+                      .map((b) => (
+                        <span
+                          key={b.service_id}
+                          className="text-[11px] font-semibold bg-blue-500/10 border border-blue-500/40 text-blue-300 rounded-full px-3 py-1"
+                        >
+                          {b.service_name}: {b.remaining} {b.unit_label || ''}
+                          {b.earliest_expiry ? ` ⏰ ${b.earliest_expiry}` : ''}
+                        </span>
+                      ))}
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.button
@@ -388,106 +443,155 @@ export const POS: React.FC = () => {
           </div>
 
           {/* Services Grid */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
-            <h2 className="text-lg font-bold text-white sticky top-0 fade-top">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            <h2 className="text-lg font-bold text-white sticky top-0 fade-top z-10">
               📋 الخدمات
             </h2>
-            
-            <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {services.map((service, idx) => {
-                  const serviceId = service.id || String(idx)
-                  const variants = (service.id && allVariants[service.id]) || []
-                  const isExpanded = expandedServiceId === serviceId
 
-                  return (
-                    <motion.div
-                      key={serviceId}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ delay: idx * 0.02 }}
-                      className="group"
-                    >
-                      {/* Service Header - CLICKABLE DROPDOWN */}
-                      <button
-                        onClick={() =>
-                          setExpandedServiceId(isExpanded ? null : serviceId)
-                        }
-                        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 border border-white/20 hover:border-pink-500/40 rounded-lg transition group"
-                      >
-                        <div className="flex-1 text-right">
-                          <h3 className="text-white font-bold text-sm md:text-base group-hover:text-pink-400 transition">
-                            {service.nameAr}
-                          </h3>
-                          {variants.length > 0 && (
-                            <p className="text-xs text-pink-400 mt-1">
-                              📦 {variants.length} خيار متاح
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mr-3">
-                          {isExpanded ? (
-                            <ChevronUp size={20} className="text-pink-400" />
-                          ) : (
-                            <ChevronDown size={20} className="text-gray-400" />
-                          )}
-                        </div>
-                      </button>
+            {Object.entries(groupedServices).map(([category, list]) => (
+              <div key={category}>
+                <h3 className="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-pink-500 rounded-full inline-block" />
+                  {categoryLabels[category] || category}
+                </h3>
 
-                      {/* Expanded Variants List */}
-                      <AnimatePresence>
-                        {isExpanded && variants.length > 0 && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="space-y-1 mt-1 ml-2 border-l-2 border-pink-500/30 pl-2"
-                          >
-                            {variants.map((variant: any) => (
-                              <motion.button
-                                key={variant.id}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 10 }}
-                                onClick={() => handleAddVariant(service, variant)}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="w-full flex items-center justify-between p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-left"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm truncate">{variant.name}</p>
-                                  <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
-                                </div>
-                                <p className="text-pink-400 font-bold text-sm ml-2 flex-shrink-0">
-                                  {variant.price} ج.م
-                                </p>
-                              </motion.button>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                <div className="space-y-2">
+                  <AnimatePresence mode="popLayout">
+                    {list.map((service, idx) => {
+                      const serviceId = service.id || String(idx)
+                      const variants = (service.id && allVariants[service.id]) || []
+                      const isExpanded = expandedServiceId === serviceId
+                      const isPackage = service.service_type === 'package'
+                      const bal = service.id ? balanceFor(service.id) : undefined
 
-                      {/* Add button for services without variants */}
-                      {variants.length === 0 && (
-                        <motion.button
-                          onClick={() => handleAddService(service)}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="w-full p-2 mt-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-sm text-white"
+                      return (
+                        <motion.div
+                          key={serviceId}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ delay: idx * 0.02 }}
+                          className="group"
                         >
-                          أضف للسلة
-                        </motion.button>
-                      )}
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
-            </div>
+                          {/* Service header */}
+                          <div
+                            className={
+                              isPackage
+                                ? 'w-full p-3 rounded-lg border bg-gradient-to-r from-purple-500/20 to-pink-500/10 border-purple-500/40'
+                                : 'w-full p-3 rounded-lg border bg-gradient-to-r from-white/10 to-white/5 border-white/20'
+                            }
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 text-right">
+                                <div className="flex items-center gap-2">
+                                  {isPackage && <Boxes size={16} className="text-purple-400" />}
+                                  <h3 className="text-white font-bold text-sm md:text-base">
+                                    {service.nameAr}
+                                  </h3>
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                  {isPackage && service.package_quantity ? (
+                                    <span className="text-[10px] font-bold bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded-full px-2 py-0.5">
+                                      {service.package_quantity} {service.unit_label || ''}
+                                      {(service.bonus_quantity || 0) > 0
+                                        ? ` + ${service.bonus_quantity} ${service.unit_label || ''} بونص`
+                                        : ''}
+                                    </span>
+                                  ) : null}
+                                  {isPackage && service.expiry_value && service.expiry_unit ? (
+                                    <span className="text-[10px] bg-amber-500/15 border border-amber-500/30 text-amber-300 rounded-full px-2 py-0.5">
+                                      ⏰ صالحة {service.expiry_value} {service.expiry_unit === 'days' ? 'يوم' : service.expiry_unit === 'weeks' ? 'أسبوع' : 'شهر'}
+                                    </span>
+                                  ) : null}
+                                  {variants.length > 0 && (
+                                    <span className="text-[10px] text-pink-400">
+                                      📦 {variants.length} خيار متاح
+                                    </span>
+                                  )}
+                                  {bal && bal.remaining > 0 && (
+                                    <span className="text-[10px] font-bold flex items-center gap-1 text-amber-300 bg-amber-500/15 border border-amber-500/40 rounded-full px-2 py-0.5">
+                                      <AlertTriangle size={10} />
+                                      لديه رصيد: {bal.remaining} {bal.unit_label || ''}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mr-3 text-left flex-shrink-0">
+                                {variants.length > 0 ? (
+                                  <button
+                                    onClick={() => setExpandedServiceId(isExpanded ? null : serviceId)}
+                                    className="p-2 hover:bg-white/10 rounded-lg transition"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronUp size={20} className="text-pink-400" />
+                                    ) : (
+                                      <ChevronDown size={20} className="text-gray-400" />
+                                    )}
+                                  </button>
+                                ) : (
+                                  <motion.button
+                                    onClick={() => addToCart(service)}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white text-sm font-bold rounded-lg transition flex-shrink-0"
+                                  >
+                                    + أضف
+                                  </motion.button>
+                                )}
+                                <p className="text-pink-400 font-bold text-sm">{service.price} ج.م</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded variant list */}
+                          <AnimatePresence>
+                            {isExpanded && variants.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="space-y-1 mt-1 ml-2 border-l-2 border-pink-500/30 pl-2"
+                              >
+                                {variants.map((variant: any) => (
+                                  <motion.button
+                                    key={variant.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    onClick={() => addToCart(service, variant)}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className="w-full flex items-center justify-between p-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-pink-500/30 rounded transition text-left"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-white text-sm truncate">{variant.name}</p>
+                                      <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
+                                    </div>
+                                    <p className="text-pink-400 font-bold text-sm ml-2 flex-shrink-0">
+                                      {variant.price} ج.م
+                                    </p>
+                                  </motion.button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
+                </div>
+              </div>
+            ))}
+
+            {services.length === 0 && (
+              <p className="text-center text-gray-500 py-10">لا توجد خدمات - أضف الخدمات من صفحة الخدمات</p>
+            )}
           </div>
         </div>
 
-        {/* Right: Cart & Checkout - Full width on mobile below services, sidebar on desktop */}
+        {/* Right: Cart & Checkout */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -497,7 +601,7 @@ export const POS: React.FC = () => {
           <div className="flex items-center justify-between sticky top-0 fade-top -mx-4 md:-mx-6 px-4 md:px-6 py-2">
             <h2 className="text-lg md:text-xl font-bold text-white">🛒 السلة</h2>
             <span className="text-sm font-semibold bg-gradient-to-r from-pink-600 to-pink-700/20 text-pink-400 px-3 py-1 rounded-full">
-              {cart.length} عنصر
+              {cart.length} صنف
             </span>
           </div>
 
@@ -513,26 +617,51 @@ export const POS: React.FC = () => {
                   <p className="text-gray-500 text-center text-sm">السلة فارغة حالياً</p>
                 </motion.div>
               ) : (
-                cart.map((item, idx) => (
+                cart.map((item) => (
                   <motion.div
-                    key={idx}
+                    key={item.key}
                     initial={{ opacity: 0, x: 100 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -100 }}
-                    className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition"
+                    className="p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-semibold truncate">{item.name}</p>
-                      <p className="text-pink-400 font-bold text-sm">{item.price} ج.م</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{item.name}</p>
+                        <p className="text-pink-400 font-bold text-sm">
+                          {item.unit_price} ج.م {item.quantity > 1 ? `× ${item.quantity}` : ''}
+                        </p>
+                      </div>
+                      <motion.button
+                        onClick={() => removeFromCart(item.key)}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition flex-shrink-0"
+                      >
+                        <Trash2 size={18} />
+                      </motion.button>
                     </div>
-                    <motion.button
-                      onClick={() => removeFromCart(idx)}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition flex-shrink-0"
-                    >
-                      <Trash2 size={18} />
-                    </motion.button>
+
+                    {/* Quantity stepper */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[10px] text-gray-400 ml-auto">الكمية</span>
+                      <motion.button
+                        onClick={() => changeQty(item.key, 1)}
+                        whileTap={{ scale: 0.9 }}
+                        className="w-7 h-7 flex items-center justify-center bg-pink-600/30 hover:bg-pink-600 text-white rounded-lg"
+                      >
+                        <Plus size={14} />
+                      </motion.button>
+                      <span className="w-8 text-center text-white font-bold text-sm">{item.quantity}</span>
+                      <motion.button
+                        onClick={() => changeQty(item.key, -1)}
+                        whileTap={{ scale: 0.9 }}
+                        disabled={item.quantity <= 1}
+                        className="w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-lg disabled:opacity-40"
+                      >
+                        <Minus size={14} />
+                      </motion.button>
+                    </div>
                   </motion.div>
                 ))
               )}
@@ -546,7 +675,6 @@ export const POS: React.FC = () => {
               animate={{ opacity: 1 }}
               className="space-y-3 border-t border-white/10 pt-4 sticky bottom-0 fade-bottom -mx-4 md:-mx-6 px-4 md:px-6 py-4"
             >
-              {/* Subtotal */}
               <div className="flex justify-between text-gray-400 text-sm">
                 <span>قبل الخصم:</span>
                 <span className="font-semibold">{subtotal.toFixed(2)} ج.م</span>
@@ -558,7 +686,7 @@ export const POS: React.FC = () => {
                   type="number"
                   value={discount}
                   onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
+                  placeholder="الخصم"
                   className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500"
                 />
                 <select
@@ -588,24 +716,24 @@ export const POS: React.FC = () => {
                 <option value="wallet">📱 محفظة</option>
               </select>
 
-              {/* Staff Selection */}
+              {/* Doctor Selection */}
               <select
                 value={selectedBarber?.id || ''}
                 onChange={(e) => {
-                  const barber = barbers.find(b => b.id === e.target.value)
+                  const barber = barbers.find((b) => b.id === e.target.value)
                   setSelectedBarber(barber || null)
                 }}
                 className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
               >
                 <option value="">اختر الطبيب (اختياري)</option>
-                {barbers.filter(b => b.active).map((barber) => (
+                {barbers.filter((b) => b.active).map((barber) => (
                   <option key={barber.id} value={barber.id}>
                     {barber.name}
                   </option>
                 ))}
               </select>
 
-              {/* Checkout Button - Large and Prominent */}
+              {/* Checkout Button */}
               <motion.button
                 onClick={handleCompleteSale}
                 disabled={isCheckingOut || !selectedClient || cart.length === 0}
@@ -649,10 +777,7 @@ export const POS: React.FC = () => {
               placeholder="ابحث باسم أو هاتف"
               value={searchQuery}
               onChange={(e) => {
-                // ✅ Use currentTarget to get the actual DOM element value
-                const inputValue = e.currentTarget.value
-                // ✅ Normalize the input to handle keyboard/IME issues
-                const normalizedValue = normalizeSearchInput(inputValue)
+                const normalizedValue = normalizeSearchInput(e.currentTarget.value)
                 setSearchQuery(normalizedValue)
               }}
               autoFocus
@@ -681,24 +806,16 @@ export const POS: React.FC = () => {
                     <p className="text-white font-semibold">{item.name}</p>
                     <p className="text-xs text-gray-400">📞 {item.phone}</p>
                     <p className="text-xs text-pink-400 mt-1">
-                      {item.total_visits} زيارات • {item.total_spent?.toFixed(2)} ج.م
+                      {item.total_visits} زيارات • {(item.total_spent || 0).toFixed(2)} ج.م
                     </p>
                   </motion.button>
                 ))
               ) : searchQuery ? (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center text-gray-400 py-6"
-                >
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-gray-400 py-6">
                   لم يتم العثور على عملاء
                 </motion.p>
               ) : (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center text-gray-400 py-6"
-                >
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-gray-400 py-6">
                   ابدأ البحث...
                 </motion.p>
               )}
@@ -762,7 +879,6 @@ export const POS: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              {/* Print Button - Large and Primary */}
               <motion.button
                 onClick={handlePrint}
                 whileHover={{ scale: 1.02 }}
@@ -773,7 +889,6 @@ export const POS: React.FC = () => {
                 <span>طباعة الإيصال</span>
               </motion.button>
 
-              {/* New Transaction Button */}
               <motion.button
                 onClick={() => {
                   setShowReceipt(false)
@@ -790,14 +905,16 @@ export const POS: React.FC = () => {
 
             {/* Info Text */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center text-sm text-blue-900">
-              <p>تم حفظ الإيصال بنجاح في السجلات</p>
+              <p>
+                تم حفظ الإيصال بنجاح في السجلات
+                {completedTransaction.invoiceNo ? ` - رقم الفاتورة INV-${String(completedTransaction.invoiceNo).padStart(6, '0')}` : ''}
+              </p>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Print-only receipt (portaled to <body>, hidden on screen, shown on print).
-          Rendered only while the receipt modal is open. */}
+      {/* Print-only receipt (portaled to <body>, hidden on screen, shown on print). */}
       {completedTransaction &&
         createPortal(
           <div id="print-area" data-paper={paperWidth}>

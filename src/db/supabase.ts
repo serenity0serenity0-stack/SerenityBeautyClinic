@@ -36,8 +36,91 @@ export interface Service {
   duration: number
   category: string
   active: boolean
+  service_type?: 'regular' | 'package'
+  unit_label?: string | null
+  package_quantity?: number | null
+  bonus_quantity?: number | null
+  expiry_value?: number | null
+  expiry_unit?: 'days' | 'weeks' | 'months' | null
+  description?: string | null
   created_at?: string
   updated_at?: string
+}
+
+export interface InvoiceItem {
+  id: string
+  clinic_id: string
+  transaction_id: string
+  service_id?: string | null
+  service_name: string
+  service_type: string
+  unit_label?: string | null
+  unit_price: number
+  quantity: number
+  bonus_quantity: number
+  line_total: number
+  created_at?: string
+}
+
+export interface ServicePurchase {
+  id: string
+  clinic_id: string
+  client_id: string
+  transaction_id?: string | null
+  invoice_item_id?: string | null
+  service_id?: string | null
+  service_name: string
+  unit_label?: string | null
+  paid_quantity: number
+  bonus_quantity: number
+  total_quantity: number
+  remaining_quantity: number
+  unit_price: number
+  amount: number
+  expiry_date?: string | null
+  status: 'active' | 'fully_used' | 'expired' | 'voided' | 'adjustment'
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ServiceConsumption {
+  id: string
+  clinic_id: string
+  client_id: string
+  purchase_id: string
+  service_id?: string | null
+  service_name: string
+  unit_label?: string | null
+  quantity: number
+  note?: string | null
+  created_at?: string
+  created_by?: string | null
+}
+
+export interface BalanceAdjustment {
+  id: string
+  clinic_id: string
+  client_id: string
+  service_id?: string | null
+  service_name: string
+  unit_label?: string | null
+  delta: number
+  reason?: string | null
+  created_at?: string
+  created_by?: string | null
+}
+
+export interface ClientBalanceSummary {
+  clinic_id: string
+  client_id: string
+  service_id: string
+  service_name: string
+  unit_label: string
+  purchased: number
+  bonus: number
+  remaining: number
+  active_purchases: number
+  earliest_expiry?: string | null
 }
 
 export interface Transaction {
@@ -55,6 +138,7 @@ export interface Transaction {
   payment_method?: 'cash' | 'card' | 'wallet'
   status?: 'completed' | 'pending'
   description?: string
+  invoice_no?: number
   date: string
   time?: string
   items?: Array<{ id: string; name: string; price: number }>
