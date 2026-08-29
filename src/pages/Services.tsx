@@ -28,7 +28,7 @@ const emptyForm: ServiceForm = {
   nameAr: '',
   nameEn: '',
   price: 0,
-  category: 'packages',
+  category: '',
   serviceType: 'regular',
   unitLabel: '',
   packageQuantity: 1,
@@ -65,11 +65,23 @@ export const Services: React.FC = () => {
     name: '',
     price: 0,
     duration: 30,
+    serviceType: 'package' as 'regular' | 'package',
+    unitLabel: '',
+    packageQuantity: 1,
+    bonusQuantity: 0,
+    expiryValue: 0,
+    expiryUnit: 'months' as 'days' | 'weeks' | 'months',
   })
   const [editVariantForm, setEditVariantForm] = useState({
     name: '',
     price: 0,
     duration: 30,
+    serviceType: 'package' as 'regular' | 'package',
+    unitLabel: '',
+    packageQuantity: 1,
+    bonusQuantity: 0,
+    expiryValue: 0,
+    expiryUnit: 'months' as 'days' | 'weeks' | 'months',
   })
 
   // Load all service variants on mount and when services change
@@ -127,7 +139,10 @@ export const Services: React.FC = () => {
       toast.error('الرجاء تعبئة اسم الخدمة بالعربية والإنجليزية')
       return
     }
-    if (f.price <= 0) {
+    const hasVariants = editingService?.id
+      ? (serviceVariantsMap[editingService.id]?.length || 0) > 0
+      : false
+    if (f.price <= 0 && !hasVariants) {
       toast.error('برجاء إدخال السعر')
       return
     }
@@ -175,8 +190,12 @@ export const Services: React.FC = () => {
 
   // Add variant/detail
   const handleAddVariant = async () => {
-    if (!variantForm.name || variantForm.price <= 0 || variantForm.duration <= 0) {
-      toast.error('الرجاء تعبئة جميع البيانات (الاسم، السعر، المدة)')
+    if (!variantForm.name || variantForm.price <= 0) {
+      toast.error('الرجاء تعبئة اسم التفصيل والسعر')
+      return
+    }
+    if (variantForm.serviceType === 'package' && (!variantForm.unitLabel || variantForm.packageQuantity <= 0)) {
+      toast.error('برجاء إدخال وحدة الباقة وعدد الوحدات (مثال: 1000 نبضة)')
       return
     }
 
@@ -193,9 +212,15 @@ export const Services: React.FC = () => {
         price: variantForm.price,
         duration: variantForm.duration,
         isActive: true,
+        service_type: variantForm.serviceType,
+        unit_label: variantForm.serviceType === 'package' ? variantForm.unitLabel : null,
+        package_quantity: variantForm.serviceType === 'package' ? variantForm.packageQuantity : null,
+        bonus_quantity: variantForm.serviceType === 'package' ? variantForm.bonusQuantity || 0 : 0,
+        expiry_value: variantForm.serviceType === 'package' && variantForm.expiryValue > 0 ? variantForm.expiryValue : null,
+        expiry_unit: variantForm.serviceType === 'package' && variantForm.expiryValue > 0 ? variantForm.expiryUnit : null,
       })
 
-      setVariantForm({ name: '', price: 0, duration: 30 })
+      setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
       toast.success('✨ تم إضافة التفاصيل بنجاح!', { duration: 2500, icon: '💚' })
 
       try {
@@ -237,8 +262,12 @@ export const Services: React.FC = () => {
 
   // Edit variant
   const handleEditVariant = async () => {
-    if (!editVariantForm.name || editVariantForm.price <= 0 || editVariantForm.duration <= 0) {
-      toast.error('الرجاء تعبئة جميع البيانات')
+    if (!editVariantForm.name || editVariantForm.price <= 0) {
+      toast.error('الرجاء تعبئة اسم التفصيل والسعر')
+      return
+    }
+    if (editVariantForm.serviceType === 'package' && (!editVariantForm.unitLabel || editVariantForm.packageQuantity <= 0)) {
+      toast.error('برجاء إدخال وحدة الباقة وعدد الوحدات (مثال: 1000 نبضة)')
       return
     }
 
@@ -253,12 +282,18 @@ export const Services: React.FC = () => {
         price: editVariantForm.price,
         duration: editVariantForm.duration,
         isActive: editingVariant.isActive,
+        service_type: editVariantForm.serviceType,
+        unit_label: editVariantForm.serviceType === 'package' ? editVariantForm.unitLabel : null,
+        package_quantity: editVariantForm.serviceType === 'package' ? editVariantForm.packageQuantity : null,
+        bonus_quantity: editVariantForm.serviceType === 'package' ? editVariantForm.bonusQuantity || 0 : 0,
+        expiry_value: editVariantForm.serviceType === 'package' && editVariantForm.expiryValue > 0 ? editVariantForm.expiryValue : null,
+        expiry_unit: editVariantForm.serviceType === 'package' && editVariantForm.expiryValue > 0 ? editVariantForm.expiryUnit : null,
       })
 
       toast.success('✅ تم تحديث التفصيل بنجاح!', { duration: 2500, icon: '📝' })
       setIsEditVariantOpen(false)
       setEditingVariant(null)
-      setEditVariantForm({ name: '', price: 0, duration: 30 })
+      setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
 
       if (selectedServiceForVariant?.id) {
         const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
@@ -426,7 +461,9 @@ export const Services: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2 ms-3 flex-shrink-0">
-                          <p className="text-pink-400 font-bold text-lg">{service.price} ج.م</p>
+                          {serviceVariants.length === 0 && (
+                            <p className="text-pink-400 font-bold text-lg">{service.price} ج.م</p>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -502,6 +539,17 @@ export const Services: React.FC = () => {
                                         {variant.name}
                                       </p>
                                       <p className="text-xs text-gray-400">⏱️ {variant.duration || 30} دقيقة</p>
+                                      {(variant.service_type === 'package' || (variant.service_type == null && isPackage)) && variant.package_quantity ? (
+                                        <p className="text-xs text-purple-300 mt-0.5">
+                                          {variant.package_quantity} {variant.unit_label || ''}
+                                          {(variant.bonus_quantity || 0) > 0 ? ` + ${variant.bonus_quantity} بونص` : ''}
+                                          {(variant.expiry_value ?? 0) > 0
+                                            ? ` — صالحة ${variant.expiry_value} ${
+                                                variant.expiry_unit === 'days' ? 'يوم' : variant.expiry_unit === 'weeks' ? 'أسبوع' : 'شهر'
+                                              }`
+                                            : ''}
+                                        </p>
+                                      ) : null}
                                     </div>
                                     <div className="flex items-center gap-3 ms-3 flex-shrink-0">
                                       <p className="text-pink-400 font-bold text-lg">{variant.price} ج.م</p>
@@ -511,7 +559,13 @@ export const Services: React.FC = () => {
                                           setEditVariantForm({
                                             name: variant.name,
                                             price: variant.price,
-                                            duration: variant.duration,
+                                            duration: variant.duration || 30,
+                                            serviceType: variant.service_type || 'package',
+                                            unitLabel: variant.unit_label || '',
+                                            packageQuantity: variant.package_quantity || 1,
+                                            bonusQuantity: variant.bonus_quantity || 0,
+                                            expiryValue: variant.expiry_value || 0,
+                                            expiryUnit: variant.expiry_unit || 'months',
                                           })
                                           setSelectedServiceForVariant({ id: serviceId })
                                           setIsEditVariantOpen(true)
@@ -594,7 +648,12 @@ export const Services: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
+              <label className="block text-sm text-gray-300 mb-2">
+                السعر (ج.م)
+                {editingService?.id && (serviceVariantsMap[editingService.id]?.length || 0) > 0
+                  ? ' (اختياري — التفاصيل تحدد الأسعار)'
+                  : ' *'}
+              </label>
               <input
                 type="number"
                 placeholder="مثال: 400"
@@ -783,7 +842,7 @@ export const Services: React.FC = () => {
         onClose={() => {
           setIsAddVariantOpen(false)
           setSelectedServiceForVariant(null)
-          setVariantForm({ name: '', price: 0, duration: 30 })
+          setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
         }}
         title={`أضف تفصيل لـ: ${selectedServiceForVariant?.nameAr || ''}`}
         size="md"
@@ -801,6 +860,113 @@ export const Services: React.FC = () => {
             />
           </div>
 
+          {/* Service type toggle */}
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">نوع التفصيل</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setVariantForm({ ...variantForm, serviceType: 'regular' })}
+                className={`px-4 py-2 rounded-lg border text-sm font-bold transition ${
+                  variantForm.serviceType === 'regular'
+                    ? 'bg-pink-600/30 border-pink-500 text-pink-300'
+                    : 'bg-white/5 border-white/15 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                تفصيل عادي (سعر واحد)
+              </button>
+              <button
+                type="button"
+                onClick={() => setVariantForm({ ...variantForm, serviceType: 'package' })}
+                className={`px-4 py-2 rounded-lg border text-sm font-bold transition ${
+                  variantForm.serviceType === 'package'
+                    ? 'bg-purple-600/30 border-purple-500 text-purple-300'
+                    : 'bg-white/5 border-white/15 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                باقة (رصيد العميل)
+              </button>
+            </div>
+          </div>
+
+          {/* Package config */}
+          {variantForm.serviceType === 'package' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-3 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">اسم الوحدة *</label>
+                  <input
+                    type="text"
+                    placeholder="جلسة | نبضة"
+                    value={variantForm.unitLabel}
+                    onChange={(e) => setVariantForm({ ...variantForm, unitLabel: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">عدد الوحدات (المدفوعة) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="مثال: 1000"
+                    value={variantForm.packageQuantity || ''}
+                    onChange={(e) =>
+                      setVariantForm({ ...variantForm, packageQuantity: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">البونص (إضافي)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="مثال: 150"
+                    value={variantForm.bonusQuantity || ''}
+                    onChange={(e) =>
+                      setVariantForm({ ...variantForm, bonusQuantity: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">الصلاحية (كل)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="مثال: 3"
+                    value={variantForm.expiryValue || ''}
+                    onChange={(e) =>
+                      setVariantForm({ ...variantForm, expiryValue: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">وحدة الصلاحية</label>
+                  <select
+                    value={variantForm.expiryUnit}
+                    onChange={(e) =>
+                      setVariantForm({ ...variantForm, expiryUnit: e.target.value as any })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="days">يوم</option>
+                    <option value="weeks">أسبوع</option>
+                    <option value="months">شهر</option>
+                  </select>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
@@ -814,7 +980,7 @@ export const Services: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-2">المدة (دقائق) *</label>
+              <label className="block text-sm text-gray-300 mb-2">المدة (دقائق)</label>
               <input
                 type="number"
                 placeholder="30"
@@ -838,7 +1004,7 @@ export const Services: React.FC = () => {
               onClick={() => {
                 setIsAddVariantOpen(false)
                 setSelectedServiceForVariant(null)
-                setVariantForm({ name: '', price: 0, duration: 30 })
+                setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
               }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -856,7 +1022,7 @@ export const Services: React.FC = () => {
         onClose={() => {
           setIsEditVariantOpen(false)
           setEditingVariant(null)
-          setEditVariantForm({ name: '', price: 0, duration: 30 })
+          setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
         }}
         title={`تعديل: ${editingVariant?.name || ''}`}
         size="md"
@@ -874,6 +1040,113 @@ export const Services: React.FC = () => {
             />
           </div>
 
+          {/* Service type toggle */}
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">نوع التفصيل</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEditVariantForm({ ...editVariantForm, serviceType: 'regular' })}
+                className={`px-4 py-2 rounded-lg border text-sm font-bold transition ${
+                  editVariantForm.serviceType === 'regular'
+                    ? 'bg-pink-600/30 border-pink-500 text-pink-300'
+                    : 'bg-white/5 border-white/15 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                تفصيل عادي (سعر واحد)
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditVariantForm({ ...editVariantForm, serviceType: 'package' })}
+                className={`px-4 py-2 rounded-lg border text-sm font-bold transition ${
+                  editVariantForm.serviceType === 'package'
+                    ? 'bg-purple-600/30 border-purple-500 text-purple-300'
+                    : 'bg-white/5 border-white/15 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                باقة (رصيد العميل)
+              </button>
+            </div>
+          </div>
+
+          {/* Package config */}
+          {editVariantForm.serviceType === 'package' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-3 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">اسم الوحدة *</label>
+                  <input
+                    type="text"
+                    placeholder="جلسة | نبضة"
+                    value={editVariantForm.unitLabel}
+                    onChange={(e) => setEditVariantForm({ ...editVariantForm, unitLabel: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">عدد الوحدات (المدفوعة) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="مثال: 1000"
+                    value={editVariantForm.packageQuantity || ''}
+                    onChange={(e) =>
+                      setEditVariantForm({ ...editVariantForm, packageQuantity: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">البونص (إضافي)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="مثال: 150"
+                    value={editVariantForm.bonusQuantity || ''}
+                    onChange={(e) =>
+                      setEditVariantForm({ ...editVariantForm, bonusQuantity: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">الصلاحية (كل)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="مثال: 3"
+                    value={editVariantForm.expiryValue || ''}
+                    onChange={(e) =>
+                      setEditVariantForm({ ...editVariantForm, expiryValue: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">وحدة الصلاحية</label>
+                  <select
+                    value={editVariantForm.expiryUnit}
+                    onChange={(e) =>
+                      setEditVariantForm({ ...editVariantForm, expiryUnit: e.target.value as any })
+                    }
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="days">يوم</option>
+                    <option value="weeks">أسبوع</option>
+                    <option value="months">شهر</option>
+                  </select>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
@@ -887,7 +1160,7 @@ export const Services: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-2">المدة (دقائق) *</label>
+              <label className="block text-sm text-gray-300 mb-2">المدة (دقائق)</label>
               <input
                 type="number"
                 placeholder="30"
@@ -911,7 +1184,7 @@ export const Services: React.FC = () => {
               onClick={() => {
                 setIsEditVariantOpen(false)
                 setEditingVariant(null)
-                setEditVariantForm({ name: '', price: 0, duration: 30 })
+                setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
               }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
