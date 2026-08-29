@@ -33,7 +33,7 @@ const emptyForm: ServiceForm = {
   unitLabel: '',
   packageQuantity: 1,
   bonusQuantity: 0,
-  expiryValue: 0,
+  expiryValue: 6,
   expiryUnit: 'months',
   active: true,
 }
@@ -69,7 +69,7 @@ export const Services: React.FC = () => {
     unitLabel: '',
     packageQuantity: 1,
     bonusQuantity: 0,
-    expiryValue: 0,
+    expiryValue: 6,
     expiryUnit: 'months' as 'days' | 'weeks' | 'months',
   })
   const [editVariantForm, setEditVariantForm] = useState({
@@ -80,7 +80,7 @@ export const Services: React.FC = () => {
     unitLabel: '',
     packageQuantity: 1,
     bonusQuantity: 0,
-    expiryValue: 0,
+    expiryValue: 6,
     expiryUnit: 'months' as 'days' | 'weeks' | 'months',
   })
 
@@ -125,7 +125,7 @@ export const Services: React.FC = () => {
       unitLabel: service.unit_label || (service.service_type === 'package' ? 'جلسة' : ''),
       packageQuantity: service.package_quantity || 1,
       bonusQuantity: service.bonus_quantity || 0,
-      expiryValue: service.expiry_value || 0,
+      expiryValue: service.expiry_value || 6,
       expiryUnit: service.expiry_unit || 'months',
       active: service.active,
     })
@@ -220,7 +220,7 @@ export const Services: React.FC = () => {
         expiry_unit: variantForm.serviceType === 'package' && variantForm.expiryValue > 0 ? variantForm.expiryUnit : null,
       })
 
-      setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
+      setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
       toast.success('✨ تم إضافة التفاصيل بنجاح!', { duration: 2500, icon: '💚' })
 
       try {
@@ -293,7 +293,7 @@ export const Services: React.FC = () => {
       toast.success('✅ تم تحديث التفصيل بنجاح!', { duration: 2500, icon: '📝' })
       setIsEditVariantOpen(false)
       setEditingVariant(null)
-      setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
+      setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
 
       if (selectedServiceForVariant?.id) {
         const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
@@ -564,7 +564,7 @@ export const Services: React.FC = () => {
                                             unitLabel: variant.unit_label || '',
                                             packageQuantity: variant.package_quantity || 1,
                                             bonusQuantity: variant.bonus_quantity || 0,
-                                            expiryValue: variant.expiry_value || 0,
+                                            expiryValue: variant.expiry_value || 6,
                                             expiryUnit: variant.expiry_unit || 'months',
                                           })
                                           setSelectedServiceForVariant({ id: serviceId })
@@ -842,7 +842,7 @@ export const Services: React.FC = () => {
         onClose={() => {
           setIsAddVariantOpen(false)
           setSelectedServiceForVariant(null)
-          setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
+          setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
         }}
         title={`أضف تفصيل لـ: ${selectedServiceForVariant?.nameAr || ''}`}
         size="md"
@@ -1004,7 +1004,7 @@ export const Services: React.FC = () => {
               onClick={() => {
                 setIsAddVariantOpen(false)
                 setSelectedServiceForVariant(null)
-                setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
+                setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
               }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -1022,7 +1022,7 @@ export const Services: React.FC = () => {
         onClose={() => {
           setIsEditVariantOpen(false)
           setEditingVariant(null)
-          setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
+          setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
         }}
         title={`تعديل: ${editingVariant?.name || ''}`}
         size="md"
@@ -1184,7 +1184,7 @@ export const Services: React.FC = () => {
               onClick={() => {
                 setIsEditVariantOpen(false)
                 setEditingVariant(null)
-                setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 0, expiryUnit: 'months' })
+                setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
               }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
