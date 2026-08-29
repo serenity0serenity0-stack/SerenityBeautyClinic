@@ -449,3 +449,19 @@ BEGIN
   RETURN p_quantity;
 END;
 $$;
+
+-- ----------------------------------------------------------------------------
+-- Reload the PostgREST schema cache so the new/changed RPC signatures
+-- (complete_sale, mark_transaction_completed, ...) are available immediately.
+-- ----------------------------------------------------------------------------
+SELECT pg_notify('pgrst', 'reload schema');
+
+-- ----------------------------------------------------------------------------
+-- Verify the new complete_sale signature exists (should print 9 arguments + p_mark_done)
+-- ----------------------------------------------------------------------------
+SELECT p.proname,
+       pg_get_function_identity_arguments(p.oid) AS signature,
+       p.proargnames
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND p.proname = 'complete_sale';
