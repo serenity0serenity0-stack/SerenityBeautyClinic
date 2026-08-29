@@ -97,8 +97,7 @@ export const POS: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [clientBalance, setClientBalance] = useState<ClientBalanceSummary[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
-  const [discount, setDiscount] = useState(0)
-  const [discount_type, setdiscount_type] = useState<'percentage' | 'fixed'>('fixed')
+  const [markDoneNow, setMarkDoneNow] = useState(true)
   const [allVariants, setAllVariants] = useState<{ [key: string]: any[] }>({})
   const [payment_method, setpayment_method] = useState('cash')
   const [showClientSearch, setShowClientSearch] = useState(false)
@@ -241,11 +240,7 @@ export const POS: React.FC = () => {
   }
 
   const subtotal = cart.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
-  const discountAmount =
-    discount_type === 'percentage'
-      ? (subtotal * Math.min(Math.max(discount, 0), 100)) / 100
-      : discount
-  const total = Math.max(subtotal - discountAmount, 0)
+  const total = subtotal
 
   const handleCompleteSale = async () => {
     if (!selectedClient) {
@@ -285,11 +280,10 @@ export const POS: React.FC = () => {
           quantity: i.quantity,
           variant_id: i.variant_id,
         })),
-        discount,
-        discount_type,
         payment_method: payment_method as 'cash' | 'card' | 'wallet',
         barber_id: selectedBarber?.id || null,
         notes: '',
+        markDone: markDoneNow,
       })
 
       if (!result) throw new Error('فشلت عملية البيع')
@@ -323,8 +317,8 @@ export const POS: React.FC = () => {
           bonusQuantity: item.service_type === 'package' ? item.bonus_quantity || 0 : 0,
         })),
         subtotal,
-        discount: discountAmount,
-        discount_type,
+        discount: 0,
+        discount_type: 'fixed',
         total,
         payment_method,
       })
@@ -333,7 +327,7 @@ export const POS: React.FC = () => {
 
       // Reset form
       setCart([])
-      setDiscount(0)
+      setMarkDoneNow(true)
       setSelectedClient(null)
       setClientBalance([])
       appEmitter.emit('transaction:created', { total, date: dateStr })
@@ -683,34 +677,43 @@ export const POS: React.FC = () => {
               animate={{ opacity: 1 }}
               className="space-y-3 border-t border-white/10 pt-4 sticky bottom-0 fade-bottom -mx-4 md:-mx-6 px-4 md:px-6 py-4"
             >
-              <div className="flex justify-between text-gray-400 text-sm">
-                <span>قبل الخصم:</span>
-                <span className="font-semibold">{subtotal.toFixed(2)} ج.م</span>
-              </div>
-
-              {/* Discount */}
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={discount}
-                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                  placeholder="الخصم"
-                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500"
-                />
-                <select
-                  value={discount_type}
-                  onChange={(e) => setdiscount_type(e.target.value as 'percentage' | 'fixed')}
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
-                >
-                  <option value="fixed">ج.م</option>
-                  <option value="percentage">%</option>
-                </select>
-              </div>
-
-              {/* Final Total */}
               <div className="flex justify-between pt-2 border-t border-white/10">
                 <span className="text-white font-bold">الإجمالي</span>
                 <span className="text-2xl font-bold text-pink-400">{total.toFixed(2)}</span>
+              </div>
+
+              {/* Service completion status */}
+              <div className="space-y-1.5">
+                <span className="text-xs text-gray-400">حالة الخدمة</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <motion.button
+                    onClick={() => setMarkDoneNow(true)}
+                    whileTap={{ scale: 0.97 }}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+                      markDoneNow
+                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-emerald-500/50'
+                        : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    🛠️ تتم الآن
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setMarkDoneNow(false)}
+                    whileTap={{ scale: 0.97 }}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+                      !markDoneNow
+                        ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white border-amber-500/50'
+                        : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    📅 لاحقاً للرصيد
+                  </motion.button>
+                </div>
+                {!markDoneNow && (
+                  <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                    ستُحفظ الفاتورة غير مكتملة ويمكنك اعتمادها كمكتملة من صفحة العميل عند تنفيذ الخدمة
+                  </p>
+                )}
               </div>
 
               {/* Payment Method */}
@@ -870,6 +873,7 @@ export const POS: React.FC = () => {
               <ReceiptTemplate
                 ref={receiptRef}
                 transactionId={completedTransaction.transactionId}
+                invoiceNo={completedTransaction.invoiceNo}
                 client_name={completedTransaction.client_name}
                 client_phone={completedTransaction.client_phone}
                 barber_name={completedTransaction.barber_name}
@@ -915,7 +919,7 @@ export const POS: React.FC = () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center text-sm text-blue-900">
               <p>
                 تم حفظ الإيصال بنجاح في السجلات
-                {completedTransaction.invoiceNo ? ` - رقم الفاتورة INV-${String(completedTransaction.invoiceNo).padStart(6, '0')}` : ''}
+                {completedTransaction.invoiceNo ? ` - رقم الفاتورة ${String(completedTransaction.invoiceNo)}` : ''}
               </p>
             </div>
           </div>
@@ -928,6 +932,7 @@ export const POS: React.FC = () => {
           <div id="print-area" data-paper={paperWidth}>
             <ReceiptTemplate
               transactionId={completedTransaction.transactionId}
+              invoiceNo={completedTransaction.invoiceNo}
               client_name={completedTransaction.client_name}
               client_phone={completedTransaction.client_phone}
               barber_name={completedTransaction.barber_name}

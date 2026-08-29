@@ -10,6 +10,7 @@ import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp, UserX, Calendar, Cl
 import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptYearMonth } from '../utils/egyptTime'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 interface StaffStats {
   clientCount: number
@@ -49,6 +50,7 @@ export const Staff: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedBarberForDetail, setSelectedBarberForDetail] = useState<any>(null)
   const [historyLimit, setHistoryLimit] = useState(20)
+  const [barberToDelete, setBarberToDelete] = useState<string | null>(null)
 
   // Load transactions on mount
   useEffect(() => {
@@ -160,12 +162,18 @@ export const Staff: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('هل تريد حذف هذا الطبيب؟')) {
-      try {
-        await deleteBarber(id)
-      } catch (err) {
-        toast.error(t('errors.database_error'))
-      }
+    setBarberToDelete(id)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!barberToDelete) return
+    try {
+      await deleteBarber(barberToDelete)
+      toast.success('✅ تم حذف الطبيب بنجاح')
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setBarberToDelete(null)
     }
   }
 
@@ -735,6 +743,18 @@ export const Staff: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Delete Doctor Confirmation */}
+      <ConfirmDialog
+        isOpen={!!barberToDelete}
+        onClose={() => setBarberToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="حذف الطبيب"
+        description="هل تريد حذف هذا الطبيب؟ سيتم إزالته من النظام ولا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }

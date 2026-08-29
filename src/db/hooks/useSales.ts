@@ -27,6 +27,8 @@ export const useSales = () => {
       payment_method?: 'cash' | 'card' | 'wallet'
       barber_id?: string | null
       notes?: string
+      /** true => الخدمة تتم الآن (الفاتورة مكتملة). false => ستُنفذ لاحقاً/للرصيد (غير مكتملة). */
+      markDone?: boolean
     }): Promise<SaleResult | null> => {
       try {
         if (!clinicId) throw new Error('Clinic ID مطلوب')
@@ -44,6 +46,7 @@ export const useSales = () => {
           p_payment_method: params.payment_method || 'cash',
           p_barber_id: params.barber_id || null,
           p_notes: params.notes || null,
+          p_mark_done: params.markDone === true,
         })
 
         if (error) throw error
@@ -104,5 +107,25 @@ export const useSales = () => {
     [clinicId]
   )
 
-  return { completeSale, consumeService, adjustBalance }
+  const markTransactionCompleted = useCallback(
+    async (transaction_id: string) => {
+      try {
+        if (!clinicId) throw new Error('Clinic ID مطلوب')
+
+        const { data, error } = await supabase.rpc('mark_transaction_completed', {
+          p_transaction_id: transaction_id,
+          p_clinic_id: clinicId,
+        })
+
+        if (error) throw error
+        return data
+      } catch (err: any) {
+        toast.error(err.message || 'فشل اعتماد الفاتورة')
+        return null
+      }
+    },
+    [clinicId]
+  )
+
+  return { completeSale, consumeService, adjustBalance, markTransactionCompleted }
 }

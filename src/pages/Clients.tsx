@@ -4,6 +4,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { PromptDialog } from '../components/ui/PromptDialog'
 import { useClients } from '../db/hooks/useClients'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useBarbers } from '../db/hooks/useBarbers'
@@ -12,7 +13,7 @@ import { useBalanceData } from '../db/hooks/useBalanceData'
 import { useSales } from '../db/hooks/useSales'
 import type { Client, ServiceConsumption, BalanceAdjustment, ClientBalanceSummary } from '../db/supabase'
 import { motion } from 'framer-motion'
-import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X, Receipt, MinusCircle, RefreshCw } from 'lucide-react'
+import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X, Receipt, MinusCircle, RefreshCw, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type SortBy = 'name' | 'visits' | 'spent' | 'recent'
@@ -24,7 +25,7 @@ export const Clients: React.FC = () => {
   const { barbers, fetchBarbers } = useBarbers()
   const { notes, loading: notesLoading, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
   const { getBalanceSummaryByClient, getConsumptionsByClient, getAdjustmentsByClient } = useBalanceData()
-  const { consumeService } = useSales()
+  const { consumeService, markTransactionCompleted } = useSales()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -45,6 +46,16 @@ export const Clients: React.FC = () => {
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
   const [isDeleteNoteConfirmOpen, setIsDeleteNoteConfirmOpen] = useState(false)
   const [isAddingNote, setIsAddingNote] = useState(false)
+
+  // Client deletion confirmation
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null)
+
+  // Balance consumption (custom quantity prompt)
+  const [consumeTarget, setConsumeTarget] = useState<ClientBalanceSummary | null>(null)
+  const [isConsuming, setIsConsuming] = useState(false)
+
+  // Approve a pending invoice as مكتملة
+  const [approvingTxId, setApprovingTxId] = useState<string | null>(null)
 
   // Filter states
   const [vipFilter, setVipFilter] = useState<'all' | 'vip' | 'regular'>('all')
@@ -152,12 +163,17 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => setClientToDelete(id)
+
+  const handleConfirmDelete = async () => {
+    if (!clientToDelete) return
     try {
-      await deleteClient(id)
+      await deleteClient(clientToDelete)
       toast.success(t('notifications.client_deleted'))
     } catch (err) {
       toast.error(t('errors.database_error'))
+    } finally {
+      setClientToDelete(null)
     }
   }
 
@@ -267,20 +283,21 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     }
   }
 
-  const handleConsumeBalance = async (b: ClientBalanceSummary) => {
+  const handleConsumeBalance = (b: ClientBalanceSummary) => {
     if (!selectedClientForDetail?.id || !b || (b.remaining || 0) <= 0) return
-    const qtyInput = prompt(
-      `صرف من رصيد "${b.service_name}"\nالمتوفر: ${b.remaining} ${b.unit_label || ''}\nأدخل الكمية:`,
-      '1'
-    )
-    if (qtyInput === null) return
-    const num = parseInt(qtyInput, 10)
+    setConsumeTarget(b)
+  }
+
+  const handleConfirmConsume = async (value: string) => {
+    if (!selectedClientForDetail?.id || !consumeTarget) return
+    const num = parseInt(value, 10)
     if (isNaN(num) || num <= 0) {
       toast.error('أدخل كمية صحيحة')
       return
     }
+    setIsConsuming(true)
     try {
-      await consumeService(selectedClientForDetail.id, b.service_id, num, 'صرف يدوي من لوحة العميل')
+      await consumeService(selectedClientForDetail.id, consumeTarget.service_id, num, 'صرف يدوي من لوحة العميل')
       const [bal, cons] = await Promise.all([
         getBalanceSummaryByClient(selectedClientForDetail.id),
         getConsumptionsByClient(selectedClientForDetail.id),
@@ -289,6 +306,32 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
       setClientConsumptions(cons || [])
     } catch {
       // error already toasted
+    } finally {
+      setIsConsuming(false)
+      setConsumeTarget(null)
+    }
+  }
+
+  const handleApproveTransaction = async (txId: string) => {
+    if (!txId || !selectedClientForDetail?.id) return
+    setApprovingTxId(txId)
+    try {
+      await markTransactionCompleted(txId)
+      toast.success('✅ تم اعتماد الفاتورة كمكتملة')
+      const [txs, balance, consumptions, adjustments] = await Promise.all([
+        getTransactionsByclient_id(selectedClientForDetail.id),
+        getBalanceSummaryByClient(selectedClientForDetail.id),
+        getConsumptionsByClient(selectedClientForDetail.id),
+        getAdjustmentsByClient(selectedClientForDetail.id),
+      ])
+      setClientTransactions(txs || [])
+      setClientBalance(balance || [])
+      setClientConsumptions(consumptions || [])
+      setClientAdjustments(adjustments || [])
+    } catch (err: any) {
+      toast.error(err.message || 'حدث خطأ')
+    } finally {
+      setApprovingTxId(null)
     }
   }
 
@@ -863,7 +906,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                                 <span className="text-gray-300 text-xs">{formatArabicTime(t.time)}</span>
                               </div>
                               {t.invoice_no && (
-                                <span className="text-xs text-gray-500">فاتورة INV-{String(t.invoice_no).padStart(6, '0')}</span>
+                                <span className="text-xs text-gray-500">فاتورة رقم: {t.invoice_no}</span>
                               )}
                             </div>
 
@@ -882,17 +925,40 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                               )}
                             </div>
 
-                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg font-bold text-pink-400">{formatMoney(t.total)}</span>
-                                <Badge
-                                  label={t.payment_method === 'card' ? '💳 بطاقة' : t.payment_method === 'wallet' ? '📱 محفظة' : '💵 نقد'}
-                                  variant="info"
-                                  size="sm"
-                                />
+<div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold text-pink-400">{formatMoney(t.total)}</span>
+                                  <Badge
+                                    label={t.payment_method === 'card' ? '💳 بطاقة' : t.payment_method === 'wallet' ? '📱 محفظة' : '💵 نقد'}
+                                    variant="info"
+                                    size="sm"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {t.is_completed === false ? (
+                                    <>
+                                      <Badge label="غير مكتملة" variant="danger" size="sm" />
+                                      <button
+                                        onClick={() => handleApproveTransaction(t.id)}
+                                        disabled={approvingTxId === t.id}
+                                        className="text-[11px] flex items-center gap-1 px-2 py-1 bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 rounded-lg hover:bg-emerald-600/30 transition disabled:opacity-60"
+                                        title="اعتماد الفاتورة كمكتملة"
+                                      >
+                                        {approvingTxId === t.id ? (
+                                          'جاري...'
+                                        ) : (
+                                          <>
+                                            <CheckCircle2 size={12} />
+                                            اعتماد
+                                          </>
+                                        )}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <Badge label="مكتملة" variant="success" size="sm" />
+                                  )}
+                                </div>
                               </div>
-                              <Badge label="دفع" variant="success" size="sm" />
-                            </div>
                           </div>
                         )
                       }
@@ -1065,6 +1131,34 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
         confirmText="حذف"
         cancelText="إلغاء"
         isDangerous
+      />
+
+      {/* Delete Client Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!clientToDelete}
+        onClose={() => setClientToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="حذف العميل"
+        message="هل أنت متأكد من حذف هذا العميل؟ سيتم حذف جميع بياناته وسجلاته ولا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        isDangerous
+      />
+
+      {/* Consume Balance Custom Quantity Dialog */}
+      <PromptDialog
+        isOpen={!!consumeTarget}
+        onClose={() => {
+          if (!isConsuming) setConsumeTarget(null)
+        }}
+        onConfirm={handleConfirmConsume}
+        title={`صرف من رصيد "${consumeTarget?.service_name || ''}"`}
+        description={`المتوفر: ${consumeTarget?.remaining ?? ''} ${consumeTarget?.unit_label || ''}`}
+        defaultValue="1"
+        placeholder="الكمية"
+        type="number"
+        confirmText="صرف"
+        loading={isConsuming}
       />
     </div>
   )

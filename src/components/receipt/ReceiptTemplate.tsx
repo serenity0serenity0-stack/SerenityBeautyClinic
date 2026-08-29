@@ -15,6 +15,7 @@ interface ReceiptProps {
   client_phone?: string
   barber_name?: string
   transactionId: string
+  invoiceNo?: number
   date: string
   time: string
   items: ReceiptItem[]
@@ -67,6 +68,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
       client_name,
       client_phone,
       barber_name,
+      invoiceNo,
       date,
       time,
       items,
@@ -189,6 +191,11 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptProps>(
             {formatArabicDate(date)} • {formatArabicTime(time)}
           </div>
           {taxNumber && <div style={{ fontSize: '10px' }}>الرقم الضريبي: {taxNumber}</div>}
+          {invoiceNo && (
+            <div style={{ fontSize: '12px', fontWeight: '800', marginTop: '2px' }}>
+              رقم الفاتورة: {invoiceNo}
+            </div>
+          )}
         </div>
 
         <div style={divider} />

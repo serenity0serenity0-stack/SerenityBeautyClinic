@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { motion } from 'framer-motion'
 import { Trash2, Edit2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 export const Services: React.FC = () => {
   const { t } = useTranslation()
@@ -28,6 +29,8 @@ export const Services: React.FC = () => {
   })
   const [variants, setVariants] = useState<Array<{name: string; price: number}>>([])
   const [newVariant, setNewVariant] = useState({name: '', price: 0})
+  const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null)
+  const [variantToDeleteId, setVariantToDeleteId] = useState<string | null>(null)
 
   const categories = ['haircut', 'beard', 'skincare', 'kids', 'packages']
 
@@ -127,31 +130,37 @@ export const Services: React.FC = () => {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('هل تريد حذف هذه الخدمة؟')) {
-      try {
-        await deleteService(id)
-        toast.success(t('notifications.service_deleted'))
-      } catch (err) {
-        toast.error(t('errors.database_error'))
-      }
+  const handleDelete = (id: string) => setServiceToDeleteId(id)
+
+  const handleConfirmDelete = async () => {
+    if (!serviceToDeleteId) return
+    try {
+      await deleteService(serviceToDeleteId)
+      toast.success(t('notifications.service_deleted'))
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setServiceToDeleteId(null)
     }
   }
 
-  const handleDeleteVariant = async (variantId: string) => {
-    if (confirm('هل تريد حذف هذا النوع؟')) {
-      try {
-        await deleteVariant(variantId)
-        toast.success('تم حذف النوع')
-        // Refresh variants
-        const updated = {...serviceVariantsMap}
-        Object.keys(updated).forEach(serviceId => {
-          updated[serviceId] = updated[serviceId].filter(v => v.id !== variantId)
-        })
-        setServiceVariantsMap(updated)
-      } catch (err) {
-        toast.error(t('errors.database_error'))
-      }
+  const handleDeleteVariant = (variantId: string) => setVariantToDeleteId(variantId)
+
+  const handleConfirmDeleteVariant = async () => {
+    if (!variantToDeleteId) return
+    try {
+      await deleteVariant(variantToDeleteId)
+      toast.success('تم حذف النوع')
+      // Refresh variants
+      const updated = {...serviceVariantsMap}
+      Object.keys(updated).forEach(serviceId => {
+        updated[serviceId] = updated[serviceId].filter(v => v.id !== variantToDeleteId)
+      })
+      setServiceVariantsMap(updated)
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setVariantToDeleteId(null)
     }
   }
 
@@ -470,6 +479,30 @@ export const Services: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Service Confirmation */}
+      <ConfirmDialog
+        isOpen={!!serviceToDeleteId}
+        onClose={() => setServiceToDeleteId(null)}
+        onConfirm={handleConfirmDelete}
+        title="حذف الخدمة"
+        description="هل تريد حذف هذه الخدمة؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
+
+      {/* Delete Variant Confirmation */}
+      <ConfirmDialog
+        isOpen={!!variantToDeleteId}
+        onClose={() => setVariantToDeleteId(null)}
+        onConfirm={handleConfirmDeleteVariant}
+        title="حذف النوع"
+        description="هل تريد حذف هذا النوع؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Boxes } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 interface ServiceForm {
   nameAr: string
@@ -52,6 +53,9 @@ export const Services: React.FC = () => {
   const [isEditVariantOpen, setIsEditVariantOpen] = useState(false)
   const [selectedServiceForVariant, setSelectedServiceForVariant] = useState<any>(null)
   const [editingVariant, setEditingVariant] = useState<any>(null)
+  const [variantToDeleteId, setVariantToDeleteId] = useState<string | null>(null)
+  const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null)
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
 
   // States
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
@@ -211,20 +215,23 @@ export const Services: React.FC = () => {
   }
 
   // Delete variant
-  const handleDeleteVariant = async (variantId: string) => {
-    if (confirm('🗑️ هل تريد حذف هذا التفصيل؟')) {
-      try {
-        await deleteVariant(variantId)
-        toast.success('✨ تم حذف التفصيل بنجاح', { duration: 2000, icon: '🗑️' })
+  const handleDeleteVariant = (variantId: string) => setVariantToDeleteId(variantId)
 
-        const updated = { ...serviceVariantsMap }
-        Object.keys(updated).forEach((serviceId) => {
-          updated[serviceId] = updated[serviceId].filter((v) => v.id !== variantId)
-        })
-        setServiceVariantsMap(updated)
-      } catch (err) {
-        toast.error(t('errors.database_error'))
-      }
+  const handleConfirmDeleteVariant = async () => {
+    if (!variantToDeleteId) return
+    try {
+      await deleteVariant(variantToDeleteId)
+      toast.success('✨ تم حذف التفصيل بنجاح', { duration: 2000, icon: '🗑️' })
+
+      const updated = { ...serviceVariantsMap }
+      Object.keys(updated).forEach((serviceId) => {
+        updated[serviceId] = updated[serviceId].filter((v) => v.id !== variantToDeleteId)
+      })
+      setServiceVariantsMap(updated)
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setVariantToDeleteId(null)
     }
   }
 
@@ -267,14 +274,17 @@ export const Services: React.FC = () => {
   }
 
   // Delete service
-  const handleDeleteService = async (id: string) => {
-    if (confirm('⚠️ هل تريد حذف هذه الخدمة وجميع تفاصيلها؟')) {
-      try {
-        await deleteService(id)
-        toast.success('✅ تم حذف الخدمة بنجاح', { duration: 2000, icon: '🗑️' })
-      } catch (err) {
-        toast.error(t('errors.database_error'))
-      }
+  const handleDeleteService = (id: string) => setServiceToDeleteId(id)
+
+  const handleConfirmDeleteService = async () => {
+    if (!serviceToDeleteId) return
+    try {
+      await deleteService(serviceToDeleteId)
+      toast.success('✅ تم حذف الخدمة بنجاح', { duration: 2000, icon: '🗑️' })
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setServiceToDeleteId(null)
     }
   }
 
@@ -284,32 +294,35 @@ export const Services: React.FC = () => {
       toast.error('لا توجد خدمات للحذف')
       return
     }
+    setIsDeleteAllOpen(true)
+  }
 
-    if (confirm(`⚠️ هل تريد بالفعل حذف جميع الخدمات (${services.length} خدمة)؟ هذا الإجراء لا يمكن التراجع عنه!`)) {
-      try {
-        let deletedCount = 0
-        const errors: string[] = []
+  const handleConfirmDeleteAllServices = async () => {
+    try {
+      let deletedCount = 0
+      const errors: string[] = []
 
-        for (const service of services) {
-          if (service.id) {
-            try {
-              await deleteService(service.id)
-              deletedCount++
-            } catch (err) {
-              errors.push(`فشل حذف: ${service.nameAr}`)
-              console.error('Error deleting service:', err)
-            }
+      for (const service of services) {
+        if (service.id) {
+          try {
+            await deleteService(service.id)
+            deletedCount++
+          } catch (err) {
+            errors.push(`فشل حذف: ${service.nameAr}`)
+            console.error('Error deleting service:', err)
           }
         }
-
-        if (errors.length === 0) {
-          toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`, { duration: 3000, icon: '🎉' })
-        } else {
-          toast.error(`تم حذف ${deletedCount} خدمة. فشل: ${errors.length}`)
-        }
-      } catch (err) {
-        toast.error(t('errors.database_error'))
       }
+
+      if (errors.length === 0) {
+        toast.success(`✅ تم حذف ${deletedCount} خدمة بنجاح`, { duration: 3000, icon: '🎉' })
+      } else {
+        toast.error(`تم حذف ${deletedCount} خدمة. فشل: ${errors.length}`)
+      }
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setIsDeleteAllOpen(false)
     }
   }
 
@@ -909,6 +922,42 @@ export const Services: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Variant Confirmation */}
+      <ConfirmDialog
+        isOpen={!!variantToDeleteId}
+        onClose={() => setVariantToDeleteId(null)}
+        onConfirm={handleConfirmDeleteVariant}
+        title="حذف التفصيل"
+        description="هل تريد حذف هذا التفصيل؟ سيتم حذفه من الخدمة ولا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
+
+      {/* Delete Service Confirmation */}
+      <ConfirmDialog
+        isOpen={!!serviceToDeleteId}
+        onClose={() => setServiceToDeleteId(null)}
+        onConfirm={handleConfirmDeleteService}
+        title="حذف الخدمة"
+        description="هل تريد حذف هذه الخدمة وجميع تفاصيلها؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
+
+      {/* Delete All Services Confirmation */}
+      <ConfirmDialog
+        isOpen={isDeleteAllOpen}
+        onClose={() => setIsDeleteAllOpen(false)}
+        onConfirm={handleConfirmDeleteAllServices}
+        title="حذف جميع الخدمات"
+        description={`هل تريد بالفعل حذف جميع الخدمات (${services.length} خدمة)؟ هذا الإجراء لا يمكن التراجع عنه!`}
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }

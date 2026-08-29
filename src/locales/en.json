@@ -13,6 +13,7 @@
     "filter": "Filter",
     "sort": "Sort",
     "loading": "Loading...",
+    "loading_short": "Working...",
     "error": "Error",
     "success": "Success",
     "confirm": "Confirm",

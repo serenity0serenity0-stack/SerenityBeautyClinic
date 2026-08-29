@@ -7,6 +7,7 @@ import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { motion } from 'framer-motion'
 import { Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 export const Expenses: React.FC = () => {
   const { t } = useTranslation()
@@ -19,6 +20,7 @@ export const Expenses: React.FC = () => {
     date: getEgyptDateString(),
     note: '',
   })
+  const [expenseToDeleteId, setExpenseToDeleteId] = useState<string | null>(null)
 
   const categories = ['supplies', 'rent', 'utilities', 'salary', 'maintenance', 'other']
 
@@ -46,12 +48,17 @@ export const Expenses: React.FC = () => {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => setExpenseToDeleteId(id)
+
+  const handleConfirmDelete = async () => {
+    if (!expenseToDeleteId) return
     try {
-      await deleteExpense(id)
+      await deleteExpense(expenseToDeleteId)
       toast.success(t('notifications.expense_deleted'))
     } catch (err) {
       toast.error(t('errors.database_error'))
+    } finally {
+      setExpenseToDeleteId(null)
     }
   }
 
@@ -179,6 +186,18 @@ export const Expenses: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Expense Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!expenseToDeleteId}
+        onClose={() => setExpenseToDeleteId(null)}
+        onConfirm={handleConfirmDelete}
+        title={t('expenses.delete_expense')}
+        message={'هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.'}
+        confirmText="حذف"
+        cancelText={t('common.cancel')}
+        isDangerous
+      />
     </div>
   )
 }

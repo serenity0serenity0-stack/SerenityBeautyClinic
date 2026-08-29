@@ -138,6 +138,8 @@ export interface Transaction {
   payment_method?: 'cash' | 'card' | 'wallet'
   status?: 'completed' | 'pending'
   description?: string
+  /** true = مكتملة (الخدمة نُفذت / الجلسات اكتملت) ، false = غير مكتملة */
+  is_completed?: boolean
   invoice_no?: number
   date: string
   time?: string

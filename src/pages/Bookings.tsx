@@ -31,6 +31,7 @@ import {
 import { formatDateEgypt, formatTimeEgypt } from '../utils/formatCurrency'
 import toast from 'react-hot-toast'
 import { QueueStatus } from '../components/ui/QueueStatus'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 interface NewBooking {
   searchQuery: string
@@ -78,6 +79,7 @@ export const Bookings: React.FC = () => {
   const [showSearchResults, setShowSearchResults] = React.useState(false)
   const [workingHours, setWorkingHours] = React.useState({ start: 9, end: 20 }) // 9 AM to 8 PM
   const [showWorkingHoursModal, setShowWorkingHoursModal] = React.useState(false)
+  const [bookingToDelete, setBookingToDelete] = React.useState<Booking | null>(null)
 
   // Load clinic-wide working hours from settings (fallback to defaults).
   React.useEffect(() => {
@@ -378,8 +380,19 @@ export const Bookings: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('هل متأكد من حذف هذا الحجز؟')) {
-      await deleteBooking(id)
+    const target = bookings.find((b) => b.id === id) || null
+    setBookingToDelete(target)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!bookingToDelete?.id) return
+    try {
+      await deleteBooking(bookingToDelete.id)
+      toast.success('✅ تم حذف الحجز بنجاح')
+    } catch (err) {
+      toast.error(`❌ ${(err as Error)?.message || 'حدث خطأ أثناء حذف الحجز'}`)
+    } finally {
+      setBookingToDelete(null)
     }
   }
 
@@ -1159,6 +1172,22 @@ export const Bookings: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Booking Confirmation */}
+      <ConfirmDialog
+        isOpen={!!bookingToDelete}
+        onClose={() => setBookingToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="حذف الحجز"
+        description={
+          bookingToDelete
+            ? `هل متأكد من حذف حجز ${bookingToDelete.client_name || 'العميل'}؟ سيتم إلغاؤه نهائياً ولا يمكن التراجع عن هذا الإجراء.`
+            : ''
+        }
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }

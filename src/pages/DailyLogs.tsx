@@ -9,6 +9,7 @@ import { useClients } from '../db/hooks/useClients'
 import { getEgyptDateString } from '../utils/egyptTime'
 import { Edit2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 export const DailyLogs: React.FC = () => {
   const { t } = useTranslation()
@@ -21,6 +22,7 @@ export const DailyLogs: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [editFormData, setEditFormData] = useState<any>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'transaction' | 'visit'; id: string } | null>(null)
 
   // Helper function to get client name by client_id
   const getClientName = (clientId: string) => {
@@ -28,27 +30,27 @@ export const DailyLogs: React.FC = () => {
     return client?.name || 'العميل غير معروف'
   }
 
-  // Delete handler for transactions
-  const handleDeleteTransaction = async (id: string) => {
-    if (window.confirm('هل تريد بالفعل حذف هذه المبيعة؟')) {
-      try {
-        await deleteTransaction(id)
-        toast.success('تم حذف المبيعة بنجاح')
-      } catch (err) {
-        toast.error('خطأ في حذف المبيعة')
-      }
-    }
-  }
+  // Delete handlers for transactions
+  const handleDeleteTransaction = (id: string) => setDeleteTarget({ type: 'transaction', id })
 
   // Delete handler for visit logs
-  const handleDeleteVisitLog = async (id: string) => {
-    if (window.confirm('هل تريد بالفعل حذف هذا السجل؟')) {
-      try {
-        await deleteVisitLog(id)
+  const handleDeleteVisitLog = (id: string) => setDeleteTarget({ type: 'visit', id })
+
+  // Shared delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      if (deleteTarget.type === 'transaction') {
+        await deleteTransaction(deleteTarget.id)
+        toast.success('تم حذف المبيعة بنجاح')
+      } else {
+        await deleteVisitLog(deleteTarget.id)
         toast.success('تم حذف السجل بنجاح')
-      } catch (err) {
-        toast.error('خطأ في حذف السجل')
       }
+    } catch (err) {
+      toast.error(deleteTarget.type === 'transaction' ? 'خطأ في حذف المبيعة' : 'خطأ في حذف السجل')
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -144,6 +146,11 @@ export const DailyLogs: React.FC = () => {
                         <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
                           {tx.time}
                         </p>
+                        {tx.is_completed === false && (
+                          <span className="text-[10px] font-bold bg-amber-500/15 border border-amber-500/40 text-amber-300 rounded-full px-2 py-1">
+                            ⏳ غير مكتملة
+                          </span>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -168,6 +175,7 @@ export const DailyLogs: React.FC = () => {
                       <div className="pt-2 border-t border-white/10 flex items-center gap-4">
                         <p className="text-xs text-gray-400">الدفع: {tx.payment_method}</p>
                         <p className="text-xs text-gray-400">رقم العملية: {tx.visit_number}</p>
+                        <p className="text-xs text-gray-400">رقم الفاتورة: {tx.invoice_no || '—'}</p>
                       </div>
                     </div>
 
@@ -437,6 +445,22 @@ export const DailyLogs: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title={deleteTarget?.type === 'transaction' ? 'حذف المبيعة' : 'حذف السجل'}
+        description={
+          deleteTarget?.type === 'transaction'
+            ? 'هل تريد بالفعل حذف هذه المبيعة؟ سيتم حذف العملية نهائياً ولا يمكن التراجع عن هذا الإجراء.'
+            : 'هل تريد بالفعل حذف هذا السجل؟ سيتم حذف السجل نهائياً ولا يمكن التراجع عن هذا الإجراء.'
+        }
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }

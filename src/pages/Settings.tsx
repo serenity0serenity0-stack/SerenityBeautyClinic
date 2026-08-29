@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/db/supabase'
 import { GlassCard } from '../components/ui/GlassCard'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { PAGE_KEYS, PAGE_LABEL_KEYS, DEFAULT_CASHIER_PAGES } from '../lib/permissions'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -61,6 +62,7 @@ export const Settings: React.FC = () => {
   const [resettingId, setResettingId] = useState<string | null>(null)
   const [visiblePasswordId, setVisiblePasswordId] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
+  const [userToDelete, setUserToDelete] = useState<StaffUser | null>(null)
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -129,12 +131,18 @@ export const Settings: React.FC = () => {
     loadUsers()
   }
 
-  const handleDelete = async (u: StaffUser) => {
-    if (!window.confirm(t('settings.confirm_delete_user'))) return
-    const { error } = await supabase.rpc('delete_staff_user', { p_user_id: u.auth_user_id })
-    if (error) return toast.error(error.message)
-    toast.success(t('settings.user_deleted'))
-    loadUsers()
+  const handleDelete = (u: StaffUser) => setUserToDelete(u)
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return
+    const { error } = await supabase.rpc('delete_staff_user', { p_user_id: userToDelete.auth_user_id })
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success(t('settings.user_deleted'))
+      loadUsers()
+    }
+    setUserToDelete(null)
   }
 
   const saveEdit = async (u: StaffUser, editRole: string, editName: string, editPerms: string[]) => {
@@ -463,6 +471,18 @@ export const Settings: React.FC = () => {
           <p className="text-xs text-gray-600 pt-2">© عيادة سيرينيتي للجمال 2026 | جميع الحقوق محفوظة</p>
         </div>
       </GlassCard>
+
+      {/* Delete User Confirmation */}
+      <ConfirmDialog
+        isOpen={!!userToDelete}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={t('settings.delete_user')}
+        description={t('settings.confirm_delete_user')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        variant="danger"
+      />
     </div>
   )
 }

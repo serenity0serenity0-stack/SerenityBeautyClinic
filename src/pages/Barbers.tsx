@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 interface BarberStats {
   clientCount: number
@@ -112,6 +113,7 @@ export const Barbers: React.FC = () => {
   const [barberStats, setBarberStats] = useState<{
     [barberId: string]: BarberStats
   }>({})
+  const [barberToDelete, setBarberToDelete] = useState<string | null>(null)
 
   // Doctor detail modal state
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -254,12 +256,18 @@ export const Barbers: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('هل تريد حذف هذا الطبيب؟')) {
-      try {
-        await deleteBarber(id)
-      } catch (err) {
-        toast.error(t('errors.database_error'))
-      }
+    setBarberToDelete(id)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!barberToDelete) return
+    try {
+      await deleteBarber(barberToDelete)
+      toast.success('✅ تم حذف الطبيب بنجاح')
+    } catch (err) {
+      toast.error(t('errors.database_error'))
+    } finally {
+      setBarberToDelete(null)
     }
   }
 
@@ -807,6 +815,18 @@ export const Barbers: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Delete Barber Confirmation */}
+      <ConfirmDialog
+        isOpen={!!barberToDelete}
+        onClose={() => setBarberToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="حذف الطبيب"
+        description="هل تريد حذف هذا الطبيب؟ سيتم إزالته من النظام ولا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }
