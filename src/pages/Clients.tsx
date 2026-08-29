@@ -225,13 +225,16 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
 
   const formatNoteDateTime = (dateStr: string): string => {
     try {
+      let normalized = dateStr.trim().replace(' ', 'T')
+      if (normalized && !/[zZ]|([+-]\d{2}:?\d{2})$/.test(normalized)) normalized += 'Z'
       return new Intl.DateTimeFormat('ar-EG', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-      }).format(new Date(dateStr))
+        timeZone: 'Africa/Cairo',
+      }).format(new Date(normalized))
     } catch {
       return dateStr
     }
