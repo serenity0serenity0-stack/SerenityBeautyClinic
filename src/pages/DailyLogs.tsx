@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { GlassCard } from '../components/ui/GlassCard'
 import {
   useDailyRecords,
@@ -34,6 +35,7 @@ import {
   Hash,
   ListChecks,
   ClipboardList,
+  Trash2,
 } from 'lucide-react'
 
 type TabKey = 'all' | 'sales' | 'visits' | 'consumption' | 'payments' | 'invoices' | 'adjustments'
@@ -79,7 +81,7 @@ export const DailyLogs: React.FC = () => {
     adj?: DailyAdjustment
   } | null>(null)
 
-  const { sales, visits, consumptions, adjustments, payments, invoices, loading, error, fetchRecords, clientNames } =
+  const { sales, visits, consumptions, adjustments, loading, error, fetchRecords, clientNames, deleteRecord } =
     useDailyRecords()
 
   // Debounce search
@@ -144,16 +146,16 @@ export const DailyLogs: React.FC = () => {
   const money = (n?: number | null) => `${(n ?? 0).toFixed(n ? n % 1 === 0 ? 0 : 2 : 0)} ج.م`
   const fmtTime = (t?: string | null) => (t ? t.slice(0, 5) : '—')
 
-  // Build unified feed for "all" tab
+  // Build unified feed for "all" tab (filtered)
   const allItems = useMemo(() => {
     const items: { key: string; ts: number }[] = []
-    sales.forEach((s) => items.push({ key: `sale:${s.id}`, ts: new Date(s.created_at || 0).getTime() }))
-    visits.forEach((v) => items.push({ key: `visit:${v.id}`, ts: new Date(v.created_at || 0).getTime() }))
-    adjustments.forEach((a) =>
+    fSales.forEach((s) => items.push({ key: `sale:${s.id}`, ts: new Date(s.created_at || 0).getTime() }))
+    fVisits.forEach((v) => items.push({ key: `visit:${v.id}`, ts: new Date(v.created_at || 0).getTime() }))
+    fAdjustments.forEach((a) =>
       items.push({ key: `adj:${a.id}`, ts: new Date(a.created_at || 0).getTime() })
     )
     return items.sort((a, b) => b.ts - a.ts)
-  }, [sales, visits, adjustments])
+  }, [fSales, fVisits, fAdjustments])
 
   const hasActiveFilters = search !== '' || doctorFilter !== '' || paymentFilter !== '' || invoiceFilter !== ''
 
@@ -164,12 +166,25 @@ export const DailyLogs: React.FC = () => {
     setInvoiceFilter('')
   }
 
+  const handleDelete = async (type: 'transaction' | 'consumption', id: string) => {
+    const ok = window.confirm('هل أنت متأكد من الحذف؟ سيتم عكس الرصيد المرتبط بهذا السجل.')
+    if (!ok) return
+    try {
+      await deleteRecord(type, id)
+      toast.success('✅ تم الحذف وعكس الرصيد')
+      setDetail(null)
+      fetchRecords(selectedDate)
+    } catch (err: any) {
+      toast.error(err?.message || 'حدث خطأ أثناء الحذف')
+    }
+  }
+
   const renderInvoicesTab = () => (
     <div className="space-y-3">
-      {(invoices || []).length === 0 && (
+      {(fInvoices || []).length === 0 && (
         <EmptyState text="لا توجد فواتير في هذا التاريخ" />
       )}
-      {(invoices || []).map((tx) => (
+      {(fInvoices || []).map((tx) => (
         <ActivityRow
           key={tx.id}
           icon={FileText}
@@ -343,7 +358,7 @@ export const DailyLogs: React.FC = () => {
               {allItems.map((item) => {
                 const [type, id] = item.key.split(':')
                 if (type === 'sale') {
-                  const tx = sales.find((s) => s.id === id)
+                  const tx = fSales.find((s) => s.id === id)
                   if (!tx) return null
                   return (
                     <ActivityRow
@@ -361,7 +376,7 @@ export const DailyLogs: React.FC = () => {
                   )
                 }
                 if (type === 'visit') {
-                  const v = visits.find((vv) => vv.id === id)
+                  const v = fVisits.find((vv) => vv.id === id)
                   if (!v) return null
                   const isConsumption = v.visit_type === 'consumption'
                   return (
@@ -394,7 +409,7 @@ export const DailyLogs: React.FC = () => {
                     />
                   )
                 }
-                const adj = adjustments.find((a) => a.id === id)
+                const adj = fAdjustments.find((a) => a.id === id)
                 if (!adj) return null
                 return (
                   <ActivityRow
@@ -420,8 +435,8 @@ export const DailyLogs: React.FC = () => {
 
           {activeTab === 'sales' && (
             <div className="space-y-3">
-              {sales.length === 0 && <EmptyState text="لا توجد مبيعات في هذا التاريخ" />}
-              {sales.map((tx) => (
+              {fSales.length === 0 && <EmptyState text="لا توجد مبيعات في هذا التاريخ" />}
+              {fSales.map((tx) => (
                 <ActivityRow
                   key={tx.id}
                   icon={ShoppingCart}
@@ -435,6 +450,7 @@ export const DailyLogs: React.FC = () => {
                   status={tx.is_completed === false ? 'غير مكتملة' : undefined}
                   statusOk={tx.is_completed !== false}
                   onClick={() => setDetail({ type: 'sale', tx })}
+                  onDelete={() => handleDelete('transaction', tx.id)}
                 />
               ))}
             </div>
@@ -442,8 +458,8 @@ export const DailyLogs: React.FC = () => {
 
           {activeTab === 'visits' && (
             <div className="space-y-3">
-              {visits.length === 0 && <EmptyState text="لا توجد زيارات في هذا التاريخ" />}
-              {visits.map((v) => {
+              {fVisits.length === 0 && <EmptyState text="لا توجد زيارات في هذا التاريخ" />}
+              {fVisits.map((v) => {
                 const isConsumption = v.visit_type === 'consumption'
                 return (
                   <ActivityRow
@@ -468,6 +484,7 @@ export const DailyLogs: React.FC = () => {
                     }
                     doctor={v.doctor_name || undefined}
                     onClick={() => setDetail({ type: isConsumption ? 'consumption' : 'visit', visit: v })}
+                    onDelete={isConsumption ? () => handleDelete('consumption', v.id) : undefined}
                   />
                 )
               })}
@@ -476,8 +493,8 @@ export const DailyLogs: React.FC = () => {
 
           {activeTab === 'consumption' && (
             <div className="space-y-3">
-              {consumptions.length === 0 && <EmptyState text="لا يوجد صرف أرصدة في هذا التاريخ" />}
-              {consumptions.map((v) => (
+              {fConsumptions.length === 0 && <EmptyState text="لا يوجد صرف أرصدة في هذا التاريخ" />}
+              {fConsumptions.map((v) => (
                 <ActivityRow
                   key={v.id}
                   icon={Droplets}
@@ -497,6 +514,7 @@ export const DailyLogs: React.FC = () => {
                   }
                   doctor={v.doctor_name || undefined}
                   onClick={() => setDetail({ type: 'consumption', visit: v })}
+                  onDelete={() => handleDelete('consumption', v.id)}
                 />
               ))}
             </div>
@@ -504,8 +522,8 @@ export const DailyLogs: React.FC = () => {
 
           {activeTab === 'payments' && (
             <div className="space-y-3">
-              {(payments || []).length === 0 && <EmptyState text="لا توجد مدفوعات في هذا التاريخ" />}
-              {(payments || []).map((tx) => (
+              {(fPayments || []).length === 0 && <EmptyState text="لا توجد مدفوعات في هذا التاريخ" />}
+              {(fPayments || []).map((tx) => (
                 <ActivityRow
                   key={tx.id}
                   icon={CreditCard}
@@ -526,8 +544,8 @@ export const DailyLogs: React.FC = () => {
 
           {activeTab === 'adjustments' && (
             <div className="space-y-3">
-              {adjustments.length === 0 && <EmptyState text="لا توجد تعديلات في هذا التاريخ" />}
-              {adjustments.map((adj) => (
+              {fAdjustments.length === 0 && <EmptyState text="لا توجد تعديلات في هذا التاريخ" />}
+              {fAdjustments.map((adj) => (
                 <ActivityRow
                   key={adj.id}
                   icon={Scale}
@@ -651,6 +669,7 @@ function ActivityRow({
   statusOk = true,
   doctor,
   onClick,
+  onDelete,
 }: {
   icon: React.ComponentType<{ size?: number | string; className?: string }>
   accent: string
@@ -664,6 +683,7 @@ function ActivityRow({
   statusOk?: boolean
   doctor?: string
   onClick?: () => void
+  onDelete?: () => void
 }) {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -694,6 +714,15 @@ function ActivityRow({
               </span>
             )}
             {trailing}
+            {onDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete() }}
+                title="حذف"
+                className="p-2 rounded-lg text-red-400 hover:bg-red-500/15 transition"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
           </div>
         </div>
       </GlassCard>

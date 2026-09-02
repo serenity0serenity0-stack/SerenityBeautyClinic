@@ -138,17 +138,6 @@ export const useDailyRecords = () => {
   const [visits, setVisits] = useState<DailyVisit[]>([])
   const [consumptions, setConsumptions] = useState<DailyVisit[]>([])
   const [adjustments, setAdjustments] = useState<DailyAdjustment[]>([])
-  const [summary, setSummary] = useState<DailySummary>({
-    totalSales: 0,
-    saleCount: 0,
-    totalCollected: 0,
-    visitCount: 0,
-    servicesPerformed: 0,
-    sessionsConsumed: 0,
-    pulsesConsumed: 0,
-    adjustmentCount: 0,
-    paymentBreakdown: {},
-  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [clientNames, setClientNames] = useState<Record<string, string>>({})
@@ -167,11 +156,6 @@ export const useDailyRecords = () => {
         setAdjustments([])
         setInvoices([])
         setPayments([])
-        setSummary({
-          totalSales: 0, saleCount: 0, totalCollected: 0, visitCount: 0,
-          servicesPerformed: 0, sessionsConsumed: 0, pulsesConsumed: 0,
-          adjustmentCount: 0, paymentBreakdown: {},
-        })
         setLoading(false)
         return
       }
@@ -261,7 +245,20 @@ export const useDailyRecords = () => {
     [clinicId]
   )
 
-  return { sales, invoices, payments, visits, consumptions, adjustments, loading, error, fetchRecords, clientNames }
+  const deleteRecord = useCallback(
+    async (type: 'transaction' | 'consumption', id: string) => {
+      if (!clinicId) return
+      const { error } = await supabase.rpc('delete_daily_record', {
+        p_type: type,
+        p_id: id,
+        p_clinic_id: clinicId,
+      })
+      if (error) throw error
+    },
+    [clinicId]
+  )
+
+  return { sales, invoices, payments, visits, consumptions, adjustments, loading, error, fetchRecords, clientNames, deleteRecord }
 }
 
 /**
