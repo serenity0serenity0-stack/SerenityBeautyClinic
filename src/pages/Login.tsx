@@ -28,7 +28,7 @@ type LoginFormInputs = z.infer<typeof loginSchema>
  */
 export default function Login() {
   const navigate = useNavigate()
-  const { signIn, loading: authLoading, error: authError, role, permissions } = useAuth()
+  const { signIn, loading: authLoading, error: authError, role, permissions, logoutReason } = useAuth()
   const { t, i18n } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -130,6 +130,18 @@ export default function Login() {
               {t('common.login') || 'Sign in to your account'}
             </motion.p>
           </div>
+
+          {/* Force logout / session revocation message */}
+          {logoutReason && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6 p-4 bg-amber-500/20 border border-amber-400/50 rounded-xl backdrop-blur-sm"
+            >
+              <p className="text-amber-200 text-sm font-medium">{logoutReason}</p>
+            </motion.div>
+          )}
 
           {/* Error Message */}
           {authError && (
