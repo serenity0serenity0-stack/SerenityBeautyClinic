@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { GlassCard } from '../components/ui/GlassCard'
 import {
   useDailyRecords,
+  computeSummary,
   type DailyTransaction,
   type DailyVisit,
   type DailyAdjustment,
@@ -78,7 +79,7 @@ export const DailyLogs: React.FC = () => {
     adj?: DailyAdjustment
   } | null>(null)
 
-  const { sales, visits, consumptions, adjustments, payments, invoices, summary, loading, error, fetchRecords, clientNames } =
+  const { sales, visits, consumptions, adjustments, payments, invoices, loading, error, fetchRecords, clientNames } =
     useDailyRecords()
 
   // Debounce search
@@ -87,16 +88,58 @@ export const DailyLogs: React.FC = () => {
     return () => clearTimeout(id)
   }, [search])
 
-  // Reload when filters change
+  // Reload day when date changes
   useEffect(() => {
-    fetchRecords({
-      date: selectedDate,
-      search: debouncedSearch || undefined,
-      doctorId: doctorFilter || undefined,
-      paymentMethod: paymentFilter || undefined,
-      invoiceNo: invoiceFilter || undefined,
-    })
-  }, [selectedDate, debouncedSearch, doctorFilter, paymentFilter, invoiceFilter, fetchRecords])
+    fetchRecords(selectedDate)
+  }, [selectedDate, fetchRecords])
+
+  // Client-side filtering so search / filters apply consistently to EVERY tab
+  // and the KPI cards — matches client name, phone, service name, invoice # and
+  // doctor/employee across sales, visits and adjustments.
+  const filtered = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase()
+    const inv = invoiceFilter.trim()
+    const dm = (s?: string | null) => (s || '').toLowerCase()
+
+    let fSales = sales
+    if (q) fSales = fSales.filter((s: any) =>
+      [s.client_name, s.client_phone, invoiceNoText(s.invoice_no)].some((x) => dm(x).includes(q))
+    )
+    if (inv) fSales = fSales.filter((s: any) => invoiceNoText(s.invoice_no) === inv)
+
+    let fVisits = visits
+    if (q) fVisits = fVisits.filter((v: any) =>
+      [clientName(v.client_id), v.service_name, v.doctor_name, v.employee_name].some((x) => dm(x).includes(q))
+    )
+
+    let fConsumptions = consumptions.filter((v) =>
+      fVisits.some((fv) => fv.id === v.id)
+    )
+
+    let fAdjustments = adjustments
+    if (q) fAdjustments = fAdjustments.filter((a: any) =>
+      [clientName(a.client_id), a.service_name].some((x) => dm(x).includes(q))
+    )
+
+    // doctor / payment filters (applied across relevant types)
+    if (doctorFilter) {
+      fVisits = fVisits.filter((v: any) => v.doctor_name === doctorFilter || v.employee_name === doctorFilter)
+      fConsumptions = fConsumptions.filter((v) => fVisits.some((fv) => fv.id === v.id))
+      fSales = fSales.filter((s: any) => s.barber_name === doctorFilter)
+    }
+    if (paymentFilter) {
+      fSales = fSales.filter((s: any) => s.payment_method === paymentFilter)
+    }
+
+    const fInvoices = fSales
+    const fPayments = fSales
+
+    const summary = computeSummary(fSales, fVisits)
+
+    return { fSales, fVisits, fConsumptions, fAdjustments, fInvoices, fPayments, summary }
+  }, [sales, visits, consumptions, adjustments, debouncedSearch, invoiceFilter, doctorFilter, paymentFilter, clientNames])
+
+  const { fSales, fVisits, fConsumptions, fAdjustments, fInvoices, fPayments, summary } = filtered
 
   const money = (n?: number | null) => `${(n ?? 0).toFixed(n ? n % 1 === 0 ? 0 : 2 : 0)} ج.م`
   const fmtTime = (t?: string | null) => (t ? t.slice(0, 5) : '—')
@@ -515,12 +558,12 @@ export const DailyLogs: React.FC = () => {
   function countForTab(tab: TabKey): number {
     switch (tab) {
       case 'all': return allItems.length
-      case 'sales': return sales.length
-      case 'visits': return visits.length
-      case 'consumption': return consumptions.length
-      case 'payments': return payments.length
-      case 'invoices': return invoices.length
-      case 'adjustments': return adjustments.length
+      case 'sales': return fSales.length
+      case 'visits': return fVisits.length
+      case 'consumption': return fConsumptions.length
+      case 'payments': return fPayments.length
+      case 'invoices': return fInvoices.length
+      case 'adjustments': return fAdjustments.length
       default: return 0
     }
   }
@@ -543,6 +586,11 @@ export const DailyLogs: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function invoiceNoText(n?: number | null): string {
+  if (n == null) return ''
+  return String(n)
+}
 
 function invoiceLineSummary(lines: DailyInvoiceLine[]): string {
   if (!lines || lines.length === 0) return '—'

@@ -96,8 +96,6 @@ export interface DailySummary {
   paymentBreakdown: Record<string, number>
 }
 
-const PAGE_SIZE = 25
-
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'حدث خطأ'
 }
@@ -157,12 +155,8 @@ export const useDailyRecords = () => {
   const abortRef = useRef<AbortController | null>(null)
 
   const fetchRecords = useCallback(
-    async (opts?: { date?: string; search?: string; doctorId?: string; paymentMethod?: string; invoiceNo?: string }) => {
-      const date = opts?.date || getEgyptDateString()
-      const search = (opts?.search || '').trim()
-      const doctorId = opts?.doctorId || null
-      const paymentMethod = opts?.paymentMethod || null
-      const invoiceNo = (opts?.invoiceNo || '').trim()
+    async (date?: string) => {
+      const day = date || getEgyptDateString()
 
       abortRef.current?.abort?.()
 
@@ -186,23 +180,14 @@ export const useDailyRecords = () => {
       setError(null)
 
       try {
-        // ---- Transactions (sales / invoices / payments) ------------
-        let txQuery = supabase
+        // ---- Transactions (sales / invoices / payments) - full day ----
+        const txRes = await supabase
           .from('transactions')
           .select('*')
           .eq('clinic_id', clinicId)
-          .eq('date', date)
+          .eq('date', day)
           .order('created_at', { ascending: false })
-          .limit(PAGE_SIZE)
 
-        if (invoiceNo) txQuery = txQuery.eq('invoice_no', parseInt(invoiceNo, 10) || 0)
-        if (paymentMethod) txQuery = txQuery.eq('payment_method', paymentMethod)
-        if (search) {
-          const q = `%${search}%`
-          txQuery = txQuery.or(`client_name.ilike.${q},client_phone.ilike.${q}`)
-        }
-
-        const txRes = await txQuery
         if (txRes.error) throw txRes.error
         const txData = (txRes.data || []) as DailyTransaction[]
 
@@ -214,34 +199,31 @@ export const useDailyRecords = () => {
         setInvoices(txWithLines)
         setPayments(txWithLines)
 
-        // ---- Visits + consumptions (visit_logs) ---------------------
-        let visitQuery = supabase
+        // ---- Visits + consumptions (visit_logs) - full day ----------
+        const visitRes = await supabase
           .from('visit_logs')
           .select('*')
           .eq('clinic_id', clinicId)
-          .eq('visit_date', date)
+          .eq('visit_date', day)
           .in('visit_type', ['consumption', 'service'])
           .not('service_name', 'is', null)
           .order('created_at', { ascending: false })
-          .limit(PAGE_SIZE)
-        if (doctorId) visitQuery = visitQuery.eq('doctor_id', doctorId)
 
-        const visitRes = await visitQuery
         if (visitRes.error) throw visitRes.error
         const visitData = (visitRes.data || []) as DailyVisit[]
 
         setVisits(visitData)
         setConsumptions(visitData.filter((v) => v.visit_type === 'consumption'))
 
-        // ---- Adjustments --------------------------------------------
+        // ---- Adjustments - full day ---------------------------------
         const adjRes = await supabase
           .from('balance_adjustments')
           .select('*')
           .eq('clinic_id', clinicId)
-          .gte('created_at', `${date}T00:00:00`)
-          .lte('created_at', `${date}T23:59:59`)
+          .gte('created_at', `${day}T00:00:00`)
+          .lte('created_at', `${day}T23:59:59`)
           .order('created_at', { ascending: false })
-          .limit(PAGE_SIZE)
+
         if (adjRes.error) throw adjRes.error
         const adjData = (adjRes.data || []) as DailyAdjustment[]
         setAdjustments(adjData)
@@ -268,23 +250,6 @@ export const useDailyRecords = () => {
           }
         }
         setClientNames(nameMap)
-
-        // ---- Summary (server-side aggregates) -----------------------
-        const sum = await buildSummaryTx(date, clinicId)
-        const vsum = await buildSummaryVisits(date, clinicId)
-        const adjCount = adjData.length
-
-        setSummary({
-          totalSales: sum.totalSales ?? 0,
-          saleCount: sum.saleCount ?? 0,
-          totalCollected: sum.totalCollected ?? 0,
-          paymentBreakdown: sum.paymentBreakdown ?? {},
-          visitCount: vsum.visitCount,
-          servicesPerformed: vsum.servicesPerformed,
-          sessionsConsumed: vsum.sessionsConsumed,
-          pulsesConsumed: vsum.pulsesConsumed,
-          adjustmentCount: adjCount,
-        })
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
           setError(errorMessage(err))
@@ -296,60 +261,47 @@ export const useDailyRecords = () => {
     [clinicId]
   )
 
-  return { sales, invoices, payments, visits, consumptions, adjustments, summary, loading, error, fetchRecords, clientNames }
+  return { sales, invoices, payments, visits, consumptions, adjustments, loading, error, fetchRecords, clientNames }
 }
 
-async function buildSummaryTx(date: string, clinicId: string) {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('total, payment_method, invoice_no')
-    .eq('clinic_id', clinicId)
-    .eq('date', date)
-  if (error) return { totalSales: 0, saleCount: 0, totalCollected: 0, paymentBreakdown: {} as Record<string, number> }
-
-  const rows = (data || []) as { total: number; payment_method?: string | null; invoice_no?: number | null }[]
+/**
+ * Pure client-side summary computed over (already filtered) daily arrays,
+ * so the KPI cards always match the currently shown rows.
+ */
+export function computeSummary(
+  tx: DailyTransaction[],
+  visits: DailyVisit[]
+): DailySummary {
   const breakdown: Record<string, number> = {}
-  let totalCollected = 0
-  for (const r of rows) {
-    totalCollected += r.total || 0
-    const m = r.payment_method || 'cash'
-    breakdown[m] = (breakdown[m] || 0) + (r.total || 0)
+  let collected = 0
+  for (const t of tx) {
+    collected += t.total || 0
+    const m = t.payment_method || 'cash'
+    breakdown[m] = (breakdown[m] || 0) + (t.total || 0)
   }
-  return { totalSales: totalCollected, saleCount: rows.length, totalCollected, paymentBreakdown: breakdown }
-}
 
-async function buildSummaryVisits(date: string, clinicId: string) {
-  // Refresh consumptions count from DB for accuracy (visitData may be paginated)
-  const { data } = await supabase
-    .from('visit_logs')
-    .select('visit_type, quantity, unit_label')
-    .eq('clinic_id', clinicId)
-    .eq('visit_date', date)
-    .in('visit_type', ['consumption', 'service'])
-    .not('service_name', 'is', null)
-
-  const rows = (data || []) as { visit_type?: string | null; quantity?: number | null; unit_label?: string | null }[]
-  const consumptions = rows.filter((r) => r.visit_type === 'consumption')
-  const services = rows.filter((r) => r.visit_type === 'service')
+  const consumptions = visits.filter((v) => v.visit_type === 'consumption')
+  const services = visits.filter((v) => v.visit_type === 'service')
 
   let sessions = 0
   let pulses = 0
   for (const c of consumptions) {
     const q = c.quantity || 1
     const label = (c.unit_label || '').toLowerCase()
-    if (label.includes('نبض') || label.includes('pulse') || label.includes('جلسة')) {
-      // pulses counted by unit_label containing نبضة
-      if (label.includes('نبض') || label.includes('pulse')) pulses += q
-      else sessions += q
-    } else {
-      sessions += q
-    }
+    if (label.includes('نبض') || label.includes('pulse')) pulses += q
+    else if (label.includes('جلسة')) sessions += q
+    else sessions += q
   }
 
   return {
-    visitCount: consumptions.length + services.length,
+    totalSales: collected,
+    saleCount: tx.length,
+    totalCollected: collected,
+    paymentBreakdown: breakdown,
+    visitCount: visits.length,
     servicesPerformed: services.length,
     sessionsConsumed: sessions,
     pulsesConsumed: pulses,
+    adjustmentCount: 0,
   }
 }
