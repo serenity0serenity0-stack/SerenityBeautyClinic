@@ -350,9 +350,9 @@ BEGIN
 
   SELECT id INTO v_booking_id FROM bookings
    WHERE client_id = p_client_id AND clinic_id = p_clinic_id
+     AND booking_date = v_date
      AND status IN ('pending', 'confirmed', 'checked_in', 'ongoing')
-     AND visit_date = v_date
-   ORDER BY created_at ASC LIMIT 1;
+   ORDER BY booking_time ASC LIMIT 1;
 
   -- Pass 1: compute subtotal from catalog (server-side pricing)
   FOR v_line IN SELECT * FROM jsonb_array_elements(p_items) WITH ORDINALITY AS t(item, ord)
