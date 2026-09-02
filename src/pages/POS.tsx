@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Modal } from '../components/ui/Modal'
@@ -7,12 +7,12 @@ import {
   X, Search, Trash2, Printer, Check, ChevronUp, ChevronDown,
   Plus, Minus, AlertTriangle, Boxes,
 } from 'lucide-react'
-import { useClients } from '../db/hooks/useClients'
 import { useServices } from '../db/hooks/useServices'
 import { useServiceVariants } from '../db/hooks/useServiceVariants'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useSales } from '../db/hooks/useSales'
 import { useBalanceData } from '../db/hooks/useBalanceData'
+import { supabase } from '../db/supabase'
 import { checkSubscriptionStatus } from '../utils/subscriptionChecker'
 import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptDateString, getEgyptTimeString } from '../utils/egyptTime'
@@ -85,13 +85,12 @@ const categoryLabels: Record<string, string> = {
 }
 
 export const POS: React.FC = () => {
-  const { clients, updateClient } = useClients()
+  const { clinicId } = useAuth()
   const { services } = useServices()
   const { getVariantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
   const { completeSale } = useSales()
   const { getBalanceSummaryByClient } = useBalanceData()
-  const { clinicId } = useAuth()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState<any>(null)
@@ -109,8 +108,13 @@ export const POS: React.FC = () => {
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>(
     () => (localStorage.getItem('receiptPaperWidth') as '80mm' | '58mm') || '80mm'
   )
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const receiptRef = useRef<HTMLDivElement>(null)
   const printInProgress = useRef(false)
+  const searchRequestRef = useRef(0)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clientsCache = useRef<Map<string, any>>(new Map())
 
   // Inject the thermal @page size so the print dialog matches the selected paper.
   useEffect(() => {
@@ -122,6 +126,47 @@ export const POS: React.FC = () => {
     }
     el.textContent = `@media print { @page { size: ${paperWidth} auto; margin: 0; } }`
   }, [paperWidth])
+
+  // Server-side debounced client search with stale-request guard
+  const runSearch = useCallback(
+    async (query: string, requestId: number) => {
+      if (!clinicId) return
+      setIsSearching(true)
+      try {
+        const normalized = normalizeSearchInput(query)
+        const { data, error } = await supabase.rpc('search_clients', {
+          p_clinic_id: clinicId,
+          p_query: normalized,
+        })
+        if (error) throw error
+        if (requestId !== searchRequestRef.current) return // stale result
+        const rows = (data || []) as any[]
+        rows.forEach((r: any) => clientsCache.current.set(r.id, r))
+        setSearchResults(rows)
+      } catch {
+        // swallow — RPC not yet deployed
+        if (requestId === searchRequestRef.current) setSearchResults([])
+      } finally {
+        if (requestId === searchRequestRef.current) setIsSearching(false)
+      }
+    },
+    [clinicId],
+  )
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
+
+  const handleSearchChange = useCallback(
+    (raw: string) => {
+      const normalized = normalizeSearchInput(raw)
+      setSearchQuery(normalized)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (!normalized) { setSearchResults([]); return }
+      const rid = ++searchRequestRef.current
+      debounceRef.current = setTimeout(() => runSearch(normalized, rid), 280)
+    },
+    [runSearch],
+  )
 
   // Load variants per service
   useEffect(() => {
@@ -165,28 +210,8 @@ export const POS: React.FC = () => {
     return acc
   }, {})
 
-  const balanceFor = (serviceId: string) =>
-    clientBalance.find((b) => b.service_id === serviceId)
-
-  const searchResults = (() => {
-    const normalized = normalizeSearchInput(searchQuery)
-    if (!normalized) return []
-
-    const q = normalized.trim().toLowerCase()
-    const isNumeric = /^\d+$/.test(q)
-
-    const filtered = clients.filter((client) => {
-      if (isNumeric) {
-        return client.phone?.toLowerCase().includes(q) || false
-      }
-      return (
-        client.name?.toLowerCase().includes(q) ||
-        client.phone?.toLowerCase().includes(q)
-      )
-    })
-
-    return filtered.map((item) => ({ item, score: 0 } as any))
-  })()
+  const balanceForVariant = (serviceId: string, variantId?: string | null) =>
+    clientBalance.find((b) => b.service_id === serviceId && (b.variant_id || null) === (variantId || null))
 
   const addToCart = (service: any, variant?: any) => {
     const name = variant
@@ -220,7 +245,7 @@ export const POS: React.FC = () => {
       ]
     })
 
-    const bal = balanceFor(service.id)
+    const bal = balanceForVariant(service.id, variant?.id || null)
     if (bal && bal.remaining > 0) {
       toast(`⚠️ العميل لديه رصيد متبقي: ${bal.remaining} ${bal.unit_label || ''}`)
     } else {
@@ -292,11 +317,18 @@ export const POS: React.FC = () => {
       const invoiceNo = result.invoice_no
 
       // Update client (optimistic; server-side RPC also updates totals)
-      await updateClient(selectedClient.id, {
-        total_visits: (selectedClient.total_visits || 0) + 1,
-        total_spent: (selectedClient.total_spent || 0) + total,
-        last_visit: dateStr,
-      })
+      if (selectedClient.id && clinicId) {
+        await supabase
+          .from('clients')
+          .update({
+            total_visits: (selectedClient.total_visits || 0) + 1,
+            total_spent: (selectedClient.total_spent || 0) + total,
+            last_visit: dateStr,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', selectedClient.id)
+          .eq('clinic_id', clinicId)
+      }
 
       setCompletedTransaction({
         transactionId,
@@ -454,9 +486,11 @@ export const POS: React.FC = () => {
                     {list.map((service, idx) => {
                       const serviceId = service.id || String(idx)
                       const variants = (service.id && allVariants[service.id]) || []
-                      const isExpanded = expandedServiceId === serviceId
-                      const isPackage = service.service_type === 'package'
-                      const bal = service.id ? balanceFor(service.id) : undefined
+                    const isExpanded = expandedServiceId === serviceId
+                    const isPackage = service.service_type === 'package'
+                    const bal = variants.length > 0
+                      ? clientBalance.find((b) => b.service_id === service.id && b.remaining > 0)
+                      : clientBalance.find((b) => b.service_id === service.id && !b.variant_id && b.remaining > 0)
 
                       return (
                         <motion.div
@@ -816,10 +850,7 @@ export const POS: React.FC = () => {
               type="text"
               placeholder="ابحث باسم أو هاتف"
               value={searchQuery}
-              onChange={(e) => {
-                const normalizedValue = normalizeSearchInput(e.currentTarget.value)
-                setSearchQuery(normalizedValue)
-              }}
+              onChange={(e) => handleSearchChange(e.currentTarget.value)}
               autoFocus
               className="w-full pl-4 pr-10 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500"
             />
@@ -828,7 +859,7 @@ export const POS: React.FC = () => {
           <div className="space-y-2 max-h-80 overflow-y-auto">
             <AnimatePresence mode="popLayout">
               {searchResults.length > 0 ? (
-                searchResults.map(({ item }: any, idx: number) => (
+                searchResults.map((item: any, idx: number) => (
                   <motion.button
                     key={item.id}
                     initial={{ opacity: 0, x: 20 }}
@@ -850,6 +881,10 @@ export const POS: React.FC = () => {
                     </p>
                   </motion.button>
                 ))
+              ) : isSearching ? (
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-gray-400 py-6">
+                  جاري البحث...
+                </motion.p>
               ) : searchQuery ? (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-gray-400 py-6">
                   لم يتم العثور على عملاء

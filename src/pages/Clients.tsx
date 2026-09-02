@@ -24,7 +24,7 @@ export const Clients: React.FC = () => {
   const { getTransactionsByclient_id } = useTransactions()
   const { barbers, fetchBarbers } = useBarbers()
   const { notes, loading: notesLoading, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
-  const { getBalanceSummaryByClient, getConsumptionsByClient, getAdjustmentsByClient } = useBalanceData()
+  const { getBalanceSummaryByClient, getConsumptionsByClient, getAdjustmentsByClient, getPurchasesByClientAndVariant } = useBalanceData()
   const { consumeService, markTransactionCompleted } = useSales()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -53,6 +53,8 @@ export const Clients: React.FC = () => {
   // Balance consumption (custom quantity prompt)
   const [consumeTarget, setConsumeTarget] = useState<ClientBalanceSummary | null>(null)
   const [isConsuming, setIsConsuming] = useState(false)
+  const [expandedBalanceKey, setExpandedBalanceKey] = useState<string | null>(null)
+  const [balancePurchases, setBalancePurchases] = useState<Record<string, any[]>>({})
 
   // Approve a pending invoice as مكتملة
   const [approvingTxId, setApprovingTxId] = useState<string | null>(null)
@@ -300,7 +302,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     }
     setIsConsuming(true)
     try {
-      await consumeService(selectedClientForDetail.id, consumeTarget.service_id, num, 'صرف يدوي من لوحة العميل')
+      await consumeService(selectedClientForDetail.id, consumeTarget.service_id, num, 'صرف يدوي من لوحة العميل', consumeTarget.variant_id)
       const [bal, cons] = await Promise.all([
         getBalanceSummaryByClient(selectedClientForDetail.id),
         getConsumptionsByClient(selectedClientForDetail.id),
@@ -719,7 +721,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
           setEditingNoteText('')
         }}
         title={`${selectedClientForDetail?.name} - ${t('clients.visit_history')}`}
-        size="lg"
+        size="wide"
       >
         {selectedClientForDetail && (
           <div className="space-y-6">
@@ -739,45 +741,129 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
               </div>
             </div>
 
-            {/* Client Balance (sessions/pulses) */}
-            {clientBalance.length > 0 && (
-              <div>
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <RefreshCw size={20} className="text-purple-400" />
-                  أرصدة العميل
-                </h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {clientBalance.map((b) => (
-                    <div key={b.service_id} className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 p-4 rounded-lg border border-purple-500/20">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-white font-semibold text-sm">{b.service_name}</p>
-                        <button
-                          onClick={() => handleConsumeBalance(b)}
-                          className="text-[11px] flex items-center gap-1 px-2 py-1 bg-pink-600/20 text-pink-300 border border-pink-500/30 rounded-lg hover:bg-pink-600/30 transition whitespace-nowrap"
-                          title="صرف من رصيد العميل"
-                        >
-                          <MinusCircle size={12} />
-                          صرف
-                        </button>
+            {/* Client Balance (sessions/pulses) — desktop workspace with per-variant cards */}
+            {clientBalance.length > 0 && (() => {
+              const totalPurchased = clientBalance.reduce((s, b) => s + (b.purchased || 0), 0)
+              const totalBonus    = clientBalance.reduce((s, b) => s + (b.bonus || 0), 0)
+              const totalRemaining = clientBalance.reduce((s, b) => s + (b.remaining || 0), 0)
+              const totalLots     = clientBalance.reduce((s, b) => s + (b.total_purchases || b.active_purchases || 0), 0)
+              return (
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <RefreshCw size={20} className="text-purple-400" />
+                    أرصدة العميل
+                  </h3>
+
+                  {/* Totals summary row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    {[
+                      { label: 'إجمالي المشتراة', value: totalPurchased, color: 'text-white' },
+                      { label: 'بونص', value: totalBonus, color: 'text-amber-300' },
+                      { label: 'المتبقي', value: totalRemaining, color: 'text-purple-300' },
+                      { label: 'عدد الباقات', value: totalLots, color: 'text-sky-300' },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-400">{s.label}</p>
+                        <p className={`text-xl font-bold mt-1 ${s.color}`}>{s.value}</p>
                       </div>
-                      <div className="flex items-baseline gap-1 mt-3">
-                        <span className="text-3xl font-bold text-purple-300">{b.remaining}</span>
-                        <span className="text-sm text-gray-400">{b.unit_label || ''}</span>
-                      </div>
-                      <div className="text-xs text-gray-400 mt-2 space-y-0.5">
-                        <p>
-                          تم شراؤها: {b.purchased} {b.unit_label || ''}
-                          {(b.bonus || 0) > 0 && ` + ${b.bonus} ${b.unit_label || ''} بونص`}
-                        </p>
-                        {b.earliest_expiry && (
-                          <p className="text-amber-300/80">⏰ أقرب انتهاء صلاحية: {formatArabicDate(b.earliest_expiry)}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+
+                  {/* Per-variant balance cards */}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {clientBalance.map((b) => {
+                      const bKey = `${b.service_id}-${b.variant_id || 'x'}`
+                      const isExpanded = expandedBalanceKey === bKey
+
+                      const toggleExpand = async () => {
+                        if (isExpanded) { setExpandedBalanceKey(null); return }
+                        setExpandedBalanceKey(bKey)
+                        if (!balancePurchases[bKey]) {
+                          const lots = await getPurchasesByClientAndVariant(b.client_id, b.service_id, b.variant_id)
+                          setBalancePurchases((prev) => ({ ...prev, [bKey]: lots }))
+                        }
+                      }
+
+                      const lots = balancePurchases[bKey] || []
+
+                      return (
+                        <div key={bKey} className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 rounded-lg border border-purple-500/20 overflow-hidden">
+                          {/* Header row */}
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white font-semibold text-sm truncate">{b.service_name}</p>
+                                <div className="flex items-baseline gap-1 mt-2">
+                                  <span className="text-3xl font-bold text-purple-300">{b.remaining}</span>
+                                  <span className="text-sm text-gray-400">{b.unit_label || ''}</span>
+                                </div>
+                                <div className="text-xs text-gray-400 mt-2 space-y-0.5">
+                                  <p>
+                                    شراء: {b.purchased} {b.unit_label || ''}
+                                    {(b.bonus || 0) > 0 && ` + ${b.bonus} ${b.unit_label || ''} بونص`}
+                                  </p>
+                                  {b.earliest_expiry && (
+                                    <p className="text-amber-300/80">⏰ {formatArabicDate(b.earliest_expiry)}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <button
+                                  onClick={() => handleConsumeBalance(b)}
+                                  className="text-[11px] flex items-center gap-1 px-2 py-1 bg-pink-600/20 text-pink-300 border border-pink-500/30 rounded-lg hover:bg-pink-600/30 transition whitespace-nowrap"
+                                  title="صرف من رصيد العميل"
+                                >
+                                  <MinusCircle size={12} />
+                                  صرف
+                                </button>
+                                <button
+                                  onClick={toggleExpand}
+                                  className="text-[11px] flex items-center gap-1 px-2 py-1 bg-white/10 text-gray-300 border border-white/20 rounded-lg hover:bg-white/15 transition whitespace-nowrap"
+                                >
+                                  {isExpanded ? 'إخفاء' : `الباقات (${lots.length})`}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded purchase lots */}
+                          {isExpanded && (
+                            <div className="border-t border-purple-500/20 bg-black/20">
+                              {lots.length === 0 ? (
+                                <p className="text-xs text-gray-500 p-4 text-center">لا توجد باقات مسجلة</p>
+                              ) : (
+                                <div className="divide-y divide-white/5 max-h-48 overflow-y-auto">
+                                  {lots.map((lot) => {
+                                    const isActive = lot.status === 'active' && (lot.remaining_quantity || 0) > 0
+                                    return (
+                                      <div key={lot.id} className={`px-4 py-2.5 flex items-center justify-between gap-3 text-xs ${isActive ? '' : 'opacity-60'}`}>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-gray-200 truncate">{lot.service_name}</p>
+                                          <p className="text-gray-500 mt-0.5">
+                                            {lot.created_at ? formatNoteDateTime(lot.created_at) : ''}
+                                            {lot.unit_price ? ` — ${formatMoney(lot.unit_price)}` : ''}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                          <span className="text-purple-300 font-semibold">{lot.remaining_quantity}/{lot.total_quantity}</span>
+                                          <span className={`${isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-400'} px-1.5 py-0.5 rounded font-medium`}>
+                                            {lot.status === 'active' ? 'نشط' : lot.status === 'fully_used' ? 'مستنفد' : lot.status === 'expired' ? 'منتهي' : lot.status}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Appointment History */}
             <div>

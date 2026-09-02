@@ -69,6 +69,7 @@ export interface ServicePurchase {
   transaction_id?: string | null
   invoice_item_id?: string | null
   service_id?: string | null
+  variant_id?: string | null
   service_name: string
   unit_label?: string | null
   paid_quantity: number
@@ -114,6 +115,7 @@ export interface ClientBalanceSummary {
   clinic_id: string
   client_id: string
   service_id: string
+  variant_id?: string | null
   service_name: string
   unit_label: string
   purchased: number
@@ -121,6 +123,7 @@ export interface ClientBalanceSummary {
   remaining: number
   active_purchases: number
   earliest_expiry?: string | null
+  total_purchases?: number
 }
 
 export interface Transaction {

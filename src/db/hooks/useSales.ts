@@ -60,7 +60,7 @@ export const useSales = () => {
   )
 
   const consumeService = useCallback(
-    async (client_id: string, service_id: string, quantity: number, note?: string) => {
+    async (client_id: string, service_id: string, quantity: number, note?: string, variant_id?: string | null) => {
       try {
         if (!clinicId) throw new Error('Clinic ID مطلوب')
 
@@ -70,6 +70,7 @@ export const useSales = () => {
           p_service_id: service_id,
           p_quantity: quantity,
           p_note: note || null,
+          p_variant_id: variant_id || null,
         })
 
         if (error) throw error

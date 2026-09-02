@@ -27,6 +27,29 @@ export const useBalanceData = () => {
     [clinicId]
   )
 
+  const getPurchasesByClientAndVariant = useCallback(
+    async (clientId: string, serviceId: string, variantId?: string | null): Promise<ServicePurchase[]> => {
+      try {
+        if (!clinicId) return []
+        let q = supabase
+          .from('service_purchases')
+          .select('*')
+          .eq('clinic_id', clinicId)
+          .eq('client_id', clientId)
+          .eq('service_id', serviceId)
+        if (variantId) q = q.eq('variant_id', variantId)
+        else q = q.is('variant_id', null)
+        const { data, error } = await q.order('created_at', { ascending: false })
+        if (error) throw error
+        return (data || []) as ServicePurchase[]
+      } catch (err: any) {
+        toast.error(err.message)
+        return []
+      }
+    },
+    [clinicId]
+  )
+
   const getConsumptionsByClient = useCallback(
     async (clientId: string) => {
       try {
@@ -111,6 +134,7 @@ export const useBalanceData = () => {
 
   return {
     getPurchasesByClient,
+    getPurchasesByClientAndVariant,
     getConsumptionsByClient,
     getAdjustmentsByClient,
     getInvoiceItemsByTransaction,
