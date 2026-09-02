@@ -1,466 +1,868 @@
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { motion } from 'framer-motion'
+import React, { useMemo, useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { GlassCard } from '../components/ui/GlassCard'
-import { Modal } from '../components/ui/Modal'
-import { useTransactions } from '../db/hooks/useTransactions'
-import { useVisitLogs } from '../db/hooks/useVisitLogs'
-import { useClients } from '../db/hooks/useClients'
-import { getEgyptDateString } from '../utils/egyptTime'
-import { Edit2, Trash2 } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import {
+  useDailyRecords,
+  type DailyTransaction,
+  type DailyVisit,
+  type DailyAdjustment,
+  type ActivityType,
+  type DailyInvoiceLine,
+} from '../db/hooks/useDailyRecords'
+import { getEgyptDateString, getEgyptFormattedDate } from '../utils/egyptTime'
+import {
+  ShoppingCart,
+  CalendarCheck,
+  Droplets,
+  CreditCard,
+  FileText,
+  Scale,
+  Search,
+  Filter,
+  X,
+  User,
+  Phone,
+  Stethoscope,
+  Package,
+  ArrowLeftRight,
+  Clock,
+  Receipt,
+  Wallet,
+  CheckCircle2,
+  XCircle,
+  Hash,
+  ListChecks,
+  ClipboardList,
+} from 'lucide-react'
+
+type TabKey = 'all' | 'sales' | 'visits' | 'consumption' | 'payments' | 'invoices' | 'adjustments'
+
+interface TabDef {
+  key: TabKey
+  label: string
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
+  accent: string
+}
+
+const TABS: TabDef[] = [
+  { key: 'all', label: 'الكل', icon: ClipboardList, accent: 'text-white' },
+  { key: 'sales', label: 'المبيعات', icon: ShoppingCart, accent: 'text-emerald-400' },
+  { key: 'visits', label: 'الزيارات', icon: CalendarCheck, accent: 'text-cyan-400' },
+  { key: 'consumption', label: 'صرف الأرصدة', icon: Droplets, accent: 'text-sky-400' },
+  { key: 'payments', label: 'المدفوعات', icon: CreditCard, accent: 'text-amber-400' },
+  { key: 'invoices', label: 'الفواتير', icon: FileText, accent: 'text-violet-400' },
+  { key: 'adjustments', label: 'التعديلات', icon: Scale, accent: 'text-orange-400' },
+]
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'نقد',
+  card: 'بطاقة',
+  wallet: 'محفظة',
+}
+
+const unitLabel = (l?: string | null) => l || 'جلسة'
 
 export const DailyLogs: React.FC = () => {
-  const { t } = useTranslation()
-  const { transactions, deleteTransaction } = useTransactions()
-  const { visitLogs, deleteVisitLog } = useVisitLogs()
-  const { clients } = useClients()
-
   const [selectedDate, setSelectedDate] = useState(getEgyptDateString())
-  const [activeTab, setActiveTab] = useState<'transactions' | 'visits'>('transactions')
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<any>(null)
-  const [editFormData, setEditFormData] = useState<any>(null)
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'transaction' | 'visit'; id: string } | null>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>('all')
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [doctorFilter, setDoctorFilter] = useState<string>('')
+  const [paymentFilter, setPaymentFilter] = useState<string>('')
+  const [invoiceFilter, setInvoiceFilter] = useState<string>('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [detail, setDetail] = useState<{
+    type: ActivityType
+    tx?: DailyTransaction
+    visit?: DailyVisit
+    adj?: DailyAdjustment
+  } | null>(null)
 
-  // Helper function to get client name by client_id
-  const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId)
-    return client?.name || 'العميل غير معروف'
+  const { sales, visits, consumptions, adjustments, payments, invoices, summary, loading, error, fetchRecords, clientNames } =
+    useDailyRecords()
+
+  // Debounce search
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(id)
+  }, [search])
+
+  // Reload when filters change
+  useEffect(() => {
+    fetchRecords({
+      date: selectedDate,
+      search: debouncedSearch || undefined,
+      doctorId: doctorFilter || undefined,
+      paymentMethod: paymentFilter || undefined,
+      invoiceNo: invoiceFilter || undefined,
+    })
+  }, [selectedDate, debouncedSearch, doctorFilter, paymentFilter, invoiceFilter, fetchRecords])
+
+  const money = (n?: number | null) => `${(n ?? 0).toFixed(n ? n % 1 === 0 ? 0 : 2 : 0)} ج.م`
+  const fmtTime = (t?: string | null) => (t ? t.slice(0, 5) : '—')
+
+  // Build unified feed for "all" tab
+  const allItems = useMemo(() => {
+    const items: { key: string; ts: number }[] = []
+    sales.forEach((s) => items.push({ key: `sale:${s.id}`, ts: new Date(s.created_at || 0).getTime() }))
+    visits.forEach((v) => items.push({ key: `visit:${v.id}`, ts: new Date(v.created_at || 0).getTime() }))
+    adjustments.forEach((a) =>
+      items.push({ key: `adj:${a.id}`, ts: new Date(a.created_at || 0).getTime() })
+    )
+    return items.sort((a, b) => b.ts - a.ts)
+  }, [sales, visits, adjustments])
+
+  const hasActiveFilters = search !== '' || doctorFilter !== '' || paymentFilter !== '' || invoiceFilter !== ''
+
+  const clearFilters = () => {
+    setSearch('')
+    setDoctorFilter('')
+    setPaymentFilter('')
+    setInvoiceFilter('')
   }
 
-  // Delete handlers for transactions
-  const handleDeleteTransaction = (id: string) => setDeleteTarget({ type: 'transaction', id })
-
-  // Delete handler for visit logs
-  const handleDeleteVisitLog = (id: string) => setDeleteTarget({ type: 'visit', id })
-
-  // Shared delete confirmation
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return
-    try {
-      if (deleteTarget.type === 'transaction') {
-        await deleteTransaction(deleteTarget.id)
-        toast.success('تم حذف المبيعة بنجاح')
-      } else {
-        await deleteVisitLog(deleteTarget.id)
-        toast.success('تم حذف السجل بنجاح')
-      }
-    } catch (err) {
-      toast.error(deleteTarget.type === 'transaction' ? 'خطأ في حذف المبيعة' : 'خطأ في حذف السجل')
-    } finally {
-      setDeleteTarget(null)
-    }
-  }
-
-  // Filter logs by selected date
-  const todayTransactions = transactions.filter((t) => t.date === selectedDate)
-  const todayVisits = visitLogs.filter((v) => v.visitDate === selectedDate)
-
-  const openEditModal = (item: any, type: 'transaction' | 'visit') => {
-    setEditingItem({ ...item, type })
-    setEditFormData(JSON.parse(JSON.stringify(item)))
-    setIsEditModalOpen(true)
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editFormData) return
-
-    try {
-      // Here you would call update functions
-      // For now, just show success
-      toast.success('تم تحديث البيانات بنجاح')
-      setIsEditModalOpen(false)
-    } catch (err) {
-      toast.error(t('errors.database_error'))
-    }
-  }
+  const renderInvoicesTab = () => (
+    <div className="space-y-3">
+      {(invoices || []).length === 0 && (
+        <EmptyState text="لا توجد فواتير في هذا التاريخ" />
+      )}
+      {(invoices || []).map((tx) => (
+        <ActivityRow
+          key={tx.id}
+          icon={FileText}
+          accent="text-violet-400"
+          badge="فاتورة"
+          badgeClass="bg-violet-500/20 text-violet-300 border-violet-400/30"
+          title={tx.client_name || 'عميل'}
+          time={fmtTime(tx.time) || (tx.created_at ? new Date(tx.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '')}
+          subtitle={invoiceLineSummary(tx.lines || [])}
+          trailing={
+            <div className="text-left">
+              <p className="text-gold-400 font-bold">{money(tx.total)}</p>
+              <p className="text-xs text-gray-400">#{tx.invoice_no}</p>
+            </div>
+          }
+          status={tx.is_completed === false ? 'غير مكتملة' : 'مكتملة'}
+          statusOk={tx.is_completed !== false}
+          onClick={() => setDetail({ type: 'invoice', tx })}
+        />
+      ))}
+    </div>
+  )
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-      >
+    <div className="space-y-6" dir="rtl">
+      {/* Title */}
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
         <h1 className="text-3xl font-bold text-white">سجلات اليوم</h1>
+        <p className="text-gray-400 text-sm mt-1">{getEgyptFormattedDate(new Date(selectedDate + 'T12:00:00'))}</p>
       </motion.div>
 
-      {/* Date Selector */}
-      <GlassCard>
-        <div className="flex items-center gap-4">
-          <label className="text-white font-semibold">تاريخ اليوم:</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full max-w-xs"
-          />
-        </div>
-      </GlassCard>
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-white/10">
-        <button
-          onClick={() => setActiveTab('transactions')}
-          className={`px-4 py-3 font-semibold transition ${
-            activeTab === 'transactions'
-              ? 'text-gold-400 border-b-2 border-gold-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          المبيعات ({todayTransactions.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('visits')}
-          className={`px-4 py-3 font-semibold transition ${
-            activeTab === 'visits'
-              ? 'text-gold-400 border-b-2 border-gold-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          الزيارات ({todayVisits.length})
-        </button>
+      {/* KPI Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KpiCard label="إجمالي المبيعات" value={money(summary.totalSales)} icon={ShoppingCart} accent="text-emerald-400" />
+        <KpiCard label="عدد عمليات البيع" value={`${summary.saleCount}`} icon={Receipt} accent="text-teal-400" />
+        <KpiCard label="إجمالي التحصيل" value={money(summary.totalCollected)} icon={Wallet} accent="text-amber-400" />
+        <KpiCard label="عدد الزيارات" value={`${summary.visitCount}`} icon={CalendarCheck} accent="text-cyan-400" />
+        <KpiCard label="الخدمات المنفذة" value={`${summary.servicesPerformed}`} icon={ListChecks} accent="text-sky-400" />
+        <KpiCard label="الجلسات المصروفة" value={`${summary.sessionsConsumed}`} icon={Droplets} accent="text-blue-400" />
       </div>
 
-      {/* Transactions Tab */}
-      {activeTab === 'transactions' && (
-        <div className="space-y-4">
-          {todayTransactions.length === 0 ? (
-            <GlassCard>
-              <p className="text-center text-gray-400 py-8">لا توجد مبيعات في هذا التاريخ</p>
-            </GlassCard>
-          ) : (
-            todayTransactions.map((tx, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <GlassCard>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{tx.client_name}</p>
-                        <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
-                          {tx.time}
-                        </p>
-                        {tx.is_completed === false && (
-                          <span className="text-[10px] font-bold bg-amber-500/15 border border-amber-500/40 text-amber-300 rounded-full px-2 py-1">
-                            ⏳ غير مكتملة
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-400 text-xs">العدد</p>
-                          <p className="text-white font-semibold">{tx.items?.length || 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">الإجمالي قبل خصم</p>
-                          <p className="text-white font-semibold">{tx.subtotal?.toFixed(2)} ج.م</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">الخصم</p>
-                          <p className="text-red-400 font-semibold">{tx.discount?.toFixed(2) || 0} ج.م</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">الإجمالي</p>
-                          <p className="text-gold-400 font-bold text-lg">{tx.total?.toFixed(2)} ج.م</p>
-                        </div>
-                      </div>
+      {/* Controls: date + filters */}
+      <GlassCard animated={false} className="cursor-default">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-gray-300 font-semibold whitespace-nowrap">التاريخ:</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full sm:w-auto bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-400/40"
+            />
+          </div>
 
-                      <div className="pt-2 border-t border-white/10 flex items-center gap-4">
-                        <p className="text-xs text-gray-400">الدفع: {tx.payment_method}</p>
-                        <p className="text-xs text-gray-400">رقم العملية: {tx.visit_number}</p>
-                        <p className="text-xs text-gray-400">رقم الفاتورة: {tx.invoice_no || '—'}</p>
-                      </div>
-                    </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" style={{ left: 'auto', right: '0.75rem' }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="بحث باسم العميل أو الهاتف..."
+              className="w-full bg-white/5 border border-white/10 rounded-lg ps-10 px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gold-400/40 text-sm"
+            />
+          </div>
 
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditModal(tx, 'transaction')}
-                        aria-label={t('common.edit')}
-                        className="p-2 hover:bg-blue-500/10 rounded transition"
-                      >
-                        <Edit2 size={18} className="text-blue-400" />
-                      </button>
-                      <button 
-                        onClick={() => tx.id && handleDeleteTransaction(tx.id)}
-                        aria-label={t('common.delete')}
-                        className="p-2 hover:bg-red-500/10 rounded transition"
-                      >
-                        <Trash2 size={18} className="text-red-400" />
-                      </button>
-                    </div>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))
-          )}
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition ${
+              showFilters || hasActiveFilters
+                ? 'bg-gold-400/20 border-gold-400/40 text-gold-400'
+                : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            }`}
+          >
+            <Filter size={16} />
+            تصفية
+            {hasActiveFilters && <span className="w-2 h-2 rounded-full bg-gold-400" />}
+          </button>
         </div>
-      )}
 
-      {/* Visits Tab */}
-      {activeTab === 'visits' && (
-        <div className="space-y-4">
-          {todayVisits.length === 0 ? (
-            <GlassCard>
-              <p className="text-center text-gray-400 py-8">لا توجد زيارات في هذا التاريخ</p>
-            </GlassCard>
-          ) : (
-            todayVisits.map((visit, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <GlassCard>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-4">
-                        <p className="text-white font-bold text-lg">{getClientName(visit.client_id)}</p>
-                        <p className="text-xs bg-gold-400/20 text-gold-400 px-2 py-1 rounded">
-                          {visit.visitTime}
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-400 text-xs">الخدمات</p>
-                          <p className="text-white font-semibold">{visit.servicesCount}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">المبلغ المنفق</p>
-                          <p className="text-gold-400 font-semibold">{visit.total_spent?.toFixed(2)} ج.م</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">التاريخ</p>
-                          <p className="text-white font-semibold">{visit.visitDate}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs">ملاحظات</p>
-                          <p className="text-gray-300 text-xs">{visit.notes || '-'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditModal(visit, 'visit')}
-                        aria-label={t('common.edit')}
-                        className="p-2 hover:bg-blue-500/10 rounded transition"
-                      >
-                        <Edit2 size={18} className="text-blue-400" />
-                      </button>
-                      <button 
-                        onClick={() => visit.id && handleDeleteVisitLog(visit.id)}
-                        aria-label={t('common.delete')}
-                        className="p-2 hover:bg-red-500/10 rounded transition"
-                      >
-                        <Trash2 size={18} className="text-red-400" />
-                      </button>
-                    </div>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title={editingItem?.type === 'transaction' ? 'تعديل المبيعة' : 'تعديل الزيارة'}
-        size="lg"
-      >
-        <div className="space-y-4 max-h-96 overflow-y-auto">
-          {editingItem?.type === 'transaction' && editFormData && (
-            <>
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">اسم العميل</label>
-                <input
-                  type="text"
-                  value={editFormData.client_name || ''}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      client_name: e.target.value,
-                    })
-                  }
-                  className="w-full"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-4 mt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">الإجمالي قبل خصم</label>
+                  <label className="block text-gray-300 text-xs mb-1">رقم الفاتورة</label>
                   <input
-                    type="number"
-                    value={editFormData.subtotal || 0}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        subtotal: parseFloat(e.target.value),
-                      })
-                    }
-                    className="w-full"
+                    value={invoiceFilter}
+                    onChange={(e) => setInvoiceFilter(e.target.value)}
+                    placeholder="مثال: 202609020021"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gold-400/40 text-sm"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">الخصم</label>
-                  <input
-                    type="number"
-                    value={editFormData.discount || 0}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        discount: parseFloat(e.target.value),
-                      })
-                    }
-                    className="w-full"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">طريقة الدفع</label>
+                  <label className="block text-gray-300 text-xs mb-1">الطبيب / الموظف</label>
                   <select
-                    value={editFormData.payment_method || 'cash'}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        payment_method: e.target.value,
-                      })
-                    }
-                    className="w-full"
+                    value={doctorFilter}
+                    onChange={(e) => setDoctorFilter(e.target.value)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-400/40 text-sm"
                   >
+                    <option value="">الكل</option>
+                    {uniqueDoctors().map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-gray-300 text-xs mb-1">طريقة الدفع</label>
+                  <select
+                    value={paymentFilter}
+                    onChange={(e) => setPaymentFilter(e.target.value)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-400/40 text-sm"
+                  >
+                    <option value="">الكل</option>
                     <option value="cash">نقد</option>
                     <option value="card">بطاقة</option>
                     <option value="wallet">محفظة</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">الإجمالي (قراءة فقط)</label>
-                  <input
-                    type="number"
-                    value={
-                      (editFormData.subtotal || 0) - (editFormData.discount || 0)
-                    }
-                    disabled
-                    className="w-full opacity-50"
-                  />
-                </div>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="sm:col-span-3 flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 text-sm hover:bg-red-500/10 w-fit"
+                  >
+                    <X size={14} /> مسح كل الفلاتر
+                  </button>
+                )}
               </div>
-            </>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </GlassCard>
+
+      {/* Error / loading */}
+      {error && (
+        <div className="p-4 bg-red-500/15 border border-red-400/40 rounded-xl text-red-300 text-sm">{error}</div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto pb-1 border-b border-white/10 scrollbar-none">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-sm font-semibold transition border-b-2 whitespace-nowrap ${
+              activeTab === tab.key
+                ? 'border-gold-400 text-gold-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <tab.icon size={16} className={activeTab === tab.key ? 'text-gold-400' : tab.accent} />
+            {tab.label}
+            <span className="text-xs bg-white/10 rounded-full px-2 py-0.5">
+              {countForTab(tab.key)}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-gray-400">جاري التحميل...</div>
+      ) : (
+        <div>
+          {activeTab === 'all' && (
+            <div className="space-y-3">
+              {allItems.length === 0 && <EmptyState text="لا توجد أي نشاطات في هذا التاريخ" />}
+              {allItems.map((item) => {
+                const [type, id] = item.key.split(':')
+                if (type === 'sale') {
+                  const tx = sales.find((s) => s.id === id)
+                  if (!tx) return null
+                  return (
+                    <ActivityRow
+                      key={item.key}
+                      icon={ShoppingCart}
+                      accent="text-emerald-400"
+                      badge="بيع"
+                      badgeClass="bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                      title={tx.client_name || 'عميل'}
+                      time={fmtTime(tx.time) || timeFromIso(tx.created_at)}
+                      subtitle={invoiceLineSummary(tx.lines || [])}
+                      trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
+                      onClick={() => setDetail({ type: 'sale', tx })}
+                    />
+                  )
+                }
+                if (type === 'visit') {
+                  const v = visits.find((vv) => vv.id === id)
+                  if (!v) return null
+                  const isConsumption = v.visit_type === 'consumption'
+                  return (
+                    <ActivityRow
+                      key={item.key}
+                      icon={isConsumption ? Droplets : CalendarCheck}
+                      accent={isConsumption ? 'text-sky-400' : 'text-cyan-400'}
+                      badge={isConsumption ? 'صرف رصيد' : 'زيارة'}
+                      badgeClass={
+                        isConsumption
+                          ? 'bg-sky-500/15 text-sky-300 border-sky-400/30'
+                          : 'bg-cyan-500/15 text-cyan-300 border-cyan-400/30'
+                      }
+                      title={clientName(v.client_id)}
+                      time={fmtTime(v.visitTime) || v.start_time || timeFromIso(v.created_at)}
+                      subtitle={`${v.service_name || 'خدمة'} · ${v.quantity ?? 1} ${unitLabel(v.unit_label)}`}
+                      trailing={
+                        v.visit_type === 'consumption' ? (
+                          <div className="text-left">
+                            <p className="text-sky-400 font-semibold text-sm">{v.quantity ?? 1} {unitLabel(v.unit_label)}</p>
+                            <p className="text-[11px] text-gray-500">
+                              رصيد: {v.balance_before ?? '—'} ← {v.balance_after ?? '—'}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-cyan-400 font-semibold text-sm">زيارة</p>
+                        )
+                      }
+                      onClick={() => setDetail({ type: isConsumption ? 'consumption' : 'visit', visit: v })}
+                    />
+                  )
+                }
+                const adj = adjustments.find((a) => a.id === id)
+                if (!adj) return null
+                return (
+                  <ActivityRow
+                    key={item.key}
+                    icon={Scale}
+                    accent="text-orange-400"
+                    badge="تعديل"
+                    badgeClass="bg-orange-500/15 text-orange-300 border-orange-400/30"
+                    title={clientName(adj.client_id)}
+                    time={fmtTime(adj.created_at ? adj.created_at.slice(11, 16) : '')}
+                    subtitle={`${adj.service_name || 'رصيد'} · ${adj.delta > 0 ? '+' : ''}${adj.delta}`}
+                    trailing={
+                      <p className={`font-bold ${adj.delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {adj.delta > 0 ? '+' : ''}{adj.delta}
+                      </p>
+                    }
+                    onClick={() => setDetail({ type: 'adjustment', adj })}
+                  />
+                )
+              })}
+            </div>
           )}
 
-          {editingItem?.type === 'visit' && editFormData && (
-            <>
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">اسم العميل</label>
-                <input
-                  type="text"
-                  value={editFormData.client_name || ''}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      client_name: e.target.value,
-                    })
-                  }
-                  className="w-full"
+          {activeTab === 'sales' && (
+            <div className="space-y-3">
+              {sales.length === 0 && <EmptyState text="لا توجد مبيعات في هذا التاريخ" />}
+              {sales.map((tx) => (
+                <ActivityRow
+                  key={tx.id}
+                  icon={ShoppingCart}
+                  accent="text-emerald-400"
+                  badge="بيع"
+                  badgeClass="bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                  title={tx.client_name || 'عميل'}
+                  time={fmtTime(tx.time) || timeFromIso(tx.created_at)}
+                  subtitle={invoiceLineSummary(tx.lines || [])}
+                  trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
+                  status={tx.is_completed === false ? 'غير مكتملة' : undefined}
+                  statusOk={tx.is_completed !== false}
+                  onClick={() => setDetail({ type: 'sale', tx })}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">عدد الخدمات</label>
-                  <input
-                    type="number"
-                    value={editFormData.servicesCount || 0}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        servicesCount: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-300 mb-2">المبلغ المنفق</label>
-                  <input
-                    type="number"
-                    value={editFormData.total_spent || 0}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        total_spent: parseFloat(e.target.value),
-                      })
-                    }
-                    className="w-full"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-2">الملاحظات</label>
-                <textarea
-                  value={editFormData.notes || ''}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      notes: e.target.value,
-                    })
-                  }
-                  className="w-full"
-                  rows={3}
-                />
-              </div>
-            </>
+              ))}
+            </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t border-white/10">
-            <button
-              onClick={() => setIsEditModalOpen(false)}
-              className="flex-1 px-4 py-2 border border-white/20 rounded-lg hover:bg-white/5 transition"
-            >
-              إلغاء
-            </button>
-            <button
-              onClick={handleSaveEdit}
-              className="flex-1 px-4 py-2 bg-gold-400/20 text-gold-400 border border-gold-400/20 rounded-lg font-bold hover:bg-gold-400/30 transition"
-            >
-              حفظ التعديلات
-            </button>
-          </div>
+          {activeTab === 'visits' && (
+            <div className="space-y-3">
+              {visits.length === 0 && <EmptyState text="لا توجد زيارات في هذا التاريخ" />}
+              {visits.map((v) => {
+                const isConsumption = v.visit_type === 'consumption'
+                return (
+                  <ActivityRow
+                    key={v.id}
+                    icon={isConsumption ? Droplets : CalendarCheck}
+                    accent={isConsumption ? 'text-sky-400' : 'text-cyan-400'}
+                    badge={isConsumption ? 'صرف رصيد' : 'زيارة'}
+                    badgeClass={
+                      isConsumption
+                        ? 'bg-sky-500/15 text-sky-300 border-sky-400/30'
+                        : 'bg-cyan-500/15 text-cyan-300 border-cyan-400/30'
+                    }
+                    title={clientName(v.client_id)}
+                    time={fmtTime(v.visitTime) || v.start_time || timeFromIso(v.created_at)}
+                    subtitle={`${v.service_name || 'خدمة'} · ${v.quantity ?? 1} ${unitLabel(v.unit_label)}`}
+                    trailing={
+                      isConsumption ? (
+                        <p className="text-sky-400 font-semibold text-sm">{v.quantity ?? 1} {unitLabel(v.unit_label)}</p>
+                      ) : (
+                        <p className="text-cyan-400 font-semibold text-sm">زيارة</p>
+                      )
+                    }
+                    doctor={v.doctor_name || undefined}
+                    onClick={() => setDetail({ type: isConsumption ? 'consumption' : 'visit', visit: v })}
+                  />
+                )
+              })}
+            </div>
+          )}
+
+          {activeTab === 'consumption' && (
+            <div className="space-y-3">
+              {consumptions.length === 0 && <EmptyState text="لا يوجد صرف أرصدة في هذا التاريخ" />}
+              {consumptions.map((v) => (
+                <ActivityRow
+                  key={v.id}
+                  icon={Droplets}
+                  accent="text-sky-400"
+                  badge="صرف رصيد"
+                  badgeClass="bg-sky-500/15 text-sky-300 border-sky-400/30"
+                  title={clientName(v.client_id)}
+                  time={fmtTime(v.visitTime) || v.start_time || timeFromIso(v.created_at)}
+                  subtitle={`${v.service_name || 'خدمة'} · ${v.quantity ?? 1} ${unitLabel(v.unit_label)}`}
+                  trailing={
+                    <div className="text-left">
+                      <p className="text-sky-400 font-semibold text-sm">{v.quantity ?? 1} {unitLabel(v.unit_label)}</p>
+                      <p className="text-[11px] text-gray-500">
+                        {v.balance_before ?? '—'} ← {v.balance_after ?? '—'}
+                      </p>
+                    </div>
+                  }
+                  doctor={v.doctor_name || undefined}
+                  onClick={() => setDetail({ type: 'consumption', visit: v })}
+                />
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+            <div className="space-y-3">
+              {(payments || []).length === 0 && <EmptyState text="لا توجد مدفوعات في هذا التاريخ" />}
+              {(payments || []).map((tx) => (
+                <ActivityRow
+                  key={tx.id}
+                  icon={CreditCard}
+                  accent="text-amber-400"
+                  badge={PAYMENT_LABELS[tx.payment_method || 'cash'] || tx.payment_method || 'الدفع'}
+                  badgeClass="bg-amber-500/15 text-amber-300 border-amber-400/30"
+                  title={tx.client_name || 'عميل'}
+                  time={fmtTime(tx.time) || timeFromIso(tx.created_at)}
+                  subtitle={invoiceLineSummary(tx.lines || [])}
+                  trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
+                  onClick={() => setDetail({ type: 'payment', tx })}
+                />
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'invoices' && renderInvoicesTab()}
+
+          {activeTab === 'adjustments' && (
+            <div className="space-y-3">
+              {adjustments.length === 0 && <EmptyState text="لا توجد تعديلات في هذا التاريخ" />}
+              {adjustments.map((adj) => (
+                <ActivityRow
+                  key={adj.id}
+                  icon={Scale}
+                  accent="text-orange-400"
+                  badge="تعديل"
+                  badgeClass="bg-orange-500/15 text-orange-300 border-orange-400/30"
+                  title={clientName(adj.client_id)}
+                  time={fmtTime(adj.created_at ? adj.created_at.slice(11, 16) : '')}
+                  subtitle={`${adj.service_name || 'رصيد'} · ${adj.delta > 0 ? 'إضافة' : 'خصم'}`}
+                  trailing={
+                    <p className={`font-bold ${adj.delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {adj.delta > 0 ? '+' : ''}{adj.delta}
+                    </p>
+                  }
+                  onClick={() => setDetail({ type: 'adjustment', adj })}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </Modal>
+      )}
 
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleConfirmDelete}
-        title={deleteTarget?.type === 'transaction' ? 'حذف المبيعة' : 'حذف السجل'}
-        description={
-          deleteTarget?.type === 'transaction'
-            ? 'هل تريد بالفعل حذف هذه المبيعة؟ سيتم حذف العملية نهائياً ولا يمكن التراجع عن هذا الإجراء.'
-            : 'هل تريد بالفعل حذف هذا السجل؟ سيتم حذف السجل نهائياً ولا يمكن التراجع عن هذا الإجراء.'
-        }
-        confirmText="حذف"
-        cancelText="إلغاء"
-        variant="danger"
-      />
+      {/* Detail Drawer / Bottom Sheet */}
+      <DetailPanel detail={detail} onClose={() => setDetail(null)} clientName={clientName} />
     </div>
   )
+
+  function countForTab(tab: TabKey): number {
+    switch (tab) {
+      case 'all': return allItems.length
+      case 'sales': return sales.length
+      case 'visits': return visits.length
+      case 'consumption': return consumptions.length
+      case 'payments': return payments.length
+      case 'invoices': return invoices.length
+      case 'adjustments': return adjustments.length
+      default: return 0
+    }
+  }
+
+  function clientName(id?: string | null): string {
+    if (!id) return 'عميل'
+    const fromTx = sales.find((x) => x.client_id === id)?.client_name
+    if (fromTx) return fromTx
+    return clientNames[id] || 'عميل'
+  }
+
+  function uniqueDoctors(): string[] {
+    const set = new Set<string>()
+    visits.forEach((v) => v.doctor_name && set.add(v.doctor_name))
+    sales.forEach((s) => s.barber_name && set.add(s.barber_name))
+    return Array.from(set)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function invoiceLineSummary(lines: DailyInvoiceLine[]): string {
+  if (!lines || lines.length === 0) return '—'
+  return lines
+    .map((l) => `${l.service_name} × ${l.quantity}${l.bonus_quantity ? ` (+${l.bonus_quantity})` : ''}`)
+    .join(' · ')
+}
+
+function timeFromIso(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <GlassCard animated={false} className="cursor-default">
+      <p className="text-center text-gray-400 py-10">{text}</p>
+    </GlassCard>
+  )
+}
+
+function KpiCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+}: {
+  label: string
+  value: string
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
+  accent: string
+}) {
+  return (
+    <GlassCard animated={false} className="cursor-default p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <Icon size={22} className={accent} />
+        <div className="min-w-0">
+          <p className="text-[11px] text-gray-400 truncate">{label}</p>
+          <p className="text-white font-bold text-lg truncate">{value}</p>
+        </div>
+      </div>
+    </GlassCard>
+  )
+}
+
+function ActivityRow({
+  icon: Icon,
+  accent,
+  badge,
+  badgeClass,
+  title,
+  time,
+  subtitle,
+  trailing,
+  status,
+  statusOk = true,
+  doctor,
+  onClick,
+}: {
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
+  accent: string
+  badge: string
+  badgeClass: string
+  title: string
+  time?: string
+  subtitle?: string
+  trailing?: React.ReactNode
+  status?: string
+  statusOk?: boolean
+  doctor?: string
+  onClick?: () => void
+}) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+      <GlassCard animated={false} onClick={onClick} className="cursor-pointer py-3.5 px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className={`w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center shrink-0`}>
+            <Icon size={22} className={accent} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${badgeClass}`}>{badge}</span>
+              <p className="text-white font-semibold truncate">{title}</p>
+              {doctor && (
+                <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                  <Stethoscope size={12} /> {doctor}
+                </span>
+              )}
+            </div>
+            {time && <p className="text-xs text-gray-500 mt-0.5">{time}</p>}
+            {subtitle && <p className="text-sm text-gray-300 mt-1 truncate">{subtitle}</p>}
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {status && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+                statusOk ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30' : 'bg-amber-500/15 text-amber-300 border-amber-400/30'
+              }`}>
+                {status}
+              </span>
+            )}
+            {trailing}
+          </div>
+        </div>
+      </GlassCard>
+    </motion.div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Detail Panel (side drawer on desktop, bottom sheet on mobile) + full content
+// ---------------------------------------------------------------------------
+
+function DetailPanel({
+  detail,
+  onClose,
+  clientName,
+}: {
+  detail: { type: ActivityType; tx?: DailyTransaction; visit?: DailyVisit; adj?: DailyAdjustment } | null
+  onClose: () => void
+  clientName: (id?: string | null) => string
+}) {
+  if (!detail) return null
+  const isDrawer = typeof window !== 'undefined' && window.innerWidth >= 1024
+
+  return (
+    <AnimatePresence>
+      {detail && (
+        <>
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          <motion.div
+            className={`fixed z-50 bg-slate-950 border-white/10 shadow-2xl ${
+              isDrawer
+                ? 'inset-y-0 right-0 w-full max-w-lg border-l'
+                : 'inset-x-0 bottom-0 max-h-[92vh] rounded-t-3xl border-t overflow-y-auto'
+            }`}
+            initial={isDrawer ? { x: '100%' } : { y: '100%' }}
+            animate={isDrawer ? { x: 0 } : { y: 0 }}
+            exit={isDrawer ? { x: '100%' } : { y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-white">{titleFor(detail.type)}</h2>
+                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition">
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-6 text-sm">
+                {detail.tx && <SaleDetail tx={detail.tx} clientName={clientName} />}
+                {detail.visit && <VisitDetail visit={detail.visit} clientName={clientName} />}
+                {detail.adj && <AdjustmentDetail adj={detail.adj} clientName={clientName} />}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
+
+function titleFor(type: ActivityType): string {
+  switch (type) {
+    case 'sale': return 'تفاصيل المبيعة'
+    case 'visit': return 'تفاصيل الزيارة'
+    case 'consumption': return 'تفاصيل صرف الرصيد'
+    case 'payment': return 'تفاصيل الدفعة'
+    case 'invoice': return 'تفاصيل الفاتورة'
+    case 'adjustment': return 'تفاصيل التعديل'
+  }
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[11px] text-gray-500 mb-0.5">{label}</p>
+      <p className="text-white font-medium">{children}</p>
+    </div>
+  )
+}
+
+function SaleDetail({ tx, clientName }: { tx: DailyTransaction; clientName: (id?: string | null) => string }) {
+  const lines = tx.lines || []
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="العميل"><span className="flex items-center gap-1"><User size={14} />{clientName(tx.client_id) || tx.client_name}</span></Field>
+        <Field label="الهاتف"><span className="flex items-center gap-1"><Phone size={14} />{tx.client_phone || '—'}</span></Field>
+        <Field label="التاريخ"><span className="flex items-center gap-1"><CalendarCheck size={14} />{tx.date}</span></Field>
+        <Field label="الوقت"><span className="flex items-center gap-1"><Clock size={14} />{tx.time || '—'}</span></Field>
+        <Field label="الكاشير / الموظف"><span className="flex items-center gap-1"><User size={14} />{tx.description || '—'}</span></Field>
+        <Field label="الطبيب">{tx.barber_name || '—'}</Field>
+        <Field label="رقم الفاتورة"><span className="flex items-center gap-1"><Hash size={14} />{tx.invoice_no || '—'}</span></Field>
+        <Field label="رقم العملية">{tx.visit_number || '—'}</Field>
+        <Field label="طريقة الدفع">{PAYMENT_LABELS[tx.payment_method || 'cash'] || tx.payment_method || '—'}</Field>
+        <Field label="الحالة">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border ${
+            tx.is_completed === false ? 'bg-amber-500/15 text-amber-300 border-amber-400/30' : 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
+          }`}>
+            {tx.is_completed === false ? <XCircle size={12} /> : <CheckCircle2 size={12} />}
+            {tx.is_completed === false ? 'غير مكتملة' : 'مكتملة'}
+          </span>
+        </Field>
+      </div>
+
+      <div className="pt-4 border-t border-white/10">
+        <p className="text-gray-300 font-semibold mb-3 flex items-center gap-2">
+          <Package size={16} className="text-gold-400" /> الخدمات ({lines.length})
+        </p>
+        {lines.length === 0 ? (
+          <p className="text-gray-500 text-sm">لا توجد عناصر مفصلة</p>
+        ) : (
+          <div className="space-y-2">
+            {lines.map((l, i) => (
+              <div key={i} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                <div>
+                  <p className="text-white font-medium">{l.service_name}</p>
+                  <p className="text-[11px] text-gray-400">سعر الوحدة: {money(l.unit_price)} · نوع: {l.service_type === 'package' ? 'باقة' : 'خدمة'}</p>
+                </div>
+                <div className="text-left">
+                  <p className="text-gold-400 font-semibold">{l.quantity} × {money(l.unit_price)}</p>
+                  <p className="text-xs text-gray-400">المجموع: {money(l.line_total)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="pt-4 border-t border-white/10 grid grid-cols-3 gap-4">
+        <Field label="Subtotal">{money(tx.subtotal)}</Field>
+        <Field label="الخصم"><span className="text-red-400">- {money(tx.discount)}</span></Field>
+        <Field label="الإجمالي"><span className="text-gold-400 font-bold">{money(tx.total)}</span></Field>
+      </div>
+    </>
+  )
+}
+
+function VisitDetail({ visit, clientName }: { visit: DailyVisit; clientName: (id?: string | null) => string }) {
+  const isConsumption = visit.visit_type === 'consumption'
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="العميل">{clientName(visit.client_id)}</Field>
+        <Field label="نوع النشاط">{isConsumption ? 'صرف رصيد / استخدام خدمة' : 'زيارة'}</Field>
+        <Field label="الخدمة">{visit.service_name || '—'}</Field>
+        <Field label="الوحدة">{unitLabel(visit.unit_label)}</Field>
+        <Field label="الكمية المستهلكة">{visit.quantity ?? 0}</Field>
+        <Field label="تاريخ الزيارة">{visit.visit_date || '—'}</Field>
+        <Field label="وقت البداية">{visit.start_time || visit.visitTime || '—'}</Field>
+        <Field label="وقت النهاية">{visit.end_time || '—'}</Field>
+        <Field label="الطبيب">{visit.doctor_name || '—'}</Field>
+        <Field label="الموظف">{visit.employee_name || '—'}</Field>
+        <Field label="رقم الزيارة">{visit.visit_number || '—'}</Field>
+        <Field label="رقم الحجز">{visit.booking_id || '—'}</Field>
+      </div>
+
+      {isConsumption && (
+        <div className="pt-4 border-t border-white/10">
+          <p className="text-gray-300 font-semibold mb-3 flex items-center gap-2">
+            <ArrowLeftRight size={16} className="text-sky-400" /> الرصيد قبل / بعد
+          </p>
+          <div className="flex items-center justify-around bg-white/5 rounded-xl px-4 py-3">
+            <div className="text-center">
+              <p className="text-[11px] text-gray-500">قبل</p>
+              <p className="text-white font-bold text-xl">{visit.balance_before ?? '—'}</p>
+            </div>
+            <ArrowLeftRight className="text-gold-400" />
+            <div className="text-center">
+              <p className="text-[11px] text-gray-500">بعد</p>
+              <p className="text-sky-400 font-bold text-xl">{visit.balance_after ?? '—'}</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-2">مرجع الشراء: {visit.purchase_id || '—'}</p>
+        </div>
+      )}
+
+      {visit.notes && (
+        <div className="pt-4 border-t border-white/10">
+          <Field label="ملاحظات">{visit.notes}</Field>
+        </div>
+      )}
+    </>
+  )
+}
+
+function AdjustmentDetail({ adj, clientName }: { adj: DailyAdjustment; clientName: (id?: string | null) => string }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="العميل">{clientName(adj.client_id)}</Field>
+        <Field label="الخدمة">{adj.service_name || '—'}</Field>
+        <Field label="الوحدة">{unitLabel(adj.unit_label)}</Field>
+        <Field label="القيمة">
+          <span className={`font-bold ${adj.delta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {adj.delta > 0 ? '+' : ''}{adj.delta} {unitLabel(adj.unit_label)}
+          </span>
+        </Field>
+        <Field label="الاتجاه">{adj.delta > 0 ? 'إضافة إلى الرصيد' : 'خصم من الرصيد'}</Field>
+        <Field label="التاريخ">{adj.created_at ? adj.created_at.slice(0, 16) : '—'}</Field>
+      </div>
+      {adj.reason && (
+        <div className="pt-4 border-t border-white/10">
+          <Field label="السبب">{adj.reason}</Field>
+        </div>
+      )}
+    </>
+  )
+}
+
+function money(n?: number | null): string {
+  if (n === null || n === undefined || isNaN(n)) return '0 ج.م'
+  const v = Math.round(n * 100) / 100
+  return `${v} ج.م`
 }
