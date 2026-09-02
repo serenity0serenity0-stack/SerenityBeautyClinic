@@ -102,8 +102,12 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
   }, [isDetailModalOpen, selectedClientForDetail?.id])
 
   const handleAddClient = async () => {
-    if (!formData.name || !formData.phone) {
-      toast.error(t('errors.required_field'))
+    if (!formData.name.trim()) {
+      toast.error('⚠️ حقل "الاسم" إلزامي')
+      return
+    }
+    if (!formData.phone.trim()) {
+      toast.error('⚠️ حقل "رقم الهاتف" إلزامي')
       return
     }
 
@@ -143,8 +147,12 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
   }
 
   const handleUpdateClient = async () => {
-    if (!editFormData.name || !editFormData.phone) {
-      toast.error(t('errors.required_field'))
+    if (!editFormData.name.trim()) {
+      toast.error('⚠️ حقل "الاسم" إلزامي')
+      return
+    }
+    if (!editFormData.phone.trim()) {
+      toast.error('⚠️ حقل "رقم الهاتف" إلزامي')
       return
     }
 

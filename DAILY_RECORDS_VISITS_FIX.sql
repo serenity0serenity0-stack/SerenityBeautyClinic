@@ -43,6 +43,26 @@ CREATE INDEX IF NOT EXISTS idx_balance_adjustments_variant_id ON balance_adjustm
 -- ----------------------------------------------------------------------------
 DO $$
 BEGIN
+  -- Baseline columns (safely added if the live schema drifted / is missing them)
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS clinic_id    UUID;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS client_id    UUID;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS client_name  VARCHAR(255);
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS booking_id   UUID;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS barber_id    UUID;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS service_type VARCHAR(100);
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS "visitDate"  DATE;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS visit_date   DATE;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS "visitTime"  VARCHAR(5);
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS servicesCount INTEGER DEFAULT 0;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS total_spent  NUMERIC(12,2) DEFAULT 0;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS notes        TEXT;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS duration     INT DEFAULT 0;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS amount       NUMERIC(12,2) DEFAULT 0;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS visit_number INT;
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS created_at   TIMESTAMPTZ DEFAULT NOW();
+  ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMPTZ DEFAULT NOW();
+
+  -- New detailed columns for the Daily Records UI
   ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS service_id  UUID;
   ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS variant_id  UUID;
   ALTER TABLE visit_logs ADD COLUMN IF NOT EXISTS service_name VARCHAR(255);
