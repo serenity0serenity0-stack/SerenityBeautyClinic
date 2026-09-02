@@ -101,6 +101,7 @@ export const POS: React.FC = () => {
   const [payment_method, setpayment_method] = useState('cash')
   const [showClientSearch, setShowClientSearch] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const checkoutLockRef = useRef(false)
   const [completedTransaction, setCompletedTransaction] = useState<CompletedTransaction | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [selectedBarber, setSelectedBarber] = useState<any>(null)
@@ -291,16 +292,20 @@ export const POS: React.FC = () => {
   const total = subtotal
 
   const handleCompleteSale = async () => {
-    if (!selectedClient) {
-      toast.error('اختر العميل أولاً')
-      return
-    }
-    if (cart.length === 0) {
-      toast.error('السلة فارغة')
-      return
-    }
+    if (checkoutLockRef.current) return
+    checkoutLockRef.current = true
+    setIsCheckingOut(true)
 
     try {
+      if (!selectedClient) {
+        toast.error('اختر العميل أولاً')
+        return
+      }
+      if (cart.length === 0) {
+        toast.error('السلة فارغة')
+        return
+      }
+
       const subStatus = await checkSubscriptionStatus(clinicId || '')
       if (!subStatus.isActive) {
         const messages: Record<string, string> = {
@@ -390,6 +395,7 @@ export const POS: React.FC = () => {
       toast.error(err.message || 'حدث خطأ')
     } finally {
       setIsCheckingOut(false)
+      checkoutLockRef.current = false
     }
   }
 
