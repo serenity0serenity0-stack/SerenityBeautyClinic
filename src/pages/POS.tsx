@@ -127,28 +127,51 @@ export const POS: React.FC = () => {
     el.textContent = `@media print { @page { size: ${paperWidth} auto; margin: 0; } }`
   }, [paperWidth])
 
-  // Server-side debounced client search with stale-request guard
+  // Server-side debounced client search with stale-request guard.
+  // Prefers the search_clients RPC; falls back to a plain PostgREST ILIKE
+  // query so search still works before/without the RPC migration.
   const runSearch = useCallback(
     async (query: string, requestId: number) => {
       if (!clinicId) return
+      const normalized = normalizeSearchInput(query)
       setIsSearching(true)
+
+      let rows: any[] | null = null
+
+      // Try the optimized RPC first (server-side, arabic-numeral aware).
       try {
-        const normalized = normalizeSearchInput(query)
         const { data, error } = await supabase.rpc('search_clients', {
           p_clinic_id: clinicId,
           p_query: normalized,
         })
         if (error) throw error
-        if (requestId !== searchRequestRef.current) return // stale result
-        const rows = (data || []) as any[]
-        rows.forEach((r: any) => clientsCache.current.set(r.id, r))
-        setSearchResults(rows)
+        rows = (data || []) as any[]
       } catch {
-        // swallow — RPC not yet deployed
-        if (requestId === searchRequestRef.current) setSearchResults([])
-      } finally {
-        if (requestId === searchRequestRef.current) setIsSearching(false)
+        rows = null // fall back below
       }
+
+      // Fallback: plain table query (name/phone ILIKE, clinic-isolated).
+      if (rows === null) {
+        try {
+          let qb = supabase
+            .from('clients')
+            .select('*')
+            .eq('clinic_id', clinicId)
+          if (normalized) {
+            qb = qb.or(`name.ilike.%${normalized}%,phone.ilike.%${normalized}%`)
+          }
+          const { data, error } = await qb.limit(20)
+          if (error) throw error
+          rows = (data || []) as any[]
+        } catch {
+          rows = []
+        }
+      }
+
+      if (requestId !== searchRequestRef.current) return // stale result ignored
+      rows.forEach((r: any) => clientsCache.current.set(r.id, r))
+      setSearchResults(rows)
+      setIsSearching(false)
     },
     [clinicId],
   )
