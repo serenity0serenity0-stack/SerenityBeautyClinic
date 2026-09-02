@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { GlassCard } from '../components/ui/GlassCard'
 import {
   useDailyRecords,
@@ -80,6 +81,8 @@ export const DailyLogs: React.FC = () => {
     visit?: DailyVisit
     adj?: DailyAdjustment
   } | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<{ type: 'transaction' | 'consumption'; id: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const { sales, visits, consumptions, adjustments, loading, error, fetchRecords, clientNames, deleteRecord } =
     useDailyRecords()
@@ -166,16 +169,20 @@ export const DailyLogs: React.FC = () => {
     setInvoiceFilter('')
   }
 
-  const handleDelete = async (type: 'transaction' | 'consumption', id: string) => {
-    const ok = window.confirm('هل أنت متأكد من الحذف؟ سيتم عكس الرصيد المرتبط بهذا السجل.')
-    if (!ok) return
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
     try {
-      await deleteRecord(type, id)
+      await deleteRecord(pendingDelete.type, pendingDelete.id)
       toast.success('✅ تم الحذف وعكس الرصيد')
       setDetail(null)
+      setPendingDelete(null)
       fetchRecords(selectedDate)
     } catch (err: any) {
       toast.error(err?.message || 'حدث خطأ أثناء الحذف')
+      setPendingDelete(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -203,7 +210,7 @@ export const DailyLogs: React.FC = () => {
           status={tx.is_completed === false ? 'غير مكتملة' : 'مكتملة'}
           statusOk={tx.is_completed !== false}
           onClick={() => setDetail({ type: 'invoice', tx })}
-          onDelete={() => handleDelete('transaction', tx.id)}
+          onDelete={() => setPendingDelete({ type: 'transaction', id: tx.id })}
         />
       ))}
     </div>
@@ -373,7 +380,7 @@ export const DailyLogs: React.FC = () => {
                       subtitle={invoiceLineSummary(tx.lines || [])}
                       trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
                       onClick={() => setDetail({ type: 'sale', tx })}
-                      onDelete={() => handleDelete('transaction', tx.id)}
+                      onDelete={() => setPendingDelete({ type: 'transaction', id: tx.id })}
                     />
                   )
                 }
@@ -408,7 +415,7 @@ export const DailyLogs: React.FC = () => {
                         )
                       }
                       onClick={() => setDetail({ type: isConsumption ? 'consumption' : 'visit', visit: v })}
-                      onDelete={isConsumption ? () => handleDelete('consumption', v.id) : undefined}
+                      onDelete={isConsumption ? () => setPendingDelete({ type: 'consumption', id: v.id }) : undefined}
                     />
                   )
                 }
@@ -453,7 +460,7 @@ export const DailyLogs: React.FC = () => {
                   status={tx.is_completed === false ? 'غير مكتملة' : undefined}
                   statusOk={tx.is_completed !== false}
                   onClick={() => setDetail({ type: 'sale', tx })}
-                  onDelete={() => handleDelete('transaction', tx.id)}
+                  onDelete={() => setPendingDelete({ type: 'transaction', id: tx.id })}
                 />
               ))}
             </div>
@@ -487,7 +494,7 @@ export const DailyLogs: React.FC = () => {
                     }
                     doctor={v.doctor_name || undefined}
                     onClick={() => setDetail({ type: isConsumption ? 'consumption' : 'visit', visit: v })}
-                    onDelete={isConsumption ? () => handleDelete('consumption', v.id) : undefined}
+                    onDelete={isConsumption ? () => setPendingDelete({ type: 'consumption', id: v.id }) : undefined}
                   />
                 )
               })}
@@ -517,7 +524,7 @@ export const DailyLogs: React.FC = () => {
                   }
                   doctor={v.doctor_name || undefined}
                   onClick={() => setDetail({ type: 'consumption', visit: v })}
-                  onDelete={() => handleDelete('consumption', v.id)}
+                  onDelete={() => setPendingDelete({ type: 'consumption', id: v.id })}
                 />
               ))}
             </div>
@@ -538,7 +545,7 @@ export const DailyLogs: React.FC = () => {
                   subtitle={invoiceLineSummary(tx.lines || [])}
                   trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
                   onClick={() => setDetail({ type: 'payment', tx })}
-                  onDelete={() => handleDelete('transaction', tx.id)}
+                  onDelete={() => setPendingDelete({ type: 'transaction', id: tx.id })}
                 />
               ))}
             </div>
@@ -574,6 +581,19 @@ export const DailyLogs: React.FC = () => {
 
       {/* Detail Drawer / Bottom Sheet */}
       <DetailPanel detail={detail} onClose={() => setDetail(null)} clientName={clientName} />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من الحذف؟ سيتم عكس الرصيد المرتبط بهذا السجل."
+        variant="danger"
+        confirmText="حذف"
+        cancelText="إلغاء"
+        loading={deleting}
+      />
     </div>
   )
 
