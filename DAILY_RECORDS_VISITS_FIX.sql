@@ -86,6 +86,25 @@ CREATE INDEX IF NOT EXISTS idx_visit_logs_service_id   ON visit_logs(service_id)
 CREATE INDEX IF NOT EXISTS idx_visit_logs_purchase_id  ON visit_logs(purchase_id);
 CREATE INDEX IF NOT EXISTS idx_visit_logs_visit_type   ON visit_logs(visit_type);
 
+-- Commit schema changes NOW so the visit_date column survives even if a
+-- function DDL below fails (otherwise the whole single transaction rolls back
+-- and the cashier keeps failing with "column visit_date does not exist").
+COMMIT;
+
+BEGIN;
+
+-- ----------------------------------------------------------------------------
+-- 3b) Drop all old function signatures before CREATE, because Postgres cannot
+--     CREATE OR REPLACE a function whose parameter list changed (old
+--     consume_service/_consume_from_balance had 5 args, new ones have 8).
+-- ----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public._consume_from_balance(UUID, UUID, UUID, INT, TEXT);
+DROP FUNCTION IF EXISTS public._consume_from_balance(UUID, UUID, UUID, INT, TEXT, UUID, UUID, UUID);
+DROP FUNCTION IF EXISTS public.consume_service(UUID, UUID, UUID, INT, TEXT);
+DROP FUNCTION IF EXISTS public.consume_service(UUID, UUID, UUID, INT, TEXT, UUID, UUID, UUID);
+DROP FUNCTION IF EXISTS public.complete_sale(UUID, UUID, JSONB, DECIMAL, VARCHAR, VARCHAR, UUID, TEXT);
+DROP FUNCTION IF EXISTS public.complete_sale(UUID, UUID, JSONB, DECIMAL, VARCHAR, VARCHAR, UUID, TEXT, BOOLEAN);
+
 -- ----------------------------------------------------------------------------
 -- 4) _consume_from_balance : write a REAL visit + variant-aware consumption
 -- ----------------------------------------------------------------------------
