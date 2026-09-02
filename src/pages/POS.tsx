@@ -35,7 +35,7 @@ const normalizeSearchInput = (value: string): string => {
   }
   normalized = normalized.replace(/[^\u0621-\u064Ea-zA-Z0-9\s\-+]/g, '')
 
-  return normalized.trim()
+  return normalized
 }
 
 interface CartItem {
