@@ -7,7 +7,7 @@ import { EgyptClock } from '../components/ui/EgyptClock'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
 import { appEmitter } from '../utils/eventEmitter'
-import { getEgyptDateString } from '../utils/egyptTime'
+import { getEgyptDateString, getEgyptFormattedDateTime } from '../utils/egyptTime'
 import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Users, DollarSign, RefreshCw } from 'lucide-react'
 
@@ -251,7 +251,7 @@ export const Dashboard: React.FC = () => {
                       {tx.client_name || t('dashboard.unknown_client')}
                     </p>
                     <p className="text-xs md:text-xs text-gray-400">
-                      {tx.date} {tx.time}
+                      {tx.created_at ? getEgyptFormattedDateTime(new Date(tx.created_at)) : ''}
                     </p>
                   </div>
                   <Badge label={`${(tx.total || 0).toFixed(2)} ج.م`} variant="gold" />

@@ -203,6 +203,7 @@ export const DailyLogs: React.FC = () => {
           status={tx.is_completed === false ? 'غير مكتملة' : 'مكتملة'}
           statusOk={tx.is_completed !== false}
           onClick={() => setDetail({ type: 'invoice', tx })}
+          onDelete={() => handleDelete('transaction', tx.id)}
         />
       ))}
     </div>
@@ -372,6 +373,7 @@ export const DailyLogs: React.FC = () => {
                       subtitle={invoiceLineSummary(tx.lines || [])}
                       trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
                       onClick={() => setDetail({ type: 'sale', tx })}
+                      onDelete={() => handleDelete('transaction', tx.id)}
                     />
                   )
                 }
@@ -406,6 +408,7 @@ export const DailyLogs: React.FC = () => {
                         )
                       }
                       onClick={() => setDetail({ type: isConsumption ? 'consumption' : 'visit', visit: v })}
+                      onDelete={isConsumption ? () => handleDelete('consumption', v.id) : undefined}
                     />
                   )
                 }
@@ -535,6 +538,7 @@ export const DailyLogs: React.FC = () => {
                   subtitle={invoiceLineSummary(tx.lines || [])}
                   trailing={<p className="text-gold-400 font-bold">{money(tx.total)}</p>}
                   onClick={() => setDetail({ type: 'payment', tx })}
+                  onDelete={() => handleDelete('transaction', tx.id)}
                 />
               ))}
             </div>
