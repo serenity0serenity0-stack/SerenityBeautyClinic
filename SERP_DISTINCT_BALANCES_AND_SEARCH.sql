@@ -322,8 +322,11 @@ GRANT EXECUTE ON FUNCTION public.complete_sale(UUID, UUID, JSONB, DECIMAL, VARCH
 --    distinct service identity is its own balance. Different identities never
 --    merge.  The service_name shown is the purchase's own stored name (the most
 --    precisely-labelled one), never MIN() which can hide variant names.
+--    NOTE: DROP + CREATE (adding a column means OR REPLACE fails on Postgres).
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE VIEW public.client_balance_summary AS
+DROP VIEW IF EXISTS public.client_balance_summary;
+
+CREATE VIEW public.client_balance_summary AS
 SELECT
   clinic_id,
   client_id,
@@ -339,6 +342,8 @@ SELECT
   COUNT(*) FILTER (WHERE status <> 'voided') AS total_purchases
 FROM service_purchases
 GROUP BY clinic_id, client_id, service_id, variant_id;
+
+GRANT SELECT ON public.client_balance_summary TO authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 4) NEW search_clients RPC : server-side search, clinic-isolated, capped.
