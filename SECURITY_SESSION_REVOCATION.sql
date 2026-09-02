@@ -82,8 +82,11 @@ GRANT EXECUTE ON FUNCTION public.check_session_valid() TO authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 4) Updated get_my_auth_info() — now returns security_version
+--    Return type changed (added security_version), so must DROP before recreate.
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.get_my_auth_info()
+DROP FUNCTION IF EXISTS public.get_my_auth_info();
+
+CREATE FUNCTION public.get_my_auth_info()
 RETURNS TABLE (
   role text,
   name text,
