@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useTransactions } from '../db/hooks/useTransactions'
+import { useAuth } from '../hooks/useAuth'
 import { motion } from 'framer-motion'
 import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp, UserX, Calendar, Clock, User } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -21,8 +23,10 @@ interface StaffStats {
 
 export const Staff: React.FC = () => {
   const { t } = useTranslation()
+  const { clinicId } = useAuth()
+  const queryClient = useQueryClient()
   const { barbers, addBarber, updateBarber, deleteBarber } = useBarbers()
-  const { transactions, fetchTransactions } = useTransactions()
+  const { transactions } = useTransactions()
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
@@ -54,11 +58,12 @@ export const Staff: React.FC = () => {
 
   // React Query auto-fetches on mount; no manual call needed.
 
-  // Listen for new transactions and refresh
+  // Listen for new transactions — invalidate so React Query refreshes when a
+  // mounted consumer needs the data, without forcing redundant refetches.
   useEffect(() => {
-    const handleNewTransaction = async () => {
-      console.log('New transaction detected, refreshing data...')
-      await fetchTransactions()
+    const handleNewTransaction = () => {
+      console.log('New transaction detected, invalidating queries...')
+      queryClient.invalidateQueries({ queryKey: ['transactions', clinicId] })
     }
 
     appEmitter.on('transaction:created', handleNewTransaction)
@@ -66,7 +71,7 @@ export const Staff: React.FC = () => {
     return () => {
       appEmitter.off('transaction:created', handleNewTransaction)
     }
-  }, [fetchTransactions])
+  }, [queryClient, clinicId])
 
   // Calculate staff statistics for the selected month.
   // Doctor totals are scoped to the selected month so the numbers reset

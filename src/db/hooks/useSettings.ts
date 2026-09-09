@@ -1,56 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, Settings } from '../supabase'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 
+// Explicit columns only — settings is a flat key/value map.
+const SETTINGS_COLUMNS = 'key, value, updated_at'
+
 export const useSettings = () => {
   const { clinicId } = useAuth()
-  const [settings, setSettings] = useState<Record<string, any>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchSettings = async () => {
-    try {
-      setLoading(true)
-      
-      // Only fetch if we have a shop ID
-      if (!clinicId) {
-        setSettings({})
-        setError(null)
-        return
-      }
+  const queryKey: ['settings', string | null | undefined] = ['settings', clinicId]
 
+  const listQuery = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!clinicId) return {}
       const { data, error } = await supabase
         .from('settings')
-        .select('*')
+        .select(SETTINGS_COLUMNS)
         .eq('clinic_id', clinicId)
-
       if (error) throw error
-      
+
       const settingsMap: Record<string, any> = {}
       data?.forEach((item: Settings) => {
         settingsMap[item.key] = item.value
       })
-      
-      setSettings(settingsMap)
-      setError(null)
-    } catch (err: any) {
-      setError(err.message)
-      console.error('Error fetching settings:', err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  useEffect(() => {
-    fetchSettings()
-  }, [clinicId])
+      return settingsMap
+    },
+    enabled: !!clinicId,
+  })
 
-  const updateSetting = async (key: string, value: any) => {
-    try {
-      if (!clinicId) {
-        throw new Error('No shop ID available')
-      }
+  const settings = (listQuery.data || {}) as Record<string, any>
+
+  const updateSettingMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: any }) => {
+      if (!clinicId) throw new Error('No shop ID available')
 
       // First, try to delete existing record with this key and clinic_id
       await supabase
@@ -70,40 +57,55 @@ export const useSettings = () => {
         })
 
       if (error) throw error
-      
-      setSettings((prev) => ({
-        ...prev,
+    },
+    onSuccess: (_data, { key, value }) => {
+      // Optimistically update the cache so saving a setting costs zero refetches.
+      queryClient.setQueryData(queryKey, (prev: Record<string, any> | undefined) => ({
+        ...(prev || {}),
         [key]: value,
       }))
-      
-      return true
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+    },
+  })
 
-  const getSetting = (key: string, defaultValue?: any) => {
-    return settings[key] ?? defaultValue
-  }
+  const fetchSettings = listQuery.refetch
 
-  const getClinicName = () => {
+  const updateSetting = useCallback(
+    async (key: string, value: any) => {
+      try {
+        await updateSettingMutation.mutateAsync({ key, value })
+        return true
+      } catch (err: any) {
+        toast.error(err.message)
+        throw err
+      }
+    },
+    [updateSettingMutation],
+  )
+
+  const getSetting = useCallback(
+    (key: string, defaultValue?: any) => {
+      return settings[key] ?? defaultValue
+    },
+    [settings],
+  )
+
+  const getClinicName = useCallback(() => {
     return getSetting('clinicName', 'Serenity Beauty Clinic')
-  }
+  }, [getSetting])
 
-  const getVIPThreshold = () => {
+  const getVIPThreshold = useCallback(() => {
     return getSetting('vipThreshold', { type: 'visits', value: 10 })
-  }
+  }, [getSetting])
 
-  const getTheme = () => {
+  const getTheme = useCallback(() => {
     return getSetting('theme', 'dark')
-  }
+  }, [getSetting])
 
-  const getLanguage = () => {
+  const getLanguage = useCallback(() => {
     return getSetting('language', 'ar')
-  }
+  }, [getSetting])
 
-  const initializeSettings = async () => {
+  const initializeSettings = useCallback(async () => {
     if (!clinicId) return
 
     const defaultSettings = {
@@ -132,12 +134,12 @@ export const useSettings = () => {
     } catch (err: any) {
       console.error('Error initializing settings:', err)
     }
-  }
+  }, [clinicId, updateSetting])
 
   return {
     settings,
-    loading,
-    error,
+    loading: listQuery.isLoading,
+    error: listQuery.error ? listQuery.error.message ?? 'An error occurred' : null,
     fetchSettings,
     updateSetting,
     getSetting,

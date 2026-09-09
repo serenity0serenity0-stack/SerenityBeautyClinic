@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
@@ -20,7 +20,7 @@ type SortBy = 'name' | 'visits' | 'spent' | 'recent'
 
 export const Clients: React.FC = () => {
   const { t } = useTranslation()
-  const { clients, addClient, updateClient, deleteClient } = useClients()
+  const { clients, addClient, updateClient, deleteClient, searchClients } = useClients()
   const { getTransactionsByclient_id } = useTransactions()
   const { barbers, fetchBarbers } = useBarbers()
   const { notes, loading: notesLoading, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
@@ -63,6 +63,32 @@ export const Clients: React.FC = () => {
   const [vipFilter, setVipFilter] = useState<'all' | 'vip' | 'regular'>('all')
   const [birthdayMonth, setBirthdayMonth] = useState<string>('')
   const [sortBy, setSortBy] = useState<SortBy>('recent')
+
+  // Server-side client search (debounced). null = no active search, show the
+  // bounded most-recent list; otherwise show the search results overlay.
+  const [searchResults, setSearchResults] = useState<Client[] | null>(null)
+  const searchRequestRef = useRef(0)
+
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q) {
+      setSearchResults(null)
+      return
+    }
+
+    const requestId = ++searchRequestRef.current
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchClients(q)
+        if (requestId !== searchRequestRef.current) return
+        setSearchResults(results || [])
+      } catch {
+        if (requestId === searchRequestRef.current) setSearchResults([])
+      }
+    }, 280)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery, searchClients])
 
   // Fetch the client's paid appointments (transactions carry the real
   // service names, doctor, price, payment and booking status).
@@ -348,10 +374,13 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     }
   }
 
-  const filteredClients = clients
+  const baseClients = searchResults !== null ? searchResults : clients
+
+  const filteredClients = baseClients
     .filter((c) => {
-      // Search filter
-      if (searchQuery) {
+      // In-memory search filter only applies to the unbounded list; server-side
+      // results already matched the (normalized) query.
+      if (searchQuery && searchResults === null) {
         const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery)
         if (!matchesSearch) return false
       }

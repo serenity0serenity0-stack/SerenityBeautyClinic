@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
@@ -43,7 +43,7 @@ const categorySuggestions = ['hair', 'skincare', 'body', 'nails', 'makeup', 'pac
 export const Services: React.FC = () => {
   const { t } = useTranslation()
   const { services, addService, updateService, deleteService } = useServices()
-  const { addVariant, deleteVariant, updateVariant, getVariantsByServiceId } = useServiceVariants()
+  const { addVariant, deleteVariant, updateVariant, variantsByServiceId } = useServiceVariants()
   const { clinicId } = useAuth()
 
   // Modals
@@ -59,7 +59,7 @@ export const Services: React.FC = () => {
 
   // States
   const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null)
-  const [serviceVariantsMap, setServiceVariantsMap] = useState<{ [key: string]: any[] }>({})
+  const serviceVariantsMap = variantsByServiceId as { [key: string]: any[] }
   const [serviceForm, setServiceForm] = useState<ServiceForm>(emptyForm)
   const [variantForm, setVariantForm] = useState({
     name: '',
@@ -83,30 +83,6 @@ export const Services: React.FC = () => {
     expiryValue: 6,
     expiryUnit: 'months' as 'days' | 'weeks' | 'months',
   })
-
-  // Load all service variants on mount and when services change
-  useEffect(() => {
-    const loadAllVariants = async () => {
-      const variantsMap: { [key: string]: any[] } = {}
-
-      for (const service of services) {
-        if (!service.id) continue
-        try {
-          const variants = await getVariantsByServiceId(service.id)
-          variantsMap[service.id] = variants || []
-        } catch (err) {
-          console.error(`Failed to load variants for service ${service.id}:`, err)
-          variantsMap[service.id] = []
-        }
-      }
-
-      setServiceVariantsMap(variantsMap)
-    }
-
-    if (services.length > 0) {
-      loadAllVariants()
-    }
-  }, [services, getVariantsByServiceId])
 
   const openAddService = () => {
     setEditingService(null)
@@ -223,14 +199,6 @@ export const Services: React.FC = () => {
       setVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
       toast.success('✨ تم إضافة التفاصيل بنجاح!', { duration: 2500, icon: '💚' })
 
-      try {
-        const freshVariants = await getVariantsByServiceId(selectedServiceForVariant.id)
-        setServiceVariantsMap((prev) => ({
-          ...prev,
-          [selectedServiceForVariant.id]: freshVariants || [],
-        }))
-      } catch { /* ignore reload error */ }
-
       setIsAddVariantOpen(false)
       setSelectedServiceForVariant(null)
     } catch (err) {
@@ -247,12 +215,6 @@ export const Services: React.FC = () => {
     try {
       await deleteVariant(variantToDeleteId)
       toast.success('✨ تم حذف التفصيل بنجاح', { duration: 2000, icon: '🗑️' })
-
-      const updated = { ...serviceVariantsMap }
-      Object.keys(updated).forEach((serviceId) => {
-        updated[serviceId] = updated[serviceId].filter((v) => v.id !== variantToDeleteId)
-      })
-      setServiceVariantsMap(updated)
     } catch (err) {
       toast.error(t('errors.database_error'))
     } finally {
@@ -294,14 +256,6 @@ export const Services: React.FC = () => {
       setIsEditVariantOpen(false)
       setEditingVariant(null)
       setEditVariantForm({ name: '', price: 0, duration: 30, serviceType: 'package', unitLabel: '', packageQuantity: 1, bonusQuantity: 0, expiryValue: 6, expiryUnit: 'months' })
-
-      if (selectedServiceForVariant?.id) {
-        const variants = await getVariantsByServiceId(selectedServiceForVariant.id)
-        setServiceVariantsMap((prev) => ({
-          ...prev,
-          [selectedServiceForVariant.id]: variants || [],
-        }))
-      }
     } catch (err) {
       toast.error(t('errors.database_error'))
       console.error('Error updating variant:', err)

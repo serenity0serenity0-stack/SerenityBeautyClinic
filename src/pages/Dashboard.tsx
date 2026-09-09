@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { GlassCard } from '../components/ui/GlassCard'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 import { Badge } from '../components/ui/Badge'
@@ -8,13 +9,18 @@ import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
 import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptDateString, getEgyptFormattedDateTime } from '../utils/egyptTime'
+import { useAuth } from '../hooks/useAuth'
 import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Users, DollarSign, RefreshCw } from 'lucide-react'
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation()
-  const { transactions, fetchTransactions, loading: transLoading } = useTransactions()
-  const { expenses, fetchExpenses } = useExpenses()
+  const { clinicId } = useAuth()
+  const queryClient = useQueryClient()
+  // Dashboard KPIs only need the current calendar month, not 90 days of data.
+  const monthStart = `${getEgyptDateString().slice(0, 7)}-01`
+  const { transactions, fetchTransactions, loading: transLoading } = useTransactions({ dateFrom: monthStart })
+  const { expenses, fetchExpenses } = useExpenses({ dateFrom: monthStart })
   const [todayRevenue, setTodayRevenue] = useState(0)
   const [todayExpenses, setTodayExpenses] = useState(0)
   const [todayClients, setTodayClients] = useState(0)
@@ -25,21 +31,17 @@ export const Dashboard: React.FC = () => {
 
   // React Query auto-fetches on mount; no manual call needed.
 
-  // Listen for new transactions
+  // Listen for new transactions — invalidate the query so React Query dedupes
+  // and only refetches when a mounted consumer actually needs the data.
   useEffect(() => {
-    const handleNewTransaction = async () => {
-      console.log('Dashboard: New transaction event received, refreshing...')
+    const handleNewTransaction = () => {
+      console.log('Dashboard: New transaction event received, invalidating queries...')
       setIsRefreshing(true)
-      try {
-        await fetchTransactions()
-        await fetchExpenses()
-        setLastUpdated(new Date().toLocaleTimeString('en-US', { hour12: true }))
-        console.log('Dashboard: Data refreshed successfully')
-      } catch (err: any) {
-        console.error('Dashboard: Error refreshing data:', err)
-      } finally {
-        setIsRefreshing(false)
-      }
+      queryClient.invalidateQueries({ queryKey: ['transactions', clinicId] })
+      queryClient.invalidateQueries({ queryKey: ['expenses', clinicId] })
+      setLastUpdated(new Date().toLocaleTimeString('en-US', { hour12: true }))
+      console.log('Dashboard: Queries invalidated')
+      setIsRefreshing(false)
     }
 
     appEmitter.on('transaction:created', handleNewTransaction)
@@ -48,7 +50,7 @@ export const Dashboard: React.FC = () => {
     return () => {
       appEmitter.off('transaction:created', handleNewTransaction)
     }
-  }, [fetchTransactions, fetchExpenses])
+  }, [queryClient, clinicId])
 
   // Calculate all statistics whenever data changes
   useEffect(() => {

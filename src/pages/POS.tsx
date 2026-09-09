@@ -12,6 +12,7 @@ import { useServiceVariants } from '../db/hooks/useServiceVariants'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useSales } from '../db/hooks/useSales'
 import { useBalanceData } from '../db/hooks/useBalanceData'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../db/supabase'
 import { checkSubscriptionStatus } from '../utils/subscriptionChecker'
 import { appEmitter } from '../utils/eventEmitter'
@@ -86,8 +87,9 @@ const categoryLabels: Record<string, string> = {
 
 export const POS: React.FC = () => {
   const { clinicId } = useAuth()
+  const queryClient = useQueryClient()
   const { services } = useServices()
-  const { getVariantsByServiceId } = useServiceVariants()
+  const { variantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
   const { completeSale } = useSales()
   const { getBalanceSummaryByClient } = useBalanceData()
@@ -97,7 +99,7 @@ export const POS: React.FC = () => {
   const [clientBalance, setClientBalance] = useState<ClientBalanceSummary[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [markDoneNow, setMarkDoneNow] = useState(true)
-  const [allVariants, setAllVariants] = useState<{ [key: string]: any[] }>({})
+  const allVariants = variantsByServiceId as { [key: string]: any[] }
   const [payment_method, setpayment_method] = useState('cash')
   const [showClientSearch, setShowClientSearch] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -191,27 +193,6 @@ export const POS: React.FC = () => {
     },
     [runSearch],
   )
-
-  // Load variants per service
-  useEffect(() => {
-    const loadAllVariants = async () => {
-      const variants: { [key: string]: any[] } = {}
-      for (const service of services) {
-        if (!service.id) continue
-        try {
-          const serviceVariants = await getVariantsByServiceId(service.id)
-          if (serviceVariants && serviceVariants.length > 0) {
-            variants[service.id] = serviceVariants
-          }
-        } catch { /* no variants */ }
-      }
-      setAllVariants(variants)
-    }
-
-    if (services.length > 0) {
-      loadAllVariants()
-    }
-  }, [services, getVariantsByServiceId])
 
   // Load the selected client's balance so the cashier can warn about existing balances
   useEffect(() => {
@@ -390,6 +371,8 @@ export const POS: React.FC = () => {
       setMarkDoneNow(true)
       setSelectedClient(null)
       setClientBalance([])
+      // Client totals changed — keep the useClients query cache fresh.
+      queryClient.invalidateQueries({ queryKey: ['clients', clinicId] })
       appEmitter.emit('transaction:created', { total, date: dateStr })
     } catch (err: any) {
       toast.error(err.message || 'حدث خطأ')

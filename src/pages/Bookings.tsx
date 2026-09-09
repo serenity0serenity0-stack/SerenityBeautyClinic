@@ -5,7 +5,7 @@ import { useClients } from '../db/hooks/useClients'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useSettings } from '../db/hooks/useSettings'
 import { useWaitingList } from '../db/hooks/useWaitingList'
-import { Booking } from '../db/supabase'
+import { Booking, Client } from '../db/supabase'
 import { getEgyptDateString } from '../utils/egyptTime'
 import {
   buildBookingTime,
@@ -66,7 +66,7 @@ export const Bookings: React.FC = () => {
   const { i18n } = useTranslation()
   const lang: 'ar' | 'en' = i18n.language === 'en' ? 'en' : 'ar'
   const { loading, bookings, getTodayBookings, getUpcomingBookings, addBooking, updateBooking, deleteBooking } = useBookings()
-  const { clients } = useClients()
+  const { searchClients } = useClients()
   const { barbers } = useBarbers()
   const { settings, updateSetting } = useSettings()
   const { waiting, fetchWaitingList, setWaitingStatus, removeFromWaitingList } = useWaitingList()
@@ -75,7 +75,7 @@ export const Bookings: React.FC = () => {
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [viewMode, setViewMode] = React.useState<'today' | 'upcoming'>('today')
   const [showWaitingList, setShowWaitingList] = React.useState(false)
-  const [searchResults, setSearchResults] = React.useState<typeof clients>([])
+  const [searchResults, setSearchResults] = React.useState<Client[]>([])
   const [showSearchResults, setShowSearchResults] = React.useState(false)
   const [workingHours, setWorkingHours] = React.useState({ start: 9, end: 20 }) // 9 AM to 8 PM
   const [showWorkingHoursModal, setShowWorkingHoursModal] = React.useState(false)
@@ -209,26 +209,37 @@ export const Bookings: React.FC = () => {
     return bestOption
   }
 
-  // Search for clients
+  // Search for clients (server-side, debounced, with stale-request guard)
+  const searchRequestRef = React.useRef(0)
+  const searchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const handleClientSearch = (query: string) => {
     setFormData({ ...formData, searchQuery: query })
 
     if (query.length < 2) {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
       setShowSearchResults(false)
       return
     }
 
-    const filtered = clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.phone.includes(query)
-    )
-
-    setSearchResults(filtered)
-    setShowSearchResults(true)
+    const requestId = ++searchRequestRef.current
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchClients(query)
+        if (requestId !== searchRequestRef.current) return
+        setSearchResults(results || [])
+        setShowSearchResults(true)
+      } catch {
+        if (requestId === searchRequestRef.current) {
+          setSearchResults([])
+          setShowSearchResults(true)
+        }
+      }
+    }, 250)
   }
 
-  const selectClient = (client: typeof clients[0]) => {
+  const selectClient = (client: Client) => {
     setFormData({
       ...formData,
       searchQuery: '',

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '../supabase'
 import toast from 'react-hot-toast'
@@ -21,42 +22,64 @@ export interface ServiceVariant {
   updated_at: string
 }
 
+// Explicit columns only.
+const VARIANT_COLUMNS =
+  'id, clinic_id, service_id, name, price, duration, isActive, service_type, unit_label, package_quantity, bonus_quantity, expiry_value, expiry_unit, created_at, updated_at'
+
 export const useServiceVariants = () => {
   const { clinicId } = useAuth()
-  const [variants, setVariants] = useState<ServiceVariant[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchVariants = useCallback(async () => {
-    try {
-      setLoading(true)
+  const queryKey: ['service-variants', string | null | undefined] = ['service-variants', clinicId]
+
+  const listQuery = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!clinicId) return []
       const q = supabase
         .from('service_variants')
-        .select('*')
+        .select(VARIANT_COLUMNS)
+        .eq('clinic_id', clinicId)
         .eq('isActive', true)
         .order('created_at', { ascending: true })
-
-      // BUG FIX: was missing clinic_id filter — fetched ALL clinics' variants
-      if (clinicId) q.eq('clinic_id', clinicId)
-
       const { data, error } = await q
       if (error) throw error
-      setVariants(data || [])
-      setError(null)
-    } catch (err: any) {
-      setError(err.message)
-      toast.error(err.message)
-    } finally {
-      setLoading(false)
+      return (data || []) as ServiceVariant[]
+    },
+    enabled: !!clinicId,
+  })
+
+  const variants = (listQuery.data || []) as ServiceVariant[]
+
+  // Derived lookup map (price ascending) so POS/Services never query per service.
+  const variantsByServiceId = useMemo(() => {
+    const map: Record<string, ServiceVariant[]> = {}
+    for (const v of variants) {
+      if (!v.service_id) continue
+      ;(map[v.service_id] ||= []).push(v)
     }
-  }, [clinicId])
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
+    }
+    return map
+  }, [variants])
 
-  useEffect(() => {
-    fetchVariants()
-  }, [fetchVariants])
+  const getVariantsByServiceId = useCallback(
+    async (serviceId: string): Promise<ServiceVariant[]> => variantsByServiceId[serviceId] || [],
+    [variantsByServiceId],
+  )
 
-  const addVariant = useCallback(async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
+  const getVariantsByServiceIds = useCallback(
+    async (serviceIds: string[]): Promise<Record<string, ServiceVariant[]>> => {
+      const out: Record<string, ServiceVariant[]> = {}
+      for (const id of serviceIds) out[id] = variantsByServiceId[id] || []
+      return out
+    },
+    [variantsByServiceId],
+  )
+
+  const addVariantMutation = useMutation({
+    mutationFn: async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('service_variants')
         .insert({
@@ -67,65 +90,82 @@ export const useServiceVariants = () => {
         })
         .select()
       if (error) throw error
-      await fetchVariants()
       return data?.[0]
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }, [fetchVariants])
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
 
-  const updateVariant = useCallback(async (id: string, updates: Partial<ServiceVariant>) => {
-    try {
+  const updateVariantMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<ServiceVariant> }) => {
       const { error } = await supabase
         .from('service_variants')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
       if (error) throw error
-      await fetchVariants()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-  }, [fetchVariants])
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
 
-  const deleteVariant = useCallback(async (id: string) => {
-    try {
+  const deleteVariantMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase.from('service_variants').delete().eq('id', id)
       if (error) throw error
-      await fetchVariants()
-    } catch (err: any) {
-      toast.error(err.message)
-    }
-  }, [fetchVariants])
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+    },
+  })
 
-  const getVariantsByServiceId = useCallback(async (serviceId: string) => {
-    try {
-      const q = supabase
-        .from('service_variants')
-        .select('*')
-        .eq('service_id', serviceId)
-        .eq('isActive', true)
-        .order('price', { ascending: true })
+  const fetchVariants = listQuery.refetch
 
-      if (clinicId) q.eq('clinic_id', clinicId)
+  const addVariant = useCallback(
+    async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
+      try {
+        return await addVariantMutation.mutateAsync(variant)
+      } catch (err: any) {
+        toast.error(err.message)
+        throw err
+      }
+    },
+    [addVariantMutation],
+  )
 
-      const { data, error } = await q
-      if (error) throw error
-      return data || []
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }, [clinicId])
+  const updateVariant = useCallback(
+    async (id: string, updates: Partial<ServiceVariant>) => {
+      try {
+        await updateVariantMutation.mutateAsync({ id, updates })
+      } catch (err: any) {
+        toast.error(err.message)
+      }
+    },
+    [updateVariantMutation],
+  )
+
+  const deleteVariant = useCallback(
+    async (id: string) => {
+      try {
+        await deleteVariantMutation.mutateAsync(id)
+      } catch (err: any) {
+        toast.error(err.message)
+      }
+    },
+    [deleteVariantMutation],
+  )
 
   return {
     variants,
-    loading,
-    error,
+    variantsByServiceId,
+    loading: listQuery.isLoading,
+    error: listQuery.error ? listQuery.error.message ?? 'An error occurred' : null,
     fetchVariants,
     addVariant,
     updateVariant,
     deleteVariant,
     getVariantsByServiceId,
+    getVariantsByServiceIds,
   }
 }

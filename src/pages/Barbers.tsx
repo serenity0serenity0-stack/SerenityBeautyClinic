@@ -5,6 +5,7 @@ import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useTransactions } from '../db/hooks/useTransactions'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase, Barber } from '../db/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { getEgyptDateString } from '../utils/egyptTime'
@@ -104,8 +105,9 @@ const workingDaysLabel = (daysOff?: number[] | null): string => {
 export const Barbers: React.FC = () => {
   const { t } = useTranslation()
   const { clinicId } = useAuth()
+  const queryClient = useQueryClient()
   const { barbers, addBarber, updateBarber, deleteBarber } = useBarbers()
-  const { transactions, fetchTransactions } = useTransactions()
+  const { transactions } = useTransactions()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
@@ -124,15 +126,11 @@ export const Barbers: React.FC = () => {
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all')
   const [historySearch, setHistorySearch] = useState('')
 
-  // Load transactions on mount
+  // Listen for new transactions — invalidate so React Query refreshes when a
+  // mounted consumer needs the data, without forcing redundant refetches.
   useEffect(() => {
-    fetchTransactions()
-  }, [fetchTransactions])
-
-  // Listen for new transactions and refresh
-  useEffect(() => {
-    const handleNewTransaction = async () => {
-      await fetchTransactions()
+    const handleNewTransaction = () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', clinicId] })
     }
 
     appEmitter.on('transaction:created', handleNewTransaction)
@@ -140,7 +138,7 @@ export const Barbers: React.FC = () => {
     return () => {
       appEmitter.off('transaction:created', handleNewTransaction)
     }
-  }, [fetchTransactions])
+  }, [queryClient, clinicId])
 
   // Lazy-load the doctor's bookings + waiting list only when the detail opens
   useEffect(() => {
