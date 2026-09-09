@@ -102,12 +102,18 @@ const workingDaysLabel = (daysOff?: number[] | null): string => {
   return days.length ? days.join('، ') : 'لا يوجد'
 }
 
+const daysAgo = (n: number): string => {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
+}
+
 export const Barbers: React.FC = () => {
   const { t } = useTranslation()
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
   const { barbers, addBarber, updateBarber, deleteBarber } = useBarbers()
-  const { transactions } = useTransactions()
+  const { transactions } = useTransactions({ dateFrom: daysAgo(90) })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)

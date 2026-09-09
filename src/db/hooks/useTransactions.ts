@@ -8,18 +8,13 @@ import toast from 'react-hot-toast'
 const TX_COLUMNS =
   'id, client_id, client_name, client_phone, barber_id, barber_name, amount, discount, discount_type, total, payment_method, status, description, is_completed, invoice_no, date, time, items, subtotal, visit_number, created_at, clinic_id'
 
-function daysAgo(n: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
-}
-
 export const useTransactions = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
 
-  const dateFrom = opts?.dateFrom ?? daysAgo(90)
-  const dateTo = opts?.dateTo ?? getEgyptDateString()
+  const today = getEgyptDateString()
+  const dateFrom = opts?.dateFrom ?? `${today.slice(0, 7)}-01`
+  const dateTo = opts?.dateTo ?? today
 
   // ── Main list query (React Query) ──
   const listQuery = useQuery<Transaction[]>({

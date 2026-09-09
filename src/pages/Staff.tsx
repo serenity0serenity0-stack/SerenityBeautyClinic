@@ -11,7 +11,7 @@ import { motion } from 'framer-motion'
 import { Trash2, Edit2, Plus, DollarSign, Users, TrendingUp, UserX, Calendar, Clock, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
-import { getEgyptYearMonth } from '../utils/egyptTime'
+import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 
 interface StaffStats {
@@ -21,13 +21,18 @@ interface StaffStats {
   lastVisit?: string
 }
 
+const lastDayOfMonth = (ym: string): string => {
+  const [year, month] = ym.split('-').map(Number)
+  const last = new Date(year, month, 0).getDate()
+  return `${ym}-${String(last).padStart(2, '0')}`
+}
+
 export const Staff: React.FC = () => {
   const { t } = useTranslation()
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
   const { barbers, addBarber, updateBarber, deleteBarber } = useBarbers()
-  const { transactions } = useTransactions()
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
   const [formData, setFormData] = useState<{
@@ -51,6 +56,10 @@ export const Staff: React.FC = () => {
     [barberId: string]: StaffStats
   }>({})
   const [selectedMonth, setSelectedMonth] = useState(getEgyptYearMonth())
+  const { transactions } = useTransactions({
+    dateFrom: `${selectedMonth}-01`,
+    dateTo: selectedMonth === getEgyptDateString().slice(0, 7) ? getEgyptDateString() : lastDayOfMonth(selectedMonth),
+  })
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedBarberForDetail, setSelectedBarberForDetail] = useState<any>(null)
   const [historyLimit, setHistoryLimit] = useState(20)
