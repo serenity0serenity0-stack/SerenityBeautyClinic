@@ -658,7 +658,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="مثال: 400"
                 value={serviceForm.price}
-                onChange={(e) => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value.replace(',', '.')) || 0 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
@@ -974,7 +974,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="مثال: 150"
                 value={variantForm.price}
-                onChange={(e) => setVariantForm({ ...variantForm, price: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setVariantForm({ ...variantForm, price: parseFloat(e.target.value.replace(',', '.')) || 0 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
@@ -1154,7 +1154,7 @@ export const Services: React.FC = () => {
                 type="number"
                 placeholder="مثال: 150"
                 value={editVariantForm.price}
-                onChange={(e) => setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value.replace(',', '.')) || 0 })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
               />
             </div>
