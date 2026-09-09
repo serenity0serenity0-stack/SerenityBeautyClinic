@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase, Client } from '../supabase'
 import toast from 'react-hot-toast'
@@ -9,14 +9,14 @@ export const useClients = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       setLoading(true)
       if (!clinicId) {
         setClients([])
         return
       }
-      
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -32,16 +32,16 @@ export const useClients = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [clinicId])
 
   useEffect(() => {
     fetchClients()
-  }, [clinicId])
+  }, [fetchClients])
 
-  const addClient = async (client: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
+  const addClient = useCallback(async (client: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (!clinicId) throw new Error('Clinic ID is required')
-      
+
       const { data, error } = await supabase
         .from('clients')
         .insert({
@@ -60,9 +60,9 @@ export const useClients = () => {
       toast.error(err.message)
       throw err
     }
-  }
+  }, [clinicId, fetchClients])
 
-  const updateClient = async (id: string, updates: Partial<Client>) => {
+  const updateClient = useCallback(async (id: string, updates: Partial<Client>) => {
     try {
       const { error } = await supabase
         .from('clients')
@@ -77,58 +77,56 @@ export const useClients = () => {
       await fetchClients()
     } catch (err: any) {
       toast.error(err.message)
-      throw err
     }
-  }
+  }, [fetchClients])
 
-  const deleteClient = async (id: string) => {
+  const deleteClient = useCallback(async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id)
-
+      const { error } = await supabase.from('clients').delete().eq('id', id)
       if (error) throw error
       await fetchClients()
     } catch (err: any) {
       toast.error(err.message)
-      throw err
     }
-  }
+  }, [fetchClients])
 
-  const searchClients = async (query: string) => {
+  const searchClients = useCallback(async (query: string) => {
     try {
       if (!query.trim()) {
         await fetchClients()
         return
       }
 
-      const { data, error } = await supabase
+      const q = supabase
         .from('clients')
         .select('*')
         .or(`name.ilike.%${query}%,phone.ilike.%${query}%`)
+        .limit(50)
 
+      // BUG FIX: search was missing clinic_id filter — exposed ALL clinics' data
+      if (clinicId) q.eq('clinic_id', clinicId)
+
+      const { data, error } = await q
       if (error) throw error
       setClients(data || [])
     } catch (err: any) {
       toast.error(err.message)
     }
-  }
+  }, [clinicId, fetchClients])
 
-  const getClientByPhone = async (phone: string) => {
+  const getClientByPhone = useCallback(async (phone: string) => {
     try {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('phone', phone)
         .single()
-
       if (error && error.code !== 'PGRST116') throw error
       return data
     } catch (err: any) {
       throw err
     }
-  }
+  }, [])
 
   return {
     clients,

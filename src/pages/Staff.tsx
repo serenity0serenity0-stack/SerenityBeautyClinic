@@ -52,10 +52,7 @@ export const Staff: React.FC = () => {
   const [historyLimit, setHistoryLimit] = useState(20)
   const [barberToDelete, setBarberToDelete] = useState<string | null>(null)
 
-  // Load transactions on mount
-  useEffect(() => {
-    fetchTransactions()
-  }, [fetchTransactions])
+  // React Query auto-fetches on mount; no manual call needed.
 
   // Listen for new transactions and refresh
   useEffect(() => {

@@ -1,51 +1,45 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase, Expense } from '../supabase'
 import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
-export const useExpenses = () => {
+const EXPENSE_COLUMNS = 'id, clinic_id, category, amount, date, note, created_at, updated_at'
+
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
+}
+
+export const useExpenses = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const { clinicId } = useAuth()
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchExpenses = useCallback(async () => {
-    try {
-      setLoading(true)
-      if (!clinicId) {
-        setExpenses([])
-        return
-      }
+  const dateFrom = opts?.dateFrom ?? daysAgo(90)
+  const dateTo = opts?.dateTo ?? getEgyptDateString()
 
-      console.log('Fetching expenses from database...')
+  const listQuery = useQuery<Expense[]>({
+    queryKey: ['expenses', clinicId, dateFrom, dateTo],
+    queryFn: async () => {
+      if (!clinicId) return []
       const { data, error } = await supabase
         .from('expenses')
-        .select('*')
+        .select(EXPENSE_COLUMNS)
         .eq('clinic_id', clinicId)
+        .gte('date', dateFrom)
+        .lte('date', dateTo)
         .order('date', { ascending: false })
-
       if (error) throw error
-      console.log('Expenses fetched:', data?.length || 0, 'records')
-      setExpenses(data || [])
-      setError(null)
-    } catch (err: any) {
-      console.error('Error fetching expenses:', err)
-      setError(err.message)
-      toast.error(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [clinicId])
+      return data ?? []
+    },
+    enabled: !!clinicId,
+  })
 
-  useEffect(() => {
-    fetchExpenses()
-  }, [fetchExpenses])
-
-  const addExpense = async (expense: Omit<Expense, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
+  const addMutation = useMutation({
+    mutationFn: async (expense: Omit<Expense, 'id' | 'created_at' | 'updated_at'>) => {
       if (!clinicId) throw new Error('Clinic ID is required')
-
       const { data, error } = await supabase
         .from('expenses')
         .insert({
@@ -55,88 +49,66 @@ export const useExpenses = () => {
           updated_at: new Date().toISOString(),
         })
         .select()
-
+        .single()
       if (error) throw error
-      await fetchExpenses()
-      return data?.[0]
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+      return data!
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses', clinicId] }),
+  })
 
-  const deleteExpense = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('id', id)
-
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('expenses').delete().eq('id', id)
       if (error) throw error
-      await fetchExpenses()
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses', clinicId] }),
+  })
 
-  const getExpensesByDateRange = async (startDate: string, endDate: string) => {
-    try {
+  const getExpensesByDateRange = useCallback(
+    async (startDate: string, endDate: string) => {
       const { data, error } = await supabase
         .from('expenses')
-        .select('*')
+        .select(EXPENSE_COLUMNS)
         .gte('date', startDate)
         .lte('date', endDate)
         .order('date', { ascending: false })
+      if (error) { toast.error(error.message); return [] }
+      return data ?? []
+    },
+    []
+  )
 
-      if (error) throw error
-      return data || []
-    } catch (err: any) {
-      toast.error(err.message)
-      return []
-    }
-  }
+  const getTodayExpenses = useCallback(async (): Promise<number> => {
+    const today = getEgyptDateString()
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('date', today)
+    if (error) { toast.error(error.message); return 0 }
+    return data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) ?? 0
+  }, [])
 
-  const getTodayExpenses = async () => {
-    try {
-      const today = getEgyptDateString()
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('date', today)
-
-      if (error) throw error
-      return data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
-    } catch (err: any) {
-      toast.error(err.message)
-      return 0
-    }
-  }
-
-  const getExpensesByCategory = async (category: string, startDate: string, endDate: string) => {
-    try {
+  const getExpensesByCategory = useCallback(
+    async (category: string, startDate: string, endDate: string) => {
       const { data, error } = await supabase
         .from('expenses')
         .select('amount')
         .eq('category', category)
         .gte('date', startDate)
         .lte('date', endDate)
-
-      if (error) throw error
-      return data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
-    } catch (err: any) {
-      toast.error(err.message)
-      return 0
-    }
-  }
+      if (error) { toast.error(error.message); return 0 }
+      return data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) ?? 0
+    },
+    []
+  )
 
   return {
-    expenses,
-    loading,
-    error,
-    fetchExpenses,
-    addExpense,
-    deleteExpense,
+    expenses: (listQuery.data ?? []) as Expense[],
+    loading: listQuery.isLoading,
+    error: listQuery.error?.message ?? null,
+    fetchExpenses: listQuery.refetch,
+    addExpense: async (e: Omit<Expense, 'id' | 'created_at' | 'updated_at'>) => addMutation.mutateAsync(e),
+    deleteExpense: async (id: string) => { await deleteMutation.mutateAsync(id) },
     getExpensesByDateRange,
     getTodayExpenses,
     getExpensesByCategory,

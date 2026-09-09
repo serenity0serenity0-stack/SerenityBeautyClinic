@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { useTransactions } from '../db/hooks/useTransactions'
@@ -9,13 +9,37 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export const Analytics: React.FC = () => {
   const { t } = useTranslation()
-  const { transactions } = useTransactions()
-  const { expenses } = useExpenses()
 
   const [dateRange, setDateRange] = useState('month')
   const [customFrom, setCustomFrom] = useState(`${getEgyptYearMonth()}-01`)
   const [customTo, setCustomTo] = useState(getEgyptDateString())
   const [selectedDay, setSelectedDay] = useState(getEgyptDateString())
+
+  // Compute date bounds for React Query — hooks fetch only this window
+  const { dateFrom, dateTo } = useMemo(() => {
+    const today = getEgyptDateString()
+    if (dateRange === 'custom') {
+      return {
+        dateFrom: customFrom || `${getEgyptYearMonth()}-01`,
+        dateTo: customTo || today,
+      }
+    }
+    if (dateRange === 'day') {
+      return { dateFrom: selectedDay, dateTo: selectedDay }
+    }
+    const start = new Date()
+    switch (dateRange) {
+      case 'week': start.setDate(start.getDate() - 7); break
+      case 'month': start.setMonth(start.getMonth() - 1); break
+      case 'quarter': start.setMonth(start.getMonth() - 3); break
+      case 'year': start.setFullYear(start.getFullYear() - 1); break
+    }
+    return { dateFrom: getEgyptDateString(start), dateTo: today }
+  }, [dateRange, customFrom, customTo, selectedDay])
+
+  const { transactions } = useTransactions({ dateFrom, dateTo })
+  const { expenses } = useExpenses({ dateFrom, dateTo })
+
   const [analyticsData, setAnalyticsData] = useState({
     totalRevenue: 0,
     totalExpenses: 0,
@@ -28,86 +52,41 @@ export const Analytics: React.FC = () => {
   })
 
   useEffect(() => {
-    const today = getEgyptDateString()
-    let startDateStr: string
-    let endDateStr: string
     let chartKey = 'date'
 
-    if (dateRange === 'custom') {
-      startDateStr = customFrom || `${getEgyptYearMonth()}-01`
-      endDateStr = customTo || today
-      if (startDateStr > endDateStr) {
-        const tmp = startDateStr
-        startDateStr = endDateStr
-        endDateStr = tmp
-      }
-    } else if (dateRange === 'day') {
-      startDateStr = selectedDay
-      endDateStr = selectedDay
-      chartKey = 'time'
-    } else {
-      const start = new Date()
-      switch (dateRange) {
-        case 'week':
-          start.setDate(start.getDate() - 7)
-          break
-        case 'month':
-          start.setMonth(start.getMonth() - 1)
-          break
-        case 'quarter':
-          start.setMonth(start.getMonth() - 3)
-          break
-        case 'year':
-          start.setFullYear(start.getFullYear() - 1)
-          break
-      }
-      startDateStr = getEgyptDateString(start)
-      endDateStr = today
-    }
-
-    const filteredTransactions = transactions.filter(
-      (t) => t.date >= startDateStr && t.date <= endDateStr
-    )
-    const filteredExpenses = expenses.filter(
-      (e) => e.date >= startDateStr && e.date <= endDateStr
-    )
-
-    const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0)
-    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
-    const netProfit = totalRevenue - totalExpenses
-    const uniqueClientsCount = new Set(filteredTransactions.map((t) => t.client_id)).size
+    const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0)
+    const totalExpensesAmount = expenses.reduce((sum, e) => sum + e.amount, 0)
+    const netProfit = totalRevenue - totalExpensesAmount
+    const uniqueClientsCount = new Set(transactions.map((t) => t.client_id)).size
 
     let chartData: any[] = []
 
     if (dateRange === 'day') {
+      chartKey = 'time'
       const hourly: Record<string, number> = {}
       for (let h = 0; h < 24; h++) {
-        const label = `${String(h).padStart(2, '0')}:00`
-        hourly[label] = 0
+        hourly[`${String(h).padStart(2, '0')}:00`] = 0
       }
-      filteredTransactions.forEach((t) => {
+      transactions.forEach((t) => {
         const hour = (t.time || '').slice(0, 2)
-        if (hour) {
-          const label = `${hour}:00`
-          hourly[label] = (hourly[label] || 0) + t.total
-        }
+        if (hour) hourly[`${hour}:00`] = (hourly[`${hour}:00`] || 0) + t.total
       })
       chartData = Object.entries(hourly).map(([time, income]) => ({ time, income }))
     } else {
-      chartData = filteredTransactions as any[]
+      chartData = transactions as any[]
     }
 
     setAnalyticsData({
       totalRevenue,
-      totalExpenses,
+      totalExpenses: totalExpensesAmount,
       netProfit,
-      totalTransactions: filteredTransactions.length,
+      totalTransactions: transactions.length,
       uniqueClients: uniqueClientsCount,
-      avgTicket: filteredTransactions.length > 0 ? totalRevenue / filteredTransactions.length : 0,
+      avgTicket: transactions.length > 0 ? totalRevenue / transactions.length : 0,
       chartData,
       chartKey,
     })
-  }, [dateRange, customFrom, customTo, selectedDay, transactions, expenses])
+  }, [dateRange, transactions, expenses])
 
   const KPICard = ({ label, value, color = 'gold' }: any) => (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -196,7 +175,7 @@ export const Analytics: React.FC = () => {
               />
             </div>
             <p className="text-xs text-gray-500">
-              {customFrom} → {customTo}
+              {dateFrom} → {dateTo}
             </p>
           </div>
         )}

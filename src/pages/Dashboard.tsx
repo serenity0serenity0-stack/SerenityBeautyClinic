@@ -23,21 +23,7 @@ export const Dashboard: React.FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [lastUpdated, setLastUpdated] = useState<string>('')
 
-  // Fetch data immediately on mount
-  useEffect(() => {
-    const loadInitialData = async () => {
-      console.log('Dashboard: Initial load started')
-      try {
-        await fetchTransactions()
-        await fetchExpenses()
-        console.log('Dashboard: Initial data loaded successfully')
-      } catch (err: any) {
-        console.error('Dashboard: Error loading initial data:', err)
-      }
-    }
-
-    loadInitialData()
-  }, [])
+  // React Query auto-fetches on mount; no manual call needed.
 
   // Listen for new transactions
   useEffect(() => {

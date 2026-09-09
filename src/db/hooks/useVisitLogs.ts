@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '../supabase'
+import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
 export interface VisitLog {
@@ -15,59 +17,50 @@ export interface VisitLog {
   updated_at: string
 }
 
-export const useVisitLogs = () => {
+const VL_COLUMNS =
+  'id, client_id, visitDate, visitTime, servicesCount, total_spent, notes, created_at, updated_at, clinic_id'
+
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
+}
+
+export const useVisitLogs = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const { clinicId } = useAuth()
-  const [visitLogs, setVisitLogs] = useState<VisitLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchVisitLogs = async () => {
-    try {
-      setLoading(true)
-      if (!clinicId) {
-        setVisitLogs([])
-        return
-      }
+  const dateFrom = opts?.dateFrom ?? daysAgo(90)
+  const dateTo = opts?.dateTo ?? getEgyptDateString()
 
+  const listQuery = useQuery<VisitLog[]>({
+    queryKey: ['visit_logs', clinicId, dateFrom, dateTo],
+    queryFn: async () => {
+      if (!clinicId) return []
       const { data, error } = await supabase
         .from('visit_logs')
-        .select('*')
+        .select(VL_COLUMNS)
         .eq('clinic_id', clinicId)
+        .gte('visitDate', dateFrom)
+        .lte('visitDate', dateTo)
         .order('created_at', { ascending: false })
-
       if (error) throw error
-      setVisitLogs(data || [])
-      setError(null)
-    } catch (err: any) {
-      setError(err.message)
-      toast.error(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
+      return data ?? []
+    },
+    enabled: !!clinicId,
+  })
 
-  useEffect(() => {
-    fetchVisitLogs()
-  }, [clinicId])
+  const addMutation = useMutation({
+    mutationFn: async (log: Omit<VisitLog, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!clinicId) throw new Error('Clinic ID is required')
+      if (!log.visitDate) throw new Error('Visit date is required')
 
-  const addVisitLog = async (log: Omit<VisitLog, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
-      if (!clinicId) {
-        throw new Error('Clinic ID is required')
-      }
-
-      // Ensure visitDate is provided - this is CRITICAL
-      if (!log.visitDate) {
-        throw new Error('Visit date is required')
-      }
-
-      // Map camelCase visitDate to snake_case visit_date for database
       const { data, error } = await supabase
         .from('visit_logs')
         .insert({
           client_id: log.client_id,
-          visit_date: log.visitDate,  // Map visitDate → visit_date
-          visitDate: log.visitDate,   // Keep both for compatibility
+          visit_date: log.visitDate,
+          visitDate: log.visitDate,
           visitTime: log.visitTime,
           servicesCount: log.servicesCount,
           total_spent: log.total_spent,
@@ -77,60 +70,43 @@ export const useVisitLogs = () => {
           updated_at: new Date().toISOString(),
         })
         .select()
-
+        .single()
       if (error) throw error
-      await fetchVisitLogs()
-      return data?.[0]
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+      return data!
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['visit_logs', clinicId] }),
+  })
 
-  const getClientVisitLogs = async (client_id: string) => {
-    try {
-      if (!clinicId) {
-        return []
-      }
-      
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('visit_logs').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['visit_logs', clinicId] }),
+  })
+
+  const getClientVisitLogs = useCallback(
+    async (client_id: string): Promise<VisitLog[]> => {
+      if (!clinicId) return []
       const { data, error } = await supabase
         .from('visit_logs')
-        .select('*')
+        .select(VL_COLUMNS)
         .eq('clinic_id', clinicId)
         .eq('client_id', client_id)
         .order('visitDate', { ascending: false })
-
-      if (error) throw error
-      return data || []
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
-
-  const deleteVisitLog = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('visit_logs')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-      toast.success('تم حذف السجل بنجاح')
-      await fetchVisitLogs()
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+      if (error) { toast.error(error.message); throw error }
+      return data ?? []
+    },
+    [clinicId]
+  )
 
   return {
-    visitLogs,
-    loading,
-    error,
-    fetchVisitLogs,
-    addVisitLog,
+    visitLogs: (listQuery.data ?? []) as VisitLog[],
+    loading: listQuery.isLoading,
+    error: listQuery.error?.message ?? null,
+    fetchVisitLogs: listQuery.refetch,
+    addVisitLog: async (log: Omit<VisitLog, 'id' | 'created_at' | 'updated_at'>) => addMutation.mutateAsync(log),
     getClientVisitLogs,
-    deleteVisitLog,
+    deleteVisitLog: async (id: string) => { await deleteMutation.mutateAsync(id) },
   }
 }

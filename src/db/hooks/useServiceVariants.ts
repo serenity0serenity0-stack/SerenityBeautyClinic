@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '../supabase'
 import toast from 'react-hot-toast'
 
@@ -21,19 +22,24 @@ export interface ServiceVariant {
 }
 
 export const useServiceVariants = () => {
+  const { clinicId } = useAuth()
   const [variants, setVariants] = useState<ServiceVariant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchVariants = async () => {
+  const fetchVariants = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const q = supabase
         .from('service_variants')
         .select('*')
         .eq('isActive', true)
         .order('created_at', { ascending: true })
 
+      // BUG FIX: was missing clinic_id filter — fetched ALL clinics' variants
+      if (clinicId) q.eq('clinic_id', clinicId)
+
+      const { data, error } = await q
       if (error) throw error
       setVariants(data || [])
       setError(null)
@@ -43,13 +49,13 @@ export const useServiceVariants = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [clinicId])
 
   useEffect(() => {
     fetchVariants()
-  }, [])
+  }, [fetchVariants])
 
-  const addVariant = async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
+  const addVariant = useCallback(async (variant: Omit<ServiceVariant, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('service_variants')
@@ -60,7 +66,6 @@ export const useServiceVariants = () => {
           updated_at: new Date().toISOString(),
         })
         .select()
-
       if (error) throw error
       await fetchVariants()
       return data?.[0]
@@ -68,57 +73,50 @@ export const useServiceVariants = () => {
       toast.error(err.message)
       throw err
     }
-  }
+  }, [fetchVariants])
 
-  const updateVariant = async (id: string, updates: Partial<ServiceVariant>) => {
+  const updateVariant = useCallback(async (id: string, updates: Partial<ServiceVariant>) => {
     try {
       const { error } = await supabase
         .from('service_variants')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-
       if (error) throw error
       await fetchVariants()
     } catch (err: any) {
       toast.error(err.message)
-      throw err
     }
-  }
+  }, [fetchVariants])
 
-  const deleteVariant = async (id: string) => {
+  const deleteVariant = useCallback(async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('service_variants')
-        .delete()
-        .eq('id', id)
-
+      const { error } = await supabase.from('service_variants').delete().eq('id', id)
       if (error) throw error
       await fetchVariants()
     } catch (err: any) {
       toast.error(err.message)
-      throw err
     }
-  }
+  }, [fetchVariants])
 
-  const getVariantsByServiceId = async (serviceId: string) => {
+  const getVariantsByServiceId = useCallback(async (serviceId: string) => {
     try {
-      const { data, error } = await supabase
+      const q = supabase
         .from('service_variants')
         .select('*')
         .eq('service_id', serviceId)
         .eq('isActive', true)
         .order('price', { ascending: true })
 
+      if (clinicId) q.eq('clinic_id', clinicId)
+
+      const { data, error } = await q
       if (error) throw error
       return data || []
     } catch (err: any) {
       toast.error(err.message)
       throw err
     }
-  }
+  }, [clinicId])
 
   return {
     variants,

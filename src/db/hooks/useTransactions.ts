@@ -1,49 +1,47 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase, Transaction } from '../supabase'
 import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
-export const useTransactions = () => {
+const TX_COLUMNS =
+  'id, client_id, client_name, client_phone, barber_id, barber_name, amount, discount, discount_type, total, payment_method, status, description, is_completed, invoice_no, date, time, items, subtotal, visit_number, created_at, clinic_id'
+
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
+}
+
+export const useTransactions = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const { clinicId } = useAuth()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchTransactions = useCallback(async () => {
-    try {
-      setLoading(true)
-      if (!clinicId) {
-        setTransactions([])
-        return
-      }
+  const dateFrom = opts?.dateFrom ?? daysAgo(90)
+  const dateTo = opts?.dateTo ?? getEgyptDateString()
 
-      console.log('Fetching transactions from database...')
+  // ── Main list query (React Query) ──
+  const listQuery = useQuery<Transaction[]>({
+    queryKey: ['transactions', clinicId, dateFrom, dateTo],
+    queryFn: async () => {
+      if (!clinicId) return []
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select(TX_COLUMNS)
         .eq('clinic_id', clinicId)
+        .gte('date', dateFrom)
+        .lte('date', dateTo)
         .order('created_at', { ascending: false })
-
       if (error) throw error
-      console.log('Transactions fetched:', data?.length || 0, 'records')
-      setTransactions(data || [])
-      setError(null)
-    } catch (err: any) {
-      console.error('Error fetching transactions:', err)
-      setError(err.message)
-      toast.error(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [clinicId])
+      return data ?? []
+    },
+    enabled: !!clinicId,
+  })
 
-  useEffect(() => {
-    fetchTransactions()
-  }, [fetchTransactions])
-
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
+  // ── Mutations (invalidate cache after mutations) ──
+  const addMutation = useMutation({
+    mutationFn: async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
       if (!clinicId) throw new Error('Clinic ID is required')
 
       const { data, error } = await supabase
@@ -55,23 +53,17 @@ export const useTransactions = () => {
           updated_at: new Date().toISOString(),
         })
         .select()
-
+        .single()
       if (error) throw error
 
-      // ✅ Database trigger (log_transaction_usage) automatically logs to usage_logs
-      // No need to insert here - trigger handles it automatically
-
-      // 🔄 Auto-complete the linked booking after payment.
-      // Flow: pending -> confirmed -> checked_in -> completed (cashier integration).
+      // Auto-complete linked booking after payment
       try {
         const today = getEgyptDateString()
-
-        // 1) Prefer the explicitly linked booking (booking_id on the transaction).
         let targetIds: string[] = []
+
         if (transaction.booking_id) {
           targetIds = [transaction.booking_id]
         } else {
-          // 2) Fallback: find the client's earliest active booking today.
           const client_id = transaction.client_id
           const client_phone = transaction.client_phone
 
@@ -98,122 +90,100 @@ export const useTransactions = () => {
         for (const bookingId of targetIds) {
           const { error: updateErr } = await supabase
             .from('bookings')
-            .update({
-              status: 'completed',
-              updated_at: new Date().toISOString(),
-            })
+            .update({ status: 'completed', updated_at: new Date().toISOString() })
             .eq('id', bookingId)
             .in('status', ['pending', 'confirmed', 'checked_in', 'ongoing'])
-
-          if (updateErr) {
-            console.warn('⚠️ Warning: Failed to complete booking:', bookingId, updateErr)
-          }
+          if (updateErr) console.warn('Warning: Failed to complete booking:', bookingId, updateErr)
         }
         if (targetIds.length > 0) {
-          console.log(`✅ Auto-completed ${targetIds.length} booking(s) after payment`)
+          console.log(`Auto-completed ${targetIds.length} booking(s) after payment`)
         }
       } catch (bookingErr) {
-        console.warn('⚠️ Warning: Error auto-completing bookings:', bookingErr)
-        // Don't throw - transaction should succeed even if booking completion fails
+        console.warn('Warning: Error auto-completing bookings:', bookingErr)
       }
 
-      await fetchTransactions()
-      return data?.[0]
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+      return data!
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', clinicId] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', clinicId] })
+    },
+  })
 
-  const deleteTransaction = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id)
-
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('transactions').delete().eq('id', id)
       if (error) throw error
-      await fetchTransactions()
-    } catch (err: any) {
-      toast.error(err.message)
-      throw err
-    }
-  }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', clinicId] })
+    },
+  })
 
-  const getTransactionsByDate = async (date: string) => {
-    try {
+  // ── Utility functions (use cached data or direct query) ──
+  const getTransactionsByDate = useCallback(
+    async (date: string): Promise<Transaction[]> => {
+      if (!clinicId) return []
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select(TX_COLUMNS)
         .eq('date', date)
         .order('time', { ascending: false })
+      if (error) { toast.error(error.message); return [] }
+      return data ?? []
+    },
+    [clinicId]
+  )
 
-      if (error) throw error
-      return data || []
-    } catch (err: any) {
-      toast.error(err.message)
-      return []
-    }
-  }
-
-  const getTransactionsByclient_id = async (client_id: string) => {
-    try {
-      const query = supabase
+  const getTransactionsByclient_id = useCallback(
+    async (client_id: string): Promise<Transaction[]> => {
+      const q = supabase
         .from('transactions')
-        .select('*')
+        .select(TX_COLUMNS)
         .eq('client_id', client_id)
         .order('created_at', { ascending: false })
-      if (clinicId) query.eq('clinic_id', clinicId)
+      if (clinicId) q.eq('clinic_id', clinicId)
+      const { data, error } = await q
+      if (error) { toast.error(error.message); return [] }
+      return data ?? []
+    },
+    [clinicId]
+  )
 
-      const { data, error } = await query
-      if (error) throw error
-      return data || []
-    } catch (err: any) {
-      toast.error(err.message)
-      return []
-    }
-  }
+  const getTodayRevenue = useCallback(async (): Promise<number> => {
+    const today = getEgyptDateString()
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('total')
+      .eq('date', today)
+    if (error) { toast.error(error.message); return 0 }
+    return data?.reduce((sum: number, t: any) => sum + (t.total || 0), 0) ?? 0
+  }, [])
 
-  const getTodayRevenue = async () => {
-    try {
-      const today = getEgyptDateString()
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('total')
-        .eq('date', today)
-
-      if (error) throw error
-      return data?.reduce((sum: number, t: any) => sum + (t.total || 0), 0) || 0
-    } catch (err: any) {
-      toast.error(err.message)
-      return 0
-    }
-  }
-
-  const getRevenueForDateRange = async (startDate: string, endDate: string) => {
-    try {
+  const getRevenueForDateRange = useCallback(
+    async (startDate: string, endDate: string) => {
       const { data, error } = await supabase
         .from('transactions')
         .select('total, date')
         .gte('date', startDate)
         .lte('date', endDate)
         .order('date', { ascending: true })
-
-      if (error) throw error
-      return data || []
-    } catch (err: any) {
-      toast.error(err.message)
-      return []
-    }
-  }
+      if (error) { toast.error(error.message); return [] }
+      return data ?? []
+    },
+    []
+  )
 
   return {
-    transactions,
-    loading,
-    error,
-    fetchTransactions,
-    addTransaction,
-    deleteTransaction,
+    transactions: (listQuery.data ?? []) as Transaction[],
+    loading: listQuery.isLoading,
+    error: listQuery.error?.message ?? null,
+    fetchTransactions: listQuery.refetch,
+    addTransaction: async (tx: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
+      const result = await addMutation.mutateAsync(tx)
+      return result
+    },
+    deleteTransaction: async (id: string) => { await deleteMutation.mutateAsync(id) },
     getTransactionsByDate,
     getTransactionsByclient_id,
     getTodayRevenue,
