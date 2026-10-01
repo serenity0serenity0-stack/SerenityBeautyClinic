@@ -85,6 +85,50 @@ const categoryLabels: Record<string, string> = {
   sessions: 'الجلسات',
 }
 
+const MAX_CART_QTY = 9999
+const clampQty = (n: number) => Math.min(MAX_CART_QTY, Math.max(1, Math.floor(n) || 1))
+
+// Typable quantity: keeps its own draft string so the field can be cleared and
+// edited freely, and only syncs back from props when it is not focused.
+const CartQtyInput: React.FC<{ value: number; onCommit: (n: number) => void }> = ({
+  value,
+  onCommit,
+}) => {
+  const [text, setText] = useState(String(value))
+  const focusedRef = useRef(false)
+
+  useEffect(() => {
+    if (!focusedRef.current) setText(String(value))
+  }, [value])
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={1}
+      max={MAX_CART_QTY}
+      step={1}
+      value={text}
+      onFocus={() => {
+        focusedRef.current = true
+      }}
+      onChange={(e) => {
+        const raw = e.target.value
+        setText(raw)
+        const n = Number(raw)
+        if (raw !== '' && Number.isFinite(n)) onCommit(n)
+      }}
+      onBlur={() => {
+        focusedRef.current = false
+        const committed = clampQty(Number(text))
+        setText(String(committed))
+        onCommit(committed)
+      }}
+      className="w-14 h-7 text-center bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+    />
+  )
+}
+
 export const POS: React.FC = () => {
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
@@ -258,10 +302,13 @@ export const POS: React.FC = () => {
     }
   }
 
+  const setQty = (key: string, value: number) => {
+    setCart((prev) => prev.map((i) => (i.key === key ? { ...i, quantity: clampQty(value) } : i)))
+  }
+
   const changeQty = (key: string, delta: number) => {
     setCart((prev) =>
-      prev
-        .map((i) => (i.key === key ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i))
+      prev.map((i) => (i.key === key ? { ...i, quantity: clampQty(i.quantity + delta) } : i))
     )
   }
 
@@ -729,7 +776,10 @@ export const POS: React.FC = () => {
                       >
                         <Plus size={14} />
                       </motion.button>
-                      <span className="w-8 text-center text-white font-bold text-sm">{item.quantity}</span>
+                      <CartQtyInput
+                        value={item.quantity}
+                        onCommit={(n) => setQty(item.key, n)}
+                      />
                       <motion.button
                         onClick={() => changeQty(item.key, -1)}
                         whileTap={{ scale: 0.9 }}
