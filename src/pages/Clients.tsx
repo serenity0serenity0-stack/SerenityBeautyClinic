@@ -4,7 +4,7 @@ import { GlassCard } from '../components/ui/GlassCard'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { PromptDialog } from '../components/ui/PromptDialog'
+import { ConsumeBalanceDialog } from '../components/ui/ConsumeBalanceDialog'
 import { useClients } from '../db/hooks/useClients'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useBarbers } from '../db/hooks/useBarbers'
@@ -327,16 +327,30 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     setConsumeTarget(b)
   }
 
-  const handleConfirmConsume = async (value: string) => {
+  const handleConfirmConsume = async (value: string, doctorId?: string | null, doctorName?: string | null) => {
     if (!selectedClientForDetail?.id || !consumeTarget) return
     const num = parseInt(value, 10)
     if (isNaN(num) || num <= 0) {
       toast.error('أدخل كمية صحيحة')
       return
     }
+    if (num > (consumeTarget.remaining || 0)) {
+      toast.error(`الكمية أكبر من الرصيد المتاح (${consumeTarget.remaining} ${consumeTarget.unit_label || ''})`)
+      return
+    }
+    const note = doctorName
+      ? `صرف يدوي من لوحة العميل — د. ${doctorName}`
+      : 'صرف يدوي من لوحة العميل'
     setIsConsuming(true)
     try {
-      await consumeService(selectedClientForDetail.id, consumeTarget.service_id, num, 'صرف يدوي من لوحة العميل', consumeTarget.variant_id)
+      await consumeService(
+        selectedClientForDetail.id,
+        consumeTarget.service_id,
+        num,
+        note,
+        consumeTarget.variant_id,
+        doctorId || null
+      )
       const [bal, cons] = await Promise.all([
         getBalanceSummaryByClient(selectedClientForDetail.id),
         getConsumptionsByClient(selectedClientForDetail.id),
@@ -1277,21 +1291,23 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
         isDangerous
       />
 
-      {/* Consume Balance Custom Quantity Dialog */}
-      <PromptDialog
-        isOpen={!!consumeTarget}
-        onClose={() => {
-          if (!isConsuming) setConsumeTarget(null)
-        }}
-        onConfirm={handleConfirmConsume}
-        title={`صرف من رصيد "${consumeTarget?.service_name || ''}"`}
-        description={`المتوفر: ${consumeTarget?.remaining ?? ''} ${consumeTarget?.unit_label || ''}`}
-        defaultValue="1"
-        placeholder="الكمية"
-        type="number"
-        confirmText="صرف"
-        loading={isConsuming}
-      />
+      {/* Consume Balance Dialog (quantity + optional doctor). Mounted only when a
+        target is set so the doctors query loads on demand, not on page load. */}
+      {consumeTarget && (
+        <ConsumeBalanceDialog
+          isOpen
+          onClose={() => {
+            if (!isConsuming) setConsumeTarget(null)
+          }}
+          onConfirm={handleConfirmConsume}
+          title={`صرف من رصيد "${consumeTarget.service_name || ''}"`}
+          description={`المتوفر: ${consumeTarget.remaining ?? ''} ${consumeTarget.unit_label || ''}`}
+          defaultQuantity="1"
+          placeholder="الكمية"
+          confirmText="صرف"
+          loading={isConsuming}
+        />
+      )}
     </div>
   )
 }

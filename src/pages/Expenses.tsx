@@ -153,6 +153,8 @@ export const Expenses: React.FC = () => {
           </select>
           <input
             type="number"
+            step="0.01"
+            min="0"
             placeholder={t('common.amount')}
             value={formData.amount}
             onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}

@@ -610,6 +610,8 @@ export const Services: React.FC = () => {
               </label>
               <input
                 type="number"
+                step="0.01"
+                min="0"
                 placeholder="مثال: 400"
                 value={serviceForm.price}
                 onChange={(e) => setServiceForm({ ...serviceForm, price: parseFloat(e.target.value.replace(',', '.')) || 0 })}
@@ -926,6 +928,8 @@ export const Services: React.FC = () => {
               <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
               <input
                 type="number"
+                step="0.01"
+                min="0"
                 placeholder="مثال: 150"
                 value={variantForm.price}
                 onChange={(e) => setVariantForm({ ...variantForm, price: parseFloat(e.target.value.replace(',', '.')) || 0 })}
@@ -1106,6 +1110,8 @@ export const Services: React.FC = () => {
               <label className="block text-sm text-gray-300 mb-2">السعر (ج.م) *</label>
               <input
                 type="number"
+                step="0.01"
+                min="0"
                 placeholder="مثال: 150"
                 value={editVariantForm.price}
                 onChange={(e) => setEditVariantForm({ ...editVariantForm, price: parseFloat(e.target.value.replace(',', '.')) || 0 })}

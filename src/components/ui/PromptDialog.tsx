@@ -16,6 +16,9 @@ export interface PromptDialogProps {
   placeholder?: string
   type?: 'number' | 'text'
   loading?: boolean
+  step?: number | string
+  min?: number | string
+  max?: number | string
 }
 
 export const PromptDialog: React.FC<PromptDialogProps> = ({
@@ -30,6 +33,9 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
   placeholder,
   type = 'text',
   loading = false,
+  step,
+  min,
+  max,
 }) => {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -79,7 +85,9 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
           <input
             ref={inputRef}
             type={type}
-            min={type === 'number' ? '1' : undefined}
+            min={min ?? (type === 'number' ? '1' : undefined)}
+            step={step ?? (type === 'number' ? '1' : undefined)}
+            max={max}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
