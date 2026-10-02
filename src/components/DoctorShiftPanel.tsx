@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import {
   Clock,
@@ -93,23 +94,12 @@ const hoursLabel = (hours: number): string => {
   return m ? `${h} س ${m} د` : `${h} س`
 }
 
-interface Props {
-  doctor: Barber
-}
-
-const HOURS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-const MINUTES_5 = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
-
 const parseTime = (value: string) => {
   const match = /^(\d{1,2}):(\d{2})/.exec(value || '')
   if (!match) return null
   const h24 = Number(match[1])
   if (Number.isNaN(h24)) return null
-  return {
-    hour: h24 % 12 === 0 ? 12 : h24 % 12,
-    minute: Number(match[2]),
-    isPm: h24 >= 12,
-  }
+  return { hour: h24 % 12 === 0 ? 12 : h24 % 12, minute: Number(match[2]), isPm: h24 >= 12 }
 }
 
 const buildTime = (hour: number, minute: number, isPm: boolean) => {
@@ -124,145 +114,335 @@ const timeLabel = (value: string) => {
   return `${String(parsed.hour).padStart(2, '0')}:${minutes} ${parsed.isPm ? 'م' : 'ص'}`
 }
 
-/** Clock-style time entry: 12-hour grid + minutes + ص/م + "الآن". */
-const ClockInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({
+interface Props {
+  doctor: Barber
+}
+
+const DIAL = 200
+const CX = DIAL / 2
+const CY = DIAL / 2
+const HOURS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+const NUMBERS_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const MINUTE_STEPS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+
+// 0° points to 12 o'clock, growing clockwise
+const polar = (angleDeg: number, radius: number) => {
+  const rad = ((angleDeg - 90) * Math.PI) / 180
+  return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) }
+}
+
+/** Material-style analog clock time picker: circular dial + number panel, Cancel/OK. */
+const ClockDialInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({
   value,
   onChange,
 }) => {
   const [open, setOpen] = useState(false)
-  const parsed = parseTime(value)
-  const [hour, setHour] = useState(parsed?.hour ?? 12)
-  const [minute, setMinute] = useState(parsed?.minute ?? 0)
-  const [isPm, setIsPm] = useState(parsed?.isPm ?? false)
-
-  // Keep the picker in sync when a saved shift is loaded into the form
-  useEffect(() => {
+  const [mode, setMode] = useState<'hour' | 'minute'>('hour')
+  const [dragging, setDragging] = useState(false)
+  const [draft, setDraft] = useState(() => {
     const p = parseTime(value)
-    if (!p) return
-    setHour(p.hour)
-    setMinute(p.minute)
-    setIsPm(p.isPm)
-  }, [value])
+    return { hour: p?.hour ?? 12, minute: p?.minute ?? 0, isPm: p?.isPm ?? false }
+  })
 
-  const currentMinute = parsed?.minute ?? null
-  const minuteOptions =
-    currentMinute !== null && !MINUTES_5.includes(currentMinute)
-      ? [...MINUTES_5, currentMinute].sort((a, b) => a - b)
-      : MINUTES_5
+  const draftLabel = timeLabel(buildTime(draft.hour, draft.minute, draft.isPm))
 
-  const pick = (h: number, m: number, pm: boolean) => {
-    setHour(h)
-    setMinute(m)
-    setIsPm(pm)
-    onChange(buildTime(h, m, pm))
+  // Opens with the saved value, falling back to the current Egypt time
+  const openDialog = () => {
+    const p = parseTime(value) ?? parseTime(getEgyptTimeString().slice(0, 5))
+    setDraft({ hour: p?.hour ?? 12, minute: p?.minute ?? 0, isPm: p?.isPm ?? false })
+    setMode('hour')
+    setOpen(true)
+  }
+
+  const commit = () => {
+    onChange(buildTime(draft.hour, draft.minute, draft.isPm))
+    setOpen(false)
+  }
+
+  // Enter confirms, Escape cancels (the draft is discarded)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Enter') {
+        onChange(buildTime(draft.hour, draft.minute, draft.isPm))
+        setOpen(false)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, draft, onChange])
+
+  const applyPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const x = ((e.clientX - rect.left) / rect.width) * DIAL
+    const y = ((e.clientY - rect.top) / rect.height) * DIAL
+    let deg = (Math.atan2(y - CY, x - CX) * 180) / Math.PI + 90
+    deg = (deg + 360) % 360
+    const index = Math.round(deg / 30) % 12
+    if (mode === 'hour') setDraft((d) => ({ ...d, hour: index === 0 ? 12 : index, isPm: deg < 180 }))
+    else setDraft((d) => ({ ...d, minute: index * 5 }))
   }
 
   const pickNow = () => {
-    const now = getEgyptTimeString().slice(0, 5)
-    const p = parseTime(now)
+    const p = parseTime(getEgyptTimeString().slice(0, 5))
     if (!p) return
-    pick(p.hour, p.minute, p.isPm)
+    setDraft({ hour: p.hour, minute: p.minute, isPm: p.isPm })
+    setMode('minute')
   }
 
-  const cell =
-    'py-1.5 rounded-lg text-sm font-bold text-white bg-white/5 hover:bg-white/15 transition'
-  const cellActive = 'py-1.5 rounded-lg text-sm font-bold bg-pink-500 text-white'
+  const activeIndex = mode === 'hour' ? draft.hour % 12 : Math.round(draft.minute / 5) % 12
+  const handEnd = polar(activeIndex * 30, mode === 'hour' ? 52 : 62)
+  const dialLabels =
+    mode === 'hour'
+      ? HOURS_12.map(String)
+      : MINUTE_STEPS.map((m) => String(m).padStart(2, '0'))
 
   return (
-    <div className="relative flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm flex items-center gap-2 hover:bg-white/15 focus:outline-none focus:border-pink-500"
-      >
-        <Clock size={15} className="text-pink-400 shrink-0" />
-        {value ? (
-          <span className="font-semibold">{timeLabel(value)}</span>
-        ) : (
-          <span className="text-gray-400">اختر الوقت</span>
-        )}
-      </button>
-      {value && (
+    <>
+      <div className="relative flex items-center gap-1">
         <button
           type="button"
-          onClick={() => onChange('')}
-          title="مسح الوقت"
-          className="shrink-0 px-2 py-2 bg-white/5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition"
+          onClick={openDialog}
+          className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm flex items-center gap-2 hover:bg-white/15 focus:outline-none focus:border-pink-500"
         >
-          <X size={14} />
+          <Clock size={15} className="text-pink-400 shrink-0" />
+          {value ? (
+            <span className="font-semibold">{timeLabel(value)}</span>
+          ) : (
+            <span className="text-gray-400">اختر الوقت</span>
+          )}
         </button>
-      )}
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            title="مسح الوقت"
+            className="shrink-0 px-2 py-2 bg-white/5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
 
-      {open && (
-        <div className="absolute z-30 mt-2 left-0 right-0 bg-[#1b1622] border border-white/15 rounded-xl p-3 shadow-2xl space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">الساعة</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => pick(hour, minute, true)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold ${isPm ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300'}`}
-              >
-                م
-              </button>
-              <button
-                type="button"
-                onClick={() => pick(hour, minute, false)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold ${!isPm ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300'}`}
-              >
-                ص
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto">
-            {HOURS_12.map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => pick(h, minute, isPm)}
-                className={h === hour ? cellActive : cell}
-              >
-                {String(h).padStart(2, '0')}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">الدقيقة</span>
-          </div>
-          <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto">
-            {minuteOptions.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => pick(hour, m, isPm)}
-                className={m === minute ? cellActive : cell}
-              >
-                {String(m).padStart(2, '0')}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-            <button
-              type="button"
-              onClick={pickNow}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-xs font-bold text-white transition"
+      {open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setOpen(false)
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.16 }}
+              dir="rtl"
+              className="w-full max-w-[540px] bg-[#1e1b24] border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
             >
-              الآن
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-xs font-bold text-white transition mr-auto"
-            >
-              تم
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+              {/* Header */}
+              <div className="px-6 pt-5 pb-2 flex items-end justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-white">اختر الوقت</h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {mode === 'hour' ? 'اسحب عقرب الساعة أو اختر رقماً' : 'اسحب عقرب الدقيقة أو اختر رقماً'}
+                  </p>
+                </div>
+                <span className="text-2xl font-semibold text-white tabular-nums leading-none">{draftLabel}</span>
+              </div>
+
+              {/* Landscape body: clock on one side, numbers + AM/PM on the other */}
+              <div className="px-6 pb-2 flex flex-col sm:flex-row items-center gap-5">
+                <svg
+                  viewBox={`0 0 ${DIAL} ${DIAL}`}
+                  width={192}
+                  height={192}
+                  className="shrink-0 touch-none select-none"
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId)
+                    setDragging(true)
+                    applyPointer(e)
+                  }}
+                  onPointerMove={(e) => {
+                    if (dragging) applyPointer(e)
+                  }}
+                  onPointerUp={(e) => {
+                    if (!dragging) return
+                    setDragging(false)
+                    try {
+                      e.currentTarget.releasePointerCapture(e.pointerId)
+                    } catch {
+                      /* pointer already released */
+                    }
+                    if (mode === 'hour') setMode('minute')
+                  }}
+                  onPointerCancel={() => setDragging(false)}
+                >
+                  <circle cx={CX} cy={CY} r={92} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" />
+
+                  {Array.from({ length: 60 }).map((_, i) => {
+                    const major = i % 5 === 0
+                    const a = polar(i * 6, 92)
+                    const b = polar(i * 6, major ? 80 : 86)
+                    return (
+                      <line
+                        key={i}
+                        x1={a.x}
+                        y1={a.y}
+                        x2={b.x}
+                        y2={b.y}
+                        stroke={major ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.15)'}
+                        strokeWidth={major ? 2 : 1}
+                      />
+                    )
+                  })}
+
+                  {dialLabels.map((label, i) => {
+                    const p = polar(i * 30, 66)
+                    const active = i === activeIndex
+                    return (
+                      <g key={i}>
+                        {active && <circle cx={p.x} cy={p.y} r={19} fill="rgba(236,72,153,0.28)" />}
+                        <text
+                          x={p.x}
+                          y={p.y + 5}
+                          textAnchor="middle"
+                          fontSize="15"
+                          fontWeight="bold"
+                          fill={active ? '#fbcfe8' : 'rgba(255,255,255,0.65)'}
+                        >
+                          {label}
+                        </text>
+                      </g>
+                    )
+                  })}
+
+                  <line
+                    x1={CX}
+                    y1={CY}
+                    x2={handEnd.x}
+                    y2={handEnd.y}
+                    stroke="#ec4899"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                  />
+                  <circle cx={CX} cy={CY} r={5} fill="#ec4899" />
+                </svg>
+
+                {/* Number panel */}
+                <div className="flex-1 w-full min-w-0 flex flex-col gap-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setMode('hour')}
+                      className={`flex-1 py-1.5 rounded-full text-xs font-bold transition ${
+                        mode === 'hour' ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/15'
+                      }`}
+                    >
+                      الساعة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode('minute')}
+                      className={`flex-1 py-1.5 rounded-full text-xs font-bold transition ${
+                        mode === 'minute' ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/15'
+                      }`}
+                    >
+                      الدقيقة
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1">
+                    {mode === 'hour'
+                      ? NUMBERS_12.map((h) => (
+                          <button
+                            key={h}
+                            type="button"
+                            onClick={() => {
+                              setDraft((d) => ({ ...d, hour: h }))
+                              setMode('minute')
+                            }}
+                            className={`h-9 rounded-full text-sm font-bold transition ${
+                              h === draft.hour
+                                ? 'bg-pink-500 text-white'
+                                : 'bg-white/5 text-gray-300 hover:bg-white/15'
+                            }`}
+                          >
+                            {h}
+                          </button>
+                        ))
+                      : MINUTE_STEPS.map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setDraft((d) => ({ ...d, minute: m }))}
+                            className={`h-9 rounded-full text-sm font-bold transition ${
+                              m === draft.minute
+                                ? 'bg-pink-500 text-white'
+                                : 'bg-white/5 text-gray-300 hover:bg-white/15'
+                            }`}
+                          >
+                            {String(m).padStart(2, '0')}
+                          </button>
+                        ))}
+                  </div>
+
+                  {/* AM / PM segmented control */}
+                  <div className="flex items-center gap-1 bg-white/5 rounded-full p-1">
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, isPm: false }))}
+                      className={`flex-1 py-1.5 rounded-full text-xs font-bold transition ${
+                        !draft.isPm ? 'bg-pink-500 text-white' : 'text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      ص
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, isPm: true }))}
+                      className={`flex-1 py-1.5 rounded-full text-xs font-bold transition ${
+                        draft.isPm ? 'bg-pink-500 text-white' : 'text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      م
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="px-4 py-3 mt-1 flex items-center gap-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={pickNow}
+                  className="px-4 py-2 rounded-full text-xs font-bold text-pink-300 hover:bg-pink-500/15 transition"
+                >
+                  الآن
+                </button>
+                <div className="flex items-center gap-1 mr-auto">
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="px-4 py-2 rounded-full text-xs font-bold text-gray-300 hover:bg-white/10 transition"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    onClick={commit}
+                    className="px-5 py-2 rounded-full text-xs font-bold text-white bg-pink-600 hover:bg-pink-500 transition"
+                  >
+                    تم
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }
 
@@ -277,7 +457,7 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
   const [startPulse, setStartPulse] = useState('')
   const [endPulse, setEndPulse] = useState('')
   const [notes, setNotes] = useState('')
-const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
 
   const { from, to } = useMemo(() => monthBounds(month), [month])
   const { shifts, loading, saveShift, deleteShift, saving } = useDoctorShifts(doctor.id, from, to)
@@ -334,15 +514,21 @@ const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
   const previewPulses =
     endPulse.trim() === '' ? null : Math.max(0, Number(endPulse || 0) - Number(startPulse || 0))
   const previewHours =
-    shiftStart && shiftEnd
-      ? hoursOf({ shift_start: shiftStart, shift_end: shiftEnd })
-      : null
+    shiftStart && shiftEnd ? hoursOf({ shift_start: shiftStart, shift_end: shiftEnd }) : null
 
   const lastKnownPulse = useMemo(() => {
     const withEnd = [...shifts].filter((s) => s.end_pulse !== null && s.end_pulse !== undefined)
     if (!withEnd.length) return null
     return withEnd[withEnd.length - 1].end_pulse as number
   }, [shifts])
+
+  const clearForm = () => {
+    setShiftStart('')
+    setShiftEnd('')
+    setStartPulse('')
+    setEndPulse('')
+    setNotes('')
+  }
 
   const handleSave = async () => {
     await saveShift({
@@ -376,14 +562,6 @@ const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
     setMonth(date.slice(0, 7))
     setUseCustomDate(date !== today)
     loadShiftIntoForm(shift)
-  }
-
-  const clearForm = () => {
-    setShiftStart('')
-    setShiftEnd('')
-    setStartPulse('')
-    setEndPulse('')
-    setNotes('')
   }
 
   // Browsing to another month clears the form if its day is out of view
@@ -483,18 +661,18 @@ const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
 
         {/* Shift form */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <label className="block">
+          <div>
             <span className="text-xs text-gray-400 flex items-center gap-1 mb-1">
               <Clock size={12} /> بداية الوردية
             </span>
-            <ClockInput value={shiftStart} onChange={setShiftStart} />
-          </label>
-          <label className="block">
+            <ClockDialInput value={shiftStart} onChange={setShiftStart} />
+          </div>
+          <div>
             <span className="text-xs text-gray-400 flex items-center gap-1 mb-1">
               <Clock size={12} /> نهاية الوردية
             </span>
-            <ClockInput value={shiftEnd} onChange={setShiftEnd} />
-          </label>
+            <ClockDialInput value={shiftEnd} onChange={setShiftEnd} />
+          </div>
           <label className="block">
             <span className="text-xs text-gray-400 flex items-center gap-1 mb-1">
               <Zap size={12} /> نبضة البداية
