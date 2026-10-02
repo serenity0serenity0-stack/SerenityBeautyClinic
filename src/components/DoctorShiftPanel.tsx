@@ -17,7 +17,7 @@ import {
 import { useDoctorShifts } from '../db/hooks/useDoctorShifts'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { Barber, DoctorShift } from '../db/supabase'
-import { getEgyptDateString } from '../utils/egyptTime'
+import { getEgyptDateString, getEgyptTimeString } from '../utils/egyptTime'
 
 const DAY_NAMES_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 const MONTH_NAMES_AR = [
@@ -97,6 +97,175 @@ interface Props {
   doctor: Barber
 }
 
+const HOURS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+const MINUTES_5 = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+
+const parseTime = (value: string) => {
+  const match = /^(\d{1,2}):(\d{2})/.exec(value || '')
+  if (!match) return null
+  const h24 = Number(match[1])
+  if (Number.isNaN(h24)) return null
+  return {
+    hour: h24 % 12 === 0 ? 12 : h24 % 12,
+    minute: Number(match[2]),
+    isPm: h24 >= 12,
+  }
+}
+
+const buildTime = (hour: number, minute: number, isPm: boolean) => {
+  const h24 = (hour % 12) + (isPm ? 12 : 0)
+  return `${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+const timeLabel = (value: string) => {
+  const parsed = parseTime(value)
+  if (!parsed) return ''
+  const minutes = String(parsed.minute).padStart(2, '0')
+  return `${String(parsed.hour).padStart(2, '0')}:${minutes} ${parsed.isPm ? 'م' : 'ص'}`
+}
+
+/** Clock-style time entry: 12-hour grid + minutes + ص/م + "الآن". */
+const ClockInput: React.FC<{ value: string; onChange: (v: string) => void }> = ({
+  value,
+  onChange,
+}) => {
+  const [open, setOpen] = useState(false)
+  const parsed = parseTime(value)
+  const [hour, setHour] = useState(parsed?.hour ?? 12)
+  const [minute, setMinute] = useState(parsed?.minute ?? 0)
+  const [isPm, setIsPm] = useState(parsed?.isPm ?? false)
+
+  // Keep the picker in sync when a saved shift is loaded into the form
+  useEffect(() => {
+    const p = parseTime(value)
+    if (!p) return
+    setHour(p.hour)
+    setMinute(p.minute)
+    setIsPm(p.isPm)
+  }, [value])
+
+  const currentMinute = parsed?.minute ?? null
+  const minuteOptions =
+    currentMinute !== null && !MINUTES_5.includes(currentMinute)
+      ? [...MINUTES_5, currentMinute].sort((a, b) => a - b)
+      : MINUTES_5
+
+  const pick = (h: number, m: number, pm: boolean) => {
+    setHour(h)
+    setMinute(m)
+    setIsPm(pm)
+    onChange(buildTime(h, m, pm))
+  }
+
+  const pickNow = () => {
+    const now = getEgyptTimeString().slice(0, 5)
+    const p = parseTime(now)
+    if (!p) return
+    pick(p.hour, p.minute, p.isPm)
+  }
+
+  const cell =
+    'py-1.5 rounded-lg text-sm font-bold text-white bg-white/5 hover:bg-white/15 transition'
+  const cellActive = 'py-1.5 rounded-lg text-sm font-bold bg-pink-500 text-white'
+
+  return (
+    <div className="relative flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm flex items-center gap-2 hover:bg-white/15 focus:outline-none focus:border-pink-500"
+      >
+        <Clock size={15} className="text-pink-400 shrink-0" />
+        {value ? (
+          <span className="font-semibold">{timeLabel(value)}</span>
+        ) : (
+          <span className="text-gray-400">اختر الوقت</span>
+        )}
+      </button>
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          title="مسح الوقت"
+          className="shrink-0 px-2 py-2 bg-white/5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition"
+        >
+          <X size={14} />
+        </button>
+      )}
+
+      {open && (
+        <div className="absolute z-30 mt-2 left-0 right-0 bg-[#1b1622] border border-white/15 rounded-xl p-3 shadow-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">الساعة</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => pick(hour, minute, true)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold ${isPm ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300'}`}
+              >
+                م
+              </button>
+              <button
+                type="button"
+                onClick={() => pick(hour, minute, false)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold ${!isPm ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-300'}`}
+              >
+                ص
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto">
+            {HOURS_12.map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => pick(h, minute, isPm)}
+                className={h === hour ? cellActive : cell}
+              >
+                {String(h).padStart(2, '0')}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">الدقيقة</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto">
+            {minuteOptions.map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => pick(hour, m, isPm)}
+                className={m === minute ? cellActive : cell}
+              >
+                {String(m).padStart(2, '0')}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+            <button
+              type="button"
+              onClick={pickNow}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-xs font-bold text-white transition"
+            >
+              الآن
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-xs font-bold text-white transition mr-auto"
+            >
+              تم
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
   const today = getEgyptDateString()
   const [selectedDate, setSelectedDate] = useState<string>(today)
@@ -108,32 +277,43 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
   const [startPulse, setStartPulse] = useState('')
   const [endPulse, setEndPulse] = useState('')
   const [notes, setNotes] = useState('')
-  const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
+const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
 
   const { from, to } = useMemo(() => monthBounds(month), [month])
   const { shifts, loading, saveShift, deleteShift, saving } = useDoctorShifts(doctor.id, from, to)
+
+  const loadShiftIntoForm = (shift: DoctorShift | null) => {
+    if (!shift) {
+      setShiftStart('')
+      setShiftEnd('')
+      setStartPulse('')
+      setEndPulse('')
+      setNotes('')
+      return
+    }
+    setShiftStart(shiftTime(shift.shift_start))
+    setShiftEnd(shiftTime(shift.shift_end))
+    setStartPulse(String(shift.start_pulse ?? 0))
+    setEndPulse(
+      shift.end_pulse === null || shift.end_pulse === undefined ? '' : String(shift.end_pulse),
+    )
+    setNotes(shift.notes || '')
+  }
 
   const dayShift = useMemo(
     () => shifts.find((s) => String(s.work_date).slice(0, 10) === selectedDate) || null,
     [shifts, selectedDate],
   )
 
-  // Load the selected day into the form (existing record wins over drafts)
+  // Moving to another day loads that day's record. Re-picking the SAME day is
+  // handled by handleEdit, which loads it directly.
   useEffect(() => {
-    if (dayShift) {
-      setShiftStart(shiftTime(dayShift.shift_start))
-      setShiftEnd(shiftTime(dayShift.shift_end))
-      setStartPulse(String(dayShift.start_pulse ?? 0))
-      setEndPulse(dayShift.end_pulse === null || dayShift.end_pulse === undefined ? '' : String(dayShift.end_pulse))
-      setNotes(dayShift.notes || '')
-    } else {
-      setShiftStart('')
-      setShiftEnd('')
-      setStartPulse('')
-      setEndPulse('')
-      setNotes('')
-    }
-  }, [dayShift])
+    if (loading) return
+    loadShiftIntoForm(
+      shifts.find((s) => String(s.work_date).slice(0, 10) === selectedDate) || null,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, loading])
 
   // Month totals reset every month: they only aggregate this month's rows
   const monthShifts = useMemo(
@@ -174,6 +354,8 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
       endPulse: endPulse.trim() === '' ? null : Number(endPulse),
       notes: notes || null,
     })
+    // Saved: empty the fields so the next day can be entered immediately.
+    clearForm()
   }
 
   const handleDelete = async () => {
@@ -193,6 +375,7 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
     setSelectedDate(date)
     setMonth(date.slice(0, 7))
     setUseCustomDate(date !== today)
+    loadShiftIntoForm(shift)
   }
 
   const clearForm = () => {
@@ -201,6 +384,12 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
     setStartPulse('')
     setEndPulse('')
     setNotes('')
+  }
+
+  // Browsing to another month clears the form if its day is out of view
+  const changeMonth = (next: string) => {
+    setMonth(next)
+    if (!selectedDate.startsWith(next)) clearForm()
   }
 
   const inputClass =
@@ -298,23 +487,13 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
             <span className="text-xs text-gray-400 flex items-center gap-1 mb-1">
               <Clock size={12} /> بداية الوردية
             </span>
-            <input
-              type="time"
-              value={shiftStart}
-              onChange={(e) => setShiftStart(e.target.value)}
-              className={inputClass}
-            />
+            <ClockInput value={shiftStart} onChange={setShiftStart} />
           </label>
           <label className="block">
             <span className="text-xs text-gray-400 flex items-center gap-1 mb-1">
               <Clock size={12} /> نهاية الوردية
             </span>
-            <input
-              type="time"
-              value={shiftEnd}
-              onChange={(e) => setShiftEnd(e.target.value)}
-              className={inputClass}
-            />
+            <ClockInput value={shiftEnd} onChange={setShiftEnd} />
           </label>
           <label className="block">
             <span className="text-xs text-gray-400 flex items-center gap-1 mb-1">
@@ -414,7 +593,7 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
       <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setMonth(addMonths(month, -1))}
+            onClick={() => changeMonth(addMonths(month, -1))}
             className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white transition"
           >
             <ChevronRight size={16} />
@@ -424,7 +603,7 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
             {monthLabel(month)}
           </span>
           <button
-            onClick={() => setMonth(addMonths(month, 1))}
+            onClick={() => changeMonth(addMonths(month, 1))}
             disabled={month >= today.slice(0, 7)}
             className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white transition disabled:opacity-30"
           >
