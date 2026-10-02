@@ -195,6 +195,20 @@ export interface Barber {
   clinic_id?: string
 }
 
+export interface DoctorShift {
+  id?: string
+  clinic_id?: string
+  barber_id: string
+  work_date: string
+  shift_start?: string | null
+  shift_end?: string | null
+  start_pulse: number
+  end_pulse?: number | null
+  notes?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Booking {
   id?: string
   client_id: string

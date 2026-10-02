@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { DoctorShiftPanel } from '../components/DoctorShiftPanel'
 
 interface StaffStats {
   clientCount: number
@@ -616,7 +617,7 @@ export const Staff: React.FC = () => {
           setSelectedBarberForDetail(null)
         }}
         title={`${selectedBarberForDetail?.name} - ${t('clients.visit_history')}`}
-        size="lg"
+        size="wide"
       >
         {selectedBarberForDetail && (
           <div className="space-y-6">
@@ -670,6 +671,9 @@ export const Staff: React.FC = () => {
                 <span className="text-white font-semibold">{selectedBarberForDetail.vacation_end || '—'}</span>
               </div>
             </div>
+
+            {/* Shifts & pulses */}
+            <DoctorShiftPanel doctor={selectedBarberForDetail} />
 
             {/* Appointment History */}
             <div>

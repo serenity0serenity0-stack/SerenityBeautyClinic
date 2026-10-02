@@ -32,6 +32,7 @@ import {
 import toast from 'react-hot-toast'
 import { appEmitter } from '../utils/eventEmitter'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { DoctorShiftPanel } from '../components/DoctorShiftPanel'
 
 interface BarberStats {
   clientCount: number
@@ -602,7 +603,7 @@ export const Barbers: React.FC = () => {
           setDoctorWaiting([])
         }}
         title={`${selectedBarber?.name || ''} — ملف الطبيب`}
-        size="xl"
+        size="wide"
       >
         {selectedBarber && (
           <div className="space-y-6">
@@ -671,6 +672,9 @@ export const Barbers: React.FC = () => {
               )}
               {onVacation && <Badge label="في إجازة" variant="danger" size="sm" />}
             </div>
+
+            {/* Shifts & pulses */}
+            <DoctorShiftPanel doctor={selectedBarber} />
 
             {/* Statistics */}
             <div>
