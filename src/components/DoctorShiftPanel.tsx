@@ -11,9 +11,12 @@ import {
   Timer,
   CalendarDays,
   TrendingUp,
+  Pencil,
+  X,
 } from 'lucide-react'
 import { useDoctorShifts } from '../db/hooks/useDoctorShifts'
-import { Barber } from '../db/supabase'
+import { ConfirmDialog } from './ui/ConfirmDialog'
+import { Barber, DoctorShift } from '../db/supabase'
 import { getEgyptDateString } from '../utils/egyptTime'
 
 const DAY_NAMES_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
@@ -105,6 +108,7 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
   const [startPulse, setStartPulse] = useState('')
   const [endPulse, setEndPulse] = useState('')
   const [notes, setNotes] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<DoctorShift | null>(null)
 
   const { from, to } = useMemo(() => monthBounds(month), [month])
   const { shifts, loading, saveShift, deleteShift, saving } = useDoctorShifts(doctor.id, from, to)
@@ -173,8 +177,30 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
   }
 
   const handleDelete = async () => {
-    if (!dayShift?.id) return
-    await deleteShift(dayShift.id)
+    if (pendingDelete?.id) {
+      await deleteShift(pendingDelete.id)
+      setPendingDelete(null)
+      return
+    }
+    if (dayShift?.id) {
+      await deleteShift(dayShift.id)
+    }
+  }
+
+  // Load a day for editing (used by the list rows and the pencil button)
+  const handleEdit = (shift: DoctorShift) => {
+    const date = String(shift.work_date).slice(0, 10)
+    setSelectedDate(date)
+    setMonth(date.slice(0, 7))
+    setUseCustomDate(date !== today)
+  }
+
+  const clearForm = () => {
+    setShiftStart('')
+    setShiftEnd('')
+    setStartPulse('')
+    setEndPulse('')
+    setNotes('')
   }
 
   const inputClass =
@@ -261,7 +287,7 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
           <span className="text-white">{formatArabicDate(selectedDate)}</span>
           {dayShift && (
             <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full">
-              مسجّل
+              مسجّل — يمكنك التعديل أو الحذف
             </span>
           )}
         </div>
@@ -352,25 +378,34 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
           </p>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <motion.button
             onClick={handleSave}
             whileTap={{ scale: 0.97 }}
             disabled={saving}
             className="px-4 py-2 rounded-lg bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600 text-white font-bold text-sm flex items-center gap-2 disabled:opacity-50"
           >
-            <Save size={16} />
-            {dayShift ? 'تحديث الوردية' : 'حفظ الوردية'}
+            {dayShift ? <Pencil size={16} /> : <Save size={16} />}
+            {dayShift ? 'تعديل الوردية' : 'حفظ الوردية'}
           </motion.button>
           {dayShift?.id && (
-            <motion.button
-              onClick={handleDelete}
-              whileTap={{ scale: 0.97 }}
-              className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-sm flex items-center gap-2"
-            >
-              <Trash2 size={16} />
-              حذف
-            </motion.button>
+            <>
+              <motion.button
+                onClick={handleDelete}
+                whileTap={{ scale: 0.97 }}
+                className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-sm flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                حذف الوردية
+              </motion.button>
+              <button
+                onClick={clearForm}
+                className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 font-semibold text-sm flex items-center gap-1.5"
+              >
+                <X size={14} />
+                تفريغ الحقول
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -434,47 +469,77 @@ export const DoctorShiftPanel: React.FC<Props> = ({ doctor }) => {
                 const hours = hoursOf(s)
                 const active = date === selectedDate
                 return (
-                  <button
+                  <div
                     key={s.id || date}
-                    onClick={() => {
-                      setSelectedDate(date)
-                      setMonth(date.slice(0, 7))
-                      setUseCustomDate(date !== today)
-                    }}
-                    className={`w-full text-right p-3 rounded-lg border transition ${
+                    className={`flex items-stretch gap-1 rounded-lg border transition ${
                       active
                         ? 'bg-pink-500/15 border-pink-500/40'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Calendar size={14} className="text-pink-400 shrink-0" />
-                        <span className="text-white font-semibold text-sm truncate">
-                          {dayOfWeek(date)} — {formatArabicDate(date)}
-                        </span>
+                    <button
+                      onClick={() => handleEdit(s)}
+                      className="flex-1 text-right p-3 min-w-0"
+                      title="اضغط للتعديل"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Calendar size={14} className="text-pink-400 shrink-0" />
+                          <span className="text-white font-semibold text-sm truncate">
+                            {dayOfWeek(date)} — {formatArabicDate(date)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-300">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} className="text-gray-400" />
+                            {shiftTime(s.shift_start) || '—'} → {shiftTime(s.shift_end) || '—'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Zap size={12} className="text-pink-400" />
+                            {s.start_pulse ?? 0} → {s.end_pulse ?? '—'}
+                          </span>
+                          <span className="font-bold text-pink-300">
+                            {pulses === null ? '—' : `${pulses} نبضة`}
+                          </span>
+                          <span className="text-amber-300">{hoursLabel(hours)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-300">
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} className="text-gray-400" />
-                          {shiftTime(s.shift_start) || '—'} → {shiftTime(s.shift_end) || '—'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Zap size={12} className="text-pink-400" />
-                          {s.start_pulse ?? 0} → {s.end_pulse ?? '—'}
-                        </span>
-                        <span className="font-bold text-pink-300">
-                          {pulses === null ? '—' : `${pulses} نبضة`}
-                        </span>
-                        <span className="text-amber-300">{hoursLabel(hours)}</span>
-                      </div>
-                    </div>
-                  </button>
+                    </button>
+                    <button
+                      onClick={() => handleEdit(s)}
+                      title="تعديل الوردية"
+                      className="px-2 text-gray-400 hover:text-pink-300 transition shrink-0"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => setPendingDelete(s)}
+                      title="حذف الوردية"
+                      className="px-2 text-gray-400 hover:text-red-400 transition shrink-0"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 )
               })}
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={handleDelete}
+        title="حذف الوردية"
+        description={
+          pendingDelete
+            ? `سيتم حذف وردية ${dayOfWeek(String(pendingDelete.work_date).slice(0, 10))} — ${formatArabicDate(String(pendingDelete.work_date).slice(0, 10))} نهائياً.`
+            : ''
+        }
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="danger"
+      />
     </div>
   )
 }
