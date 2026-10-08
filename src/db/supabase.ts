@@ -123,6 +123,8 @@ export interface ClientBalanceSummary {
   remaining: number
   active_purchases: number
   earliest_expiry?: string | null
+  /** Remaining quantity whose expiry_date has passed — not consumable. */
+  expired_quantity?: number
   total_purchases?: number
 }
 

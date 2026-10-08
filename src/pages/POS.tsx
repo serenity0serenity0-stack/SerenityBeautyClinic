@@ -499,17 +499,22 @@ export const POS: React.FC = () => {
                 </div>
 
                 {/* Existing balance warning strip */}
-                {clientBalance.filter((b) => b.remaining > 0).length > 0 && (
+                {clientBalance.filter((b) => b.remaining > 0 || (b.expired_quantity || 0) > 0).length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {clientBalance
-                      .filter((b) => b.remaining > 0)
+                      .filter((b) => b.remaining > 0 || (b.expired_quantity || 0) > 0)
                       .map((b) => (
                         <span
-                          key={b.service_id}
-                          className="text-[11px] font-semibold bg-blue-500/10 border border-blue-500/40 text-blue-300 rounded-full px-3 py-1"
+                          key={`${b.service_id}-${b.variant_id || 'x'}`}
+                          className={`text-[11px] font-semibold rounded-full px-3 py-1 border ${
+                            b.remaining > 0
+                              ? 'bg-blue-500/10 border-blue-500/40 text-blue-300'
+                              : 'bg-red-500/10 border-red-500/40 text-red-300'
+                          }`}
                         >
                           {b.service_name}: {b.remaining} {b.unit_label || ''}
                           {b.earliest_expiry ? ` ⏰ ${b.earliest_expiry}` : ''}
+                          {(b.expired_quantity || 0) > 0 && ` · ${b.expired_quantity} منتهي الصلاحية`}
                         </span>
                       ))}
                   </div>

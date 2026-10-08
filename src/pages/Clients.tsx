@@ -11,6 +11,7 @@ import { useBarbers } from '../db/hooks/useBarbers'
 import { useCustomerNotes } from '../db/hooks/useCustomerNotes'
 import { useBalanceData } from '../db/hooks/useBalanceData'
 import { useSales } from '../db/hooks/useSales'
+import { getEgyptDateString } from '../utils/egyptTime'
 import type { Client, ServiceConsumption, BalanceAdjustment, ClientBalanceSummary } from '../db/supabase'
 import { motion } from 'framer-motion'
 import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X, Receipt, MinusCircle, RefreshCw, CheckCircle2 } from 'lucide-react'
@@ -797,6 +798,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
               const totalPurchased = clientBalance.reduce((s, b) => s + (b.purchased || 0), 0)
               const totalBonus    = clientBalance.reduce((s, b) => s + (b.bonus || 0), 0)
               const totalRemaining = clientBalance.reduce((s, b) => s + (b.remaining || 0), 0)
+              const totalExpired   = clientBalance.reduce((s, b) => s + (b.expired_quantity || 0), 0)
               const totalLots     = clientBalance.reduce((s, b) => s + (b.total_purchases || b.active_purchases || 0), 0)
               return (
                 <div>
@@ -810,12 +812,14 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                     {[
                       { label: 'إجمالي المشتراة', value: totalPurchased, color: 'text-white' },
                       { label: 'بونص', value: totalBonus, color: 'text-amber-300' },
-                      { label: 'المتبقي', value: totalRemaining, color: 'text-purple-300' },
+                      { label: 'المتبقي', value: totalRemaining, color: 'text-purple-300',
+                        sub: totalExpired > 0 ? `${totalExpired} منتهي الصلاحية` : undefined, subColor: 'text-red-300' },
                       { label: 'عدد الباقات', value: totalLots, color: 'text-sky-300' },
                     ].map((s) => (
                       <div key={s.label} className="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-400">{s.label}</p>
                         <p className={`text-xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+                        {s.sub && <p className={`text-[11px] font-semibold mt-1 ${s.subColor}`}>{s.sub}</p>}
                       </div>
                     ))}
                   </div>
@@ -845,8 +849,13 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                               <div className="flex-1 min-w-0">
                                 <p className="text-white font-semibold text-sm truncate">{b.service_name}</p>
                                 <div className="flex items-baseline gap-1 mt-2">
-                                  <span className="text-3xl font-bold text-purple-300">{b.remaining}</span>
+                                  <span className={`text-3xl font-bold ${(b.remaining || 0) > 0 ? 'text-purple-300' : 'text-gray-500'}`}>{b.remaining}</span>
                                   <span className="text-sm text-gray-400">{b.unit_label || ''}</span>
+                                  {(b.expired_quantity || 0) > 0 && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">
+                                      {b.expired_quantity} منتهي
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-xs text-gray-400 mt-2 space-y-0.5">
                                   <p>
@@ -856,17 +865,32 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                                   {b.earliest_expiry && (
                                     <p className="text-amber-300/80">⏰ {formatArabicDate(b.earliest_expiry)}</p>
                                   )}
+                                  {(b.expired_quantity || 0) > 0 && (
+                                    <p className="text-red-300/80">
+                                      انتهت صلاحية {b.expired_quantity} {b.unit_label || ''} — غير قابلة للصرف
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                <button
-                                  onClick={() => handleConsumeBalance(b)}
-                                  className="text-[11px] flex items-center gap-1 px-2 py-1 bg-pink-600/20 text-pink-300 border border-pink-500/30 rounded-lg hover:bg-pink-600/30 transition whitespace-nowrap"
-                                  title="صرف من رصيد العميل"
-                                >
-                                  <MinusCircle size={12} />
-                                  صرف
-                                </button>
+                                {(b.remaining || 0) > 0 ? (
+                                  <button
+                                    onClick={() => handleConsumeBalance(b)}
+                                    className="text-[11px] flex items-center gap-1 px-2 py-1 bg-pink-600/20 text-pink-300 border border-pink-500/30 rounded-lg hover:bg-pink-600/30 transition whitespace-nowrap"
+                                    title="صرف من رصيد العميل"
+                                  >
+                                    <MinusCircle size={12} />
+                                    صرف
+                                  </button>
+                                ) : (
+                                  <span
+                                    className="text-[11px] flex items-center gap-1 px-2 py-1 bg-white/5 text-gray-500 border border-white/10 rounded-lg whitespace-nowrap"
+                                    title="لا يوجد رصيد متاح للصرف"
+                                  >
+                                    <MinusCircle size={12} />
+                                    لا يوجد رصيد
+                                  </span>
+                                )}
                                 <button
                                   onClick={toggleExpand}
                                   className="text-[11px] flex items-center gap-1 px-2 py-1 bg-white/10 text-gray-300 border border-white/20 rounded-lg hover:bg-white/15 transition whitespace-nowrap"
@@ -885,7 +909,14 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                               ) : (
                                 <div className="divide-y divide-white/5 max-h-48 overflow-y-auto">
                                   {lots.map((lot) => {
-                                    const isActive = lot.status === 'active' && (lot.remaining_quantity || 0) > 0
+                                    const pastDue = !!lot.expiry_date && String(lot.expiry_date).slice(0, 10) < getEgyptDateString()
+                                    const isActive = lot.status === 'active' && (lot.remaining_quantity || 0) > 0 && !pastDue
+                                    const statusLabel = pastDue && lot.status === 'active'
+                                      ? 'منتهي الصلاحية'
+                                      : lot.status === 'active' ? 'نشط' : lot.status === 'fully_used' ? 'مستنفد' : lot.status === 'expired' ? 'منتهي' : lot.status
+                                    const statusClass = pastDue
+                                      ? 'bg-red-500/20 text-red-300'
+                                      : isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-400'
                                     return (
                                       <div key={lot.id} className={`px-4 py-2.5 flex items-center justify-between gap-3 text-xs ${isActive ? '' : 'opacity-60'}`}>
                                         <div className="flex-1 min-w-0">
@@ -893,12 +924,13 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                                           <p className="text-gray-500 mt-0.5">
                                             {lot.created_at ? formatNoteDateTime(lot.created_at) : ''}
                                             {lot.unit_price ? ` — ${formatMoney(lot.unit_price)}` : ''}
+                                            {lot.expiry_date ? ` — ينتهي ${formatArabicDate(String(lot.expiry_date).slice(0, 10))}` : ''}
                                           </p>
                                         </div>
                                         <div className="flex items-center gap-3 flex-shrink-0">
                                           <span className="text-purple-300 font-semibold">{lot.remaining_quantity}/{lot.total_quantity}</span>
-                                          <span className={`${isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-400'} px-1.5 py-0.5 rounded font-medium`}>
-                                            {lot.status === 'active' ? 'نشط' : lot.status === 'fully_used' ? 'مستنفد' : lot.status === 'expired' ? 'منتهي' : lot.status}
+                                          <span className={`${statusClass} px-1.5 py-0.5 rounded font-medium`}>
+                                            {statusLabel}
                                           </span>
                                         </div>
                                       </div>
