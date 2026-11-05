@@ -803,3 +803,22 @@ html {
 .confetti {
   animation: confetti-fall 3s ease-out forwards;
 }
+
+/* ── Skullet integration ──────────────────────────────────────────────
+   Skullet draws its skeleton over a hidden "ghost" copy of the content and
+   hides that ghost's text with `color: transparent !important` from inside
+   an `@scope` block. The light-theme rules above are more specific
+   (`html.light .text-white`), so they would win and make ghost text visible.
+
+   These selectors only target Skullet's ghost nodes — verified against the
+   installed package (`[skullet-loading] > [skullet-ghost]`) — and are
+   scoped tightly enough to beat the theme rules without weakening them. */
+html.light [skullet-loading] [skullet-ghost],
+html.dark [skullet-loading] [skullet-ghost],
+html.light [skullet-loading] [skullet-ghost] *,
+html.dark [skullet-loading] [skullet-ghost] * {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+  text-decoration-color: transparent !important;
+}

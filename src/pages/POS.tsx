@@ -20,6 +20,7 @@ import { getEgyptDateString, getEgyptTimeString } from '../utils/egyptTime'
 import type { ClientBalanceSummary } from '../db/supabase'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { Skeleton, PosServiceRowSkeleton } from '../components/skeletons'
 
 // ✅ Normalize search input - fix Arabic keyboard/IME issues
 const normalizeSearchInput = (value: string): string => {
@@ -132,7 +133,7 @@ const CartQtyInput: React.FC<{ value: number; onCommit: (n: number) => void }> =
 export const POS: React.FC = () => {
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
-  const { services } = useServices()
+  const { services, loading: servicesLoading } = useServices()
   const { variantsByServiceId } = useServiceVariants()
   const { barbers } = useBarbers()
   const { completeSale } = useSales()
@@ -538,6 +539,17 @@ export const POS: React.FC = () => {
               📋 الخدمات
             </h2>
 
+            <Skeleton
+              loading={servicesLoading}
+              skeleton={
+                <div className="space-y-2">
+                  {[0, 1, 2, 3, 4, 5].map((row) => (
+                    <PosServiceRowSkeleton key={row} />
+                  ))}
+                </div>
+              }
+            >
+            <div className="space-y-6">
             {Object.entries(groupedServices).map(([category, list]) => (
               <div key={category}>
                 <h3 className="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2">
@@ -717,6 +729,8 @@ export const POS: React.FC = () => {
             {services.length === 0 && (
               <p className="text-center text-gray-500 py-10">لا توجد خدمات - أضف الخدمات من صفحة الخدمات</p>
             )}
+            </div>
+            </Skeleton>
           </div>
         </div>
 

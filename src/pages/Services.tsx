@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Boxes } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Skeleton, CardGridSkeleton, ServiceCardSkeleton } from '../components/skeletons'
 
 interface ServiceForm {
   nameAr: string
@@ -42,7 +43,7 @@ const categorySuggestions = ['hair', 'skincare', 'body', 'nails', 'makeup', 'pac
 
 export const Services: React.FC = () => {
   const { t } = useTranslation()
-  const { services, addService, updateService, deleteService } = useServices()
+  const { services, loading: servicesLoading, addService, updateService, deleteService } = useServices()
   const { addVariant, deleteVariant, updateVariant, variantsByServiceId } = useServiceVariants()
   const { clinicId } = useAuth()
 
@@ -355,6 +356,14 @@ export const Services: React.FC = () => {
       </motion.div>
 
       {/* Services List */}
+      <Skeleton
+        loading={servicesLoading}
+        skeleton={
+          <CardGridSkeleton cards={4} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ServiceCardSkeleton />
+          </CardGridSkeleton>
+        }
+      >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AnimatePresence>
           {services && services.length > 0 ? (
@@ -567,6 +576,7 @@ export const Services: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+      </Skeleton>
 
       {/* Add / Edit Service Modal */}
       <Modal

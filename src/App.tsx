@@ -6,6 +6,7 @@ import { useLanguage } from './hooks/useLanguage'
 import { useAuth } from './hooks/useAuth'
 import { AuthProvider } from './contexts/AuthContext'
 import { canAccess, firstAllowedPage, ROUTE_TO_PAGE } from './lib/permissions'
+import { AppSkeletonProvider } from './components/skeletons'
 
 // Pages
 import Login from './pages/Login'
@@ -74,6 +75,7 @@ function App() {
 
   return (
     <div className={theme === 'dark' ? 'dark' : 'light'}>
+      <AppSkeletonProvider mode={theme}>
       <AuthProvider>
         <Router>
         <Routes>
@@ -198,6 +200,7 @@ function App() {
         </Routes>
         </Router>
       </AuthProvider>
+      </AppSkeletonProvider>
       <Toaster position="bottom-center" />
     </div>
   )

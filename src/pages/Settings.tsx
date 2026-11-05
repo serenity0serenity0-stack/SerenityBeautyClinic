@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/db/supabase'
 import { GlassCard } from '../components/ui/GlassCard'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Skeleton, UserRowSkeleton } from '../components/skeletons'
 import { PAGE_KEYS, PAGE_LABEL_KEYS, DEFAULT_CASHIER_PAGES } from '../lib/permissions'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -47,7 +48,7 @@ export const Settings: React.FC = () => {
   const isAdmin = role === 'admin'
 
   const [users, setUsers] = useState<StaffUser[]>([])
-  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(true)
 
   // Add-user form
   const [name, setName] = useState('')
@@ -286,9 +287,17 @@ export const Settings: React.FC = () => {
             <span>{t('settings.users_list')}</span>
           </div>
 
-          {loadingUsers ? (
-            <p className="text-gray-400 py-4">{t('common.loading')}</p>
-          ) : users.length === 0 ? (
+          <Skeleton
+            loading={loadingUsers && users.length === 0}
+            skeleton={
+              <div className="space-y-3">
+                {[0, 1, 2].map((row) => (
+                  <UserRowSkeleton key={row} />
+                ))}
+              </div>
+            }
+          >
+          {users.length === 0 ? (
             <p className="text-gray-500 py-6 text-center">{t('settings.no_users')}</p>
           ) : (
             <div className="space-y-3">
@@ -452,6 +461,7 @@ export const Settings: React.FC = () => {
               })}
             </div>
           )}
+          </Skeleton>
         </div>
       </GlassCard>
 

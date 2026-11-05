@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { GlassCard } from '../components/ui/GlassCard'
+import { Skeleton, ActivityRowSkeleton } from '../components/skeletons'
 import {
   useDailyRecords,
   computeSummary,
@@ -356,9 +357,16 @@ export const DailyLogs: React.FC = () => {
       </div>
 
       {/* Content */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">جاري التحميل...</div>
-      ) : (
+      <Skeleton
+        loading={loading}
+        skeleton={
+          <div className="space-y-3">
+            {[0, 1, 2, 3, 4].map((row) => (
+              <ActivityRowSkeleton key={row} />
+            ))}
+          </div>
+        }
+      >
         <div>
           {activeTab === 'all' && (
             <div className="space-y-3">
@@ -577,7 +585,7 @@ export const DailyLogs: React.FC = () => {
             </div>
           )}
         </div>
-      )}
+      </Skeleton>
 
       {/* Detail Drawer / Bottom Sheet */}
       <DetailPanel detail={detail} onClose={() => setDetail(null)} clientName={clientName} />

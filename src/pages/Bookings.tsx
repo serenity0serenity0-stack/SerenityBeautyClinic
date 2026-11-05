@@ -32,6 +32,7 @@ import { formatDateEgypt, formatTimeEgypt } from '../utils/formatCurrency'
 import toast from 'react-hot-toast'
 import { QueueStatus } from '../components/ui/QueueStatus'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Skeleton, BookingCardSkeleton } from '../components/skeletons'
 
 interface NewBooking {
   searchQuery: string
@@ -414,16 +415,6 @@ export const Bookings: React.FC = () => {
 
   const currentBookings = viewMode === 'today' ? todayBookings : upcomingBookings
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin">
-          <Calendar className="text-pink-400" size={40} />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen py-6">
       {/* Queue Status Widget */}
@@ -591,6 +582,16 @@ export const Bookings: React.FC = () => {
       </AnimatePresence>
 
       {/* Bookings Grid */}
+      <Skeleton
+        loading={loading}
+        skeleton={
+          <div className="grid gap-4">
+            {[0, 1, 2].map((card) => (
+              <BookingCardSkeleton key={card} />
+            ))}
+          </div>
+        }
+      >
       <div className="grid gap-4">
         <AnimatePresence>
           {currentBookings.length === 0 ? (
@@ -771,6 +772,7 @@ export const Bookings: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+      </Skeleton>
 
       {/* Modal */}
       <AnimatePresence>

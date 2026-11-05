@@ -15,22 +15,24 @@ import { getEgyptDateString } from '../utils/egyptTime'
 import type { Client, ServiceConsumption, BalanceAdjustment, ClientBalanceSummary } from '../db/supabase'
 import { motion } from 'framer-motion'
 import { Trash2, Edit2, Plus, Calendar, Clock, Filter, User, MessageSquare, Save, X, Receipt, MinusCircle, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { Skeleton, CardGridSkeleton, ClientCardSkeleton, DetailHistorySkeleton } from '../components/skeletons'
 import toast from 'react-hot-toast'
 
 type SortBy = 'name' | 'visits' | 'spent' | 'recent'
 
 export const Clients: React.FC = () => {
   const { t } = useTranslation()
-  const { clients, addClient, updateClient, deleteClient, searchClients } = useClients()
+  const { clients, loading: clientsLoading, addClient, updateClient, deleteClient, searchClients } = useClients()
   const { getTransactionsByclient_id } = useTransactions()
   const { barbers, fetchBarbers } = useBarbers()
-  const { notes, loading: notesLoading, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
+  const { notes, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
   const { getBalanceSummaryByClient, getConsumptionsByClient, getAdjustmentsByClient, getPurchasesByClientAndVariant } = useBalanceData()
   const { consumeService, markTransactionCompleted } = useSales()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<any>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [clientTransactions, setClientTransactions] = useState<any[]>([])
   const [clientBalance, setClientBalance] = useState<ClientBalanceSummary[]>([])
   const [clientConsumptions, setClientConsumptions] = useState<ServiceConsumption[]>([])
@@ -97,6 +99,7 @@ export const Clients: React.FC = () => {
     if (!isDetailModalOpen || !selectedClientForDetail?.id) return
 
     let cancelled = false
+    setDetailLoading(true)
 
     const fetchHistory = async () => {
       try {
@@ -121,6 +124,8 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
         await fetchNotes(clientId)
       } catch (err) {
         if (!cancelled) toast.error('Failed to load visit history')
+      } finally {
+        if (!cancelled) setDetailLoading(false)
       }
     }
     fetchHistory()
@@ -391,6 +396,11 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
 
   const baseClients = searchResults !== null ? searchResults : clients
 
+  // A search is pending only while it is the first non-empty query with no
+  // results yet; later keystrokes keep showing the previous results, exactly
+  // like the original debounced behaviour.
+  const searchPending = searchQuery.trim().length > 0 && searchResults === null
+
   const filteredClients = baseClients
     .filter((c) => {
       // In-memory search filter only applies to the unbounded list; server-side
@@ -537,55 +547,64 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
       </motion.div>
 
       {/* Clients List */}
-      <div className="grid gap-3">
-        {filteredClients.map((client, idx) => (
-          <motion.div
-            key={client.id || idx}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05}}
-          >
-            <GlassCard 
-              onClick={() => handleViewDetails(client)}
-              className="cursor-pointer"
+      <Skeleton
+        loading={clientsLoading || searchPending}
+        skeleton={
+          <CardGridSkeleton cards={5} className="grid gap-3">
+            <ClientCardSkeleton />
+          </CardGridSkeleton>
+        }
+      >
+        <div className="grid gap-3">
+          {filteredClients.map((client, idx) => (
+            <motion.div
+              key={client.id || idx}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05}}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className="text-white font-semibold hover:text-pink-400 transition">{client.name}</p>
-                  <p className="text-xs text-gray-400">{client.phone}</p>
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    {client.is_vip && <Badge label="VIP" variant="gold" />}
-                    <Badge label={`${client.total_visits} visits`} variant="info" />
-                    <Badge label={`${client.total_spent.toFixed(2)} ج.م`} variant="success" />
+              <GlassCard
+                onClick={() => handleViewDetails(client)}
+                className="cursor-pointer"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-white font-semibold hover:text-pink-400 transition">{client.name}</p>
+                    <p className="text-xs text-gray-400">{client.phone}</p>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {client.is_vip && <Badge label="VIP" variant="gold" />}
+                      <Badge label={`${client.total_visits} visits`} variant="info" />
+                      <Badge label={`${client.total_spent.toFixed(2)} ج.م`} variant="success" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditClick(client)
+                      }}
+                      className="p-2 hover:bg-white/10 rounded transition"
+                      title="Edit"
+                    >
+                      <Edit2 size={18} className="text-gray-400" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDelete(client.id!)
+                      }}
+                      className="p-2 hover:bg-red-500/10 rounded transition"
+                      title="Delete"
+                    >
+                      <Trash2 size={18} className="text-red-400" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleEditClick(client)
-                    }}
-                    className="p-2 hover:bg-white/10 rounded transition"
-                    title="Edit"
-                  >
-                    <Edit2 size={18} className="text-gray-400" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete(client.id!)
-                    }}
-                    className="p-2 hover:bg-red-500/10 rounded transition"
-                    title="Delete"
-                  >
-                    <Trash2 size={18} className="text-red-400" />
-                  </button>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
-        ))}
-      </div>
+              </GlassCard>
+            </motion.div>
+          ))}
+        </div>
+      </Skeleton>
 
       {/* Add Client Modal */}
       <Modal
@@ -951,6 +970,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
             {/* Appointment History */}
             <div>
               <h3 className="text-lg font-bold text-white mb-4">سجل المواعيد</h3>
+              <Skeleton loading={detailLoading} skeleton={<DetailHistorySkeleton rows={3} />}>
               {clientTransactions.length > 0 ? (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {clientTransactions.map((t, idx) => {
@@ -1017,12 +1037,14 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                   <p>لا يوجد سجل مواعيد بعد</p>
                 </div>
               )}
+              </Skeleton>
             </div>
 
             {/* Unified History Timeline (sales + consumptions + adjustments) */}
             <div>
               <h3 className="text-lg font-bold text-white mb-4">📜 سجل العميل</h3>
 
+              <Skeleton loading={detailLoading} skeleton={<DetailHistorySkeleton rows={4} />}>
               {(() => {
                 const entries: {
                   key: string
@@ -1185,6 +1207,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                   </div>
                 )
               })()}
+              </Skeleton>
             </div>
 
             {/* Customer Notes Section */}
@@ -1214,9 +1237,8 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
               </div>
 
               {/* Notes List */}
-              {notesLoading ? (
-                <div className="text-center py-6 text-gray-400">جاري تحميل الملاحظات...</div>
-              ) : notes.length > 0 ? (
+              <Skeleton loading={detailLoading} skeleton={<DetailHistorySkeleton rows={2} />}>
+              {notes.length > 0 ? (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {notes.map((note) => (
                     <div key={note.id} className="bg-white/5 p-4 rounded-lg border border-white/10">
@@ -1291,6 +1313,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
                   <p>لا توجد ملاحظات بعد</p>
                 </div>
               )}
+              </Skeleton>
             </div>
           </div>
         )}

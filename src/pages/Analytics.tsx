@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GlassCard } from '../components/ui/GlassCard'
 import { useTransactions } from '../db/hooks/useTransactions'
 import { useExpenses } from '../db/hooks/useExpenses'
+import { Skeleton, KpiValueSkeleton, ChartSkeleton } from '../components/skeletons'
 import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { motion } from 'framer-motion'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -37,21 +38,13 @@ export const Analytics: React.FC = () => {
     return { dateFrom: getEgyptDateString(start), dateTo: today }
   }, [dateRange, customFrom, customTo, selectedDay])
 
-  const { transactions } = useTransactions({ dateFrom, dateTo })
-  const { expenses } = useExpenses({ dateFrom, dateTo })
+  const { transactions, loading: transLoading } = useTransactions({ dateFrom, dateTo })
+  const { expenses, loading: expLoading } = useExpenses({ dateFrom, dateTo })
 
-  const [analyticsData, setAnalyticsData] = useState({
-    totalRevenue: 0,
-    totalExpenses: 0,
-    netProfit: 0,
-    totalTransactions: 0,
-    uniqueClients: 0,
-    avgTicket: 0,
-    chartData: [] as any[],
-    chartKey: 'date',
-  })
-
-  useEffect(() => {
+  // Derived with useMemo rather than state+effect so the numbers are never one
+  // render behind the query data (an effect briefly paints zeros once the
+  // initial fetch resolves). Calculations are unchanged.
+  const analyticsData = useMemo(() => {
     let chartKey = 'date'
 
     const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0)
@@ -76,7 +69,7 @@ export const Analytics: React.FC = () => {
       chartData = transactions as any[]
     }
 
-    setAnalyticsData({
+    return {
       totalRevenue,
       totalExpenses: totalExpensesAmount,
       netProfit,
@@ -85,14 +78,18 @@ export const Analytics: React.FC = () => {
       avgTicket: transactions.length > 0 ? totalRevenue / transactions.length : 0,
       chartData,
       chartKey,
-    })
+    }
   }, [dateRange, transactions, expenses])
 
-  const KPICard = ({ label, value, color = 'gold' }: any) => (
+  const KPICard = ({ label, value, color = 'gold', loading = false }: any) => (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <GlassCard>
         <p className="text-sm text-gray-400 mb-2">{label}</p>
-        <h3 className={`text-2xl font-bold text-${color}-400`}>{value}</h3>
+        <h3 className={`text-2xl font-bold text-${color}-400`}>
+          <Skeleton loading={loading} skeleton={<KpiValueSkeleton compact />}>
+            {value}
+          </Skeleton>
+        </h3>
       </GlassCard>
     </motion.div>
   )
@@ -183,16 +180,17 @@ export const Analytics: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <KPICard label={t('analytics.total_revenue')} value={`${analyticsData.totalRevenue.toFixed(2)} ج.م`} />
-        <KPICard label={t('analytics.total_expenses')} value={`${analyticsData.totalExpenses.toFixed(2)} ج.م`} />
+        <KPICard label={t('analytics.total_revenue')} value={`${analyticsData.totalRevenue.toFixed(2)} ج.م`} loading={transLoading} />
+        <KPICard label={t('analytics.total_expenses')} value={`${analyticsData.totalExpenses.toFixed(2)} ج.م`} loading={expLoading} />
         <KPICard
           label={t('analytics.net_profit')}
           value={`${analyticsData.netProfit.toFixed(2)} ج.م`}
           color={analyticsData.netProfit >= 0 ? 'green' : 'red'}
+          loading={transLoading || expLoading}
         />
-        <KPICard label={t('analytics.total_transactions')} value={analyticsData.totalTransactions} />
-        <KPICard label={t('analytics.unique_clients')} value={analyticsData.uniqueClients} />
-        <KPICard label={t('analytics.average_ticket')} value={`${analyticsData.avgTicket.toFixed(2)} ج.م`} />
+        <KPICard label={t('analytics.total_transactions')} value={analyticsData.totalTransactions} loading={transLoading} />
+        <KPICard label={t('analytics.unique_clients')} value={analyticsData.uniqueClients} loading={transLoading} />
+        <KPICard label={t('analytics.average_ticket')} value={`${analyticsData.avgTicket.toFixed(2)} ج.م`} loading={transLoading} />
       </div>
 
       {/* Charts */}
@@ -200,25 +198,27 @@ export const Analytics: React.FC = () => {
         <h2 className="text-lg font-bold text-white mb-4">
           {dateRange === 'day' ? 'الدخل حسب الوقت' : t('analytics.revenue_trend')}
         </h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={analyticsData.chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey={analyticsData.chartKey} stroke="rgba(255,255,255,0.5)" />
-            <YAxis stroke="rgba(255,255,255,0.5)" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(15, 15, 35, 0.9)',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey={dateRange === 'day' ? 'income' : 'total'}
-              stroke="#B794CE"
-              dot={dateRange === 'day'}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <Skeleton loading={transLoading} skeleton={<ChartSkeleton height={300} />}>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={analyticsData.chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey={analyticsData.chartKey} stroke="rgba(255,255,255,0.5)" />
+              <YAxis stroke="rgba(255,255,255,0.5)" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(15, 15, 35, 0.9)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey={dateRange === 'day' ? 'income' : 'total'}
+                stroke="#B794CE"
+                dot={dateRange === 'day'}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Skeleton>
       </GlassCard>
     </div>
   )

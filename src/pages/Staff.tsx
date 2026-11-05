@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -14,6 +14,7 @@ import { appEmitter } from '../utils/eventEmitter'
 import { getEgyptDateString, getEgyptYearMonth } from '../utils/egyptTime'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { DoctorShiftPanel } from '../components/DoctorShiftPanel'
+import { Skeleton, KpiValueSkeleton, CardGridSkeleton, DoctorCardSkeleton } from '../components/skeletons'
 
 interface StaffStats {
   clientCount: number
@@ -32,7 +33,7 @@ export const Staff: React.FC = () => {
   const { t } = useTranslation()
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
-  const { barbers, addBarber, updateBarber, deleteBarber } = useBarbers()
+  const { barbers, loading: barbersLoading, addBarber, updateBarber, deleteBarber } = useBarbers()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
@@ -53,14 +54,41 @@ export const Staff: React.FC = () => {
     vacation_start: '',
     vacation_end: '',
   })
-  const [staffStats, setStaffStats] = useState<{
-    [barberId: string]: StaffStats
-  }>({})
   const [selectedMonth, setSelectedMonth] = useState(getEgyptYearMonth())
-  const { transactions } = useTransactions({
+  const { transactions, loading: transactionsLoading } = useTransactions({
     dateFrom: `${selectedMonth}-01`,
     dateTo: selectedMonth === getEgyptDateString().slice(0, 7) ? getEgyptDateString() : lastDayOfMonth(selectedMonth),
   })
+
+  // Derived synchronously so the summary never paints stale zeros for a frame
+  // after the transactions query resolves. Calculations are unchanged.
+  const staffStats = useMemo(() => {
+    const stats: { [barberId: string]: StaffStats } = {}
+
+    barbers.forEach(barber => {
+      const barberTransactions = transactions.filter(
+        t => t.barber_id === barber.id && String(t.date).startsWith(selectedMonth)
+      )
+
+      // All unique clients in the selected month
+      const allUniqueClients = new Set(barberTransactions.map(t => t.client_id))
+
+      // Revenue in the selected month
+      const monthRevenue = barberTransactions.reduce((sum, t) => sum + t.total, 0)
+
+      // Last visit in the selected month
+      const lastTransaction = barberTransactions[0]
+
+      stats[barber.id!] = {
+        clientCount: allUniqueClients.size,
+        monthlyRevenue: monthRevenue,
+        totalRevenue: monthRevenue,
+        lastVisit: lastTransaction?.date
+      }
+    })
+
+    return stats
+  }, [barbers, transactions, selectedMonth])
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedBarberForDetail, setSelectedBarberForDetail] = useState<any>(null)
   const [historyLimit, setHistoryLimit] = useState(20)
@@ -86,33 +114,6 @@ export const Staff: React.FC = () => {
   // Calculate staff statistics for the selected month.
   // Doctor totals are scoped to the selected month so the numbers reset
   // at the start of each month.
-  useEffect(() => {
-    const stats: typeof staffStats = {}
-    
-    barbers.forEach(barber => {
-      const barberTransactions = transactions.filter(
-        t => t.barber_id === barber.id && String(t.date).startsWith(selectedMonth)
-      )
-      
-      // All unique clients in the selected month
-      const allUniqueClients = new Set(barberTransactions.map(t => t.client_id))
-      
-      // Revenue in the selected month
-      const monthRevenue = barberTransactions.reduce((sum, t) => sum + t.total, 0)
-      
-      // Last visit in the selected month
-      const lastTransaction = barberTransactions[0]
-      
-      stats[barber.id!] = {
-        clientCount: allUniqueClients.size,
-        monthlyRevenue: monthRevenue,
-        totalRevenue: monthRevenue,
-        lastVisit: lastTransaction?.date
-      }
-    })
-    
-    setStaffStats(stats)
-  }, [barbers, transactions, selectedMonth])
 
   const handleEditClick = (barber: any) => {
     setEditingBarberId(barber.id)
@@ -312,7 +313,11 @@ export const Staff: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">{t('pages.staff_count')}</p>
-              <p className="text-3xl font-bold text-white mt-2">{barbers.length}</p>
+              <div className="text-3xl font-bold text-white mt-2">
+                <Skeleton loading={barbersLoading} skeleton={<KpiValueSkeleton />}>
+                  {barbers.length}
+                </Skeleton>
+              </div>
               <p className="text-xs text-gray-500 mt-1">{activeBarbers} نشط</p>
             </div>
             <Users size={40} className="text-pink-400" />
@@ -323,9 +328,11 @@ export const Staff: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">أرباح الشهر</p>
-              <p className="text-3xl font-bold text-white mt-2">
-                {totalMonthlyRevenue.toLocaleString('en-US')}
-              </p>
+              <div className="text-3xl font-bold text-white mt-2">
+                <Skeleton loading={barbersLoading || transactionsLoading} skeleton={<KpiValueSkeleton />}>
+                  {totalMonthlyRevenue.toLocaleString('en-US')}
+                </Skeleton>
+              </div>
               <p className="text-xs text-gray-500 mt-1">{t('common.currency')} - {selectedMonth}</p>
             </div>
             <DollarSign size={40} className="text-green-400" />
@@ -336,9 +343,11 @@ export const Staff: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">عدد عمليات الشهر</p>
-              <p className="text-3xl font-bold text-white mt-2">
-                {monthTransactionCount}
-              </p>
+              <div className="text-3xl font-bold text-white mt-2">
+                <Skeleton loading={transactionsLoading} skeleton={<KpiValueSkeleton />}>
+                  {monthTransactionCount}
+                </Skeleton>
+              </div>
               <p className="text-xs text-gray-500 mt-1">{selectedMonth}</p>
             </div>
             <TrendingUp size={40} className="text-blue-400" />
@@ -347,6 +356,14 @@ export const Staff: React.FC = () => {
       </div>
 
       {/* Staff Grid */}
+      <Skeleton
+        loading={barbersLoading}
+        skeleton={
+          <CardGridSkeleton cards={6} className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <DoctorCardSkeleton />
+          </CardGridSkeleton>
+        }
+      >
       {barbers.length === 0 ? (
         <GlassCard>
           <div className="text-center py-12">
@@ -476,6 +493,7 @@ export const Staff: React.FC = () => {
           })}
         </div>
       )}
+      </Skeleton>
 
       {/* Modal */}
       <Modal

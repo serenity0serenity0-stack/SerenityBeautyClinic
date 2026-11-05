@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { GlassCard } from '../components/ui/GlassCard'
@@ -12,6 +12,7 @@ import { getEgyptDateString, getEgyptFormattedDateTime } from '../utils/egyptTim
 import { useAuth } from '../hooks/useAuth'
 import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Users, DollarSign, RefreshCw } from 'lucide-react'
+import { Skeleton, KpiValueSkeleton, ListSkeleton } from '../components/skeletons'
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation()
@@ -20,14 +21,17 @@ export const Dashboard: React.FC = () => {
   // Dashboard KPIs only need the current calendar month, not 90 days of data.
   const monthStart = `${getEgyptDateString().slice(0, 7)}-01`
   const { transactions, fetchTransactions, loading: transLoading } = useTransactions({ dateFrom: monthStart })
-  const { expenses, fetchExpenses } = useExpenses({ dateFrom: monthStart })
+  const { expenses, fetchExpenses, loading: expLoading } = useExpenses({ dateFrom: monthStart })
   const [todayRevenue, setTodayRevenue] = useState(0)
   const [todayExpenses, setTodayExpenses] = useState(0)
   const [todayClients, setTodayClients] = useState(0)
   const [monthlyClients, setMonthlyClients] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [lastUpdated, setLastUpdated] = useState<string>('')
+
+  // Derived from the query data instead of local state so the list can never
+  // lag one render behind the loading flag (which would flash an empty state).
+  const recentTransactions = useMemo(() => transactions.slice(0, 5), [transactions])
 
   // React Query auto-fetches on mount; no manual call needed.
 
@@ -58,7 +62,6 @@ export const Dashboard: React.FC = () => {
       setTodayRevenue(0)
       setTodayClients(0)
       setMonthlyClients(0)
-      setRecentTransactions([])
       return
     }
 
@@ -81,7 +84,6 @@ export const Dashboard: React.FC = () => {
     setTodayRevenue(revenue)
     setTodayClients(todayClientIds.size)
     setMonthlyClients(monthlyClientIds.size)
-    setRecentTransactions([...transactions].slice(0, 5))
     
     console.log('Stats updated: Revenue:', revenue, 'Today Clients:', todayClientIds.size, 'Loading:', transLoading)
   }, [transactions, transLoading])
@@ -120,7 +122,7 @@ export const Dashboard: React.FC = () => {
 
   console.log('Dashboard render: transLoading=', transLoading, 'isRefreshing=', isRefreshing, 'loading=', loading)
 
-  const KPICard = ({ title, value, icon: Icon, suffix = '' }: any) => (
+  const KPICard = ({ title, value, icon: Icon, suffix = '', loading = false }: any) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -133,15 +135,9 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-end justify-between">
             <div>
               <div className="text-2xl md:text-3xl font-bold text-gold-400">
-                {loading ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                    className="w-6 h-6 border-2 border-gold-400 border-t-transparent rounded-full"
-                  />
-                ) : (
+                <Skeleton loading={loading} skeleton={<KpiValueSkeleton />}>
                   <AnimatedCounter value={value} duration={1} suffix={suffix} />
-                )}
+                </Skeleton>
               </div>
             </div>
             <div className="p-2 md:p-3 bg-gold-400/10 rounded-lg">
@@ -191,28 +187,33 @@ export const Dashboard: React.FC = () => {
           value={todayRevenue}
           icon={DollarSign}
           suffix=" ج.م"
+          loading={transLoading}
         />
         <KPICard
           title={t('dashboard.clients_today')}
           value={todayClients}
           icon={Users}
+          loading={transLoading}
         />
         <KPICard
           title={t('dashboard.clients_this_month')}
           value={monthlyClients}
           icon={Users}
+          loading={transLoading}
         />
         <KPICard
           title={t('dashboard.today_expenses')}
           value={todayExpenses}
           icon={TrendingDown}
           suffix=" ج.م"
+          loading={expLoading}
         />
         <KPICard
           title={t('dashboard.daily_net')}
           value={todayRevenue - todayExpenses}
           icon={TrendingUp}
           suffix=" ج.م"
+          loading={transLoading || expLoading}
         />
       </div>
 
@@ -224,7 +225,8 @@ export const Dashboard: React.FC = () => {
       >
         <GlassCard>
           <h2 className="text-lg md:text-xl font-bold text-white mb-4">{t('dashboard.last_transactions')}</h2>
-          <div className="space-y-2 md:space-y-3">
+          <Skeleton loading={transLoading} skeleton={<ListSkeleton rows={5} />}>
+            <div className="space-y-2 md:space-y-3">
             {recentTransactions && recentTransactions.length > 0 ? (
               recentTransactions.map((tx, idx) => (
                 <motion.div
@@ -248,7 +250,8 @@ export const Dashboard: React.FC = () => {
             ) : (
               <p className="text-center text-gray-400 py-6">{t('dashboard.no_transactions')}</p>
             )}
-          </div>
+            </div>
+          </Skeleton>
         </GlassCard>
       </motion.div>
     </div>

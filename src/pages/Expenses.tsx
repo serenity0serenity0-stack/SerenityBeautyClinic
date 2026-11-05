@@ -8,10 +8,11 @@ import { motion } from 'framer-motion'
 import { Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Skeleton, KpiValueSkeleton, ExpenseRowSkeleton } from '../components/skeletons'
 
 export const Expenses: React.FC = () => {
   const { t } = useTranslation()
-  const { expenses, addExpense, deleteExpense } = useExpenses()
+  const { expenses, loading: expensesLoading, addExpense, deleteExpense } = useExpenses()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(getEgyptYearMonth())
   const [formData, setFormData] = useState({
@@ -96,12 +97,26 @@ export const Expenses: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-400">{t('expenses.total_expenses')} - {t('expenses.month')} {selectedMonth}</p>
-            <h2 className="text-3xl font-bold text-gold-400">{totalExpenses.toFixed(2)} ج.م</h2>
+            <h2 className="text-3xl font-bold text-gold-400">
+              <Skeleton loading={expensesLoading} skeleton={<KpiValueSkeleton />}>
+                {totalExpenses.toFixed(2)} ج.م
+              </Skeleton>
+            </h2>
           </div>
         </div>
       </GlassCard>
 
       {/* Expenses List */}
+      <Skeleton
+        loading={expensesLoading}
+        skeleton={
+          <div className="space-y-3">
+            {[0, 1, 2, 3, 4].map((row) => (
+              <ExpenseRowSkeleton key={row} />
+            ))}
+          </div>
+        }
+      >
       <div className="space-y-3">
         {monthExpenses.map((expense, idx) => (
           <motion.div
@@ -132,6 +147,7 @@ export const Expenses: React.FC = () => {
           </motion.div>
         ))}
       </div>
+      </Skeleton>
 
       {/* Add Expense Modal */}
       <Modal
