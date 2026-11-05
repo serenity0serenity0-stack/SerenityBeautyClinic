@@ -23,6 +23,19 @@ const timeToMinutes = (iso: string) => {
   return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m)
 }
 
+/** Map DB trigger / constraint errors to clear Arabic messages. */
+export const translateBookingError = (message?: string): string => {
+  if (!message) return 'حدث خطأ أثناء حفظ الحجز'
+  if (/already booked|duplicate key|unique/i.test(message)) return 'هذا الموعد محجوز بالفعل — اختر وقت آخر'
+  if (/outside the doctor working hours/i.test(message)) return 'هذا الموعد خارج ساعات عمل الطبيب'
+  if (/on vacation/i.test(message)) return 'الطبيب في إجازة في هذا التاريخ'
+  if (/off duty/i.test(message)) return 'الطبيب غير متاح في هذا اليوم'
+  if (/in the past/i.test(message)) return 'لا يمكن حجز أو تعديل موعد في وقت سابق'
+  if (/duration/i.test(message)) return 'مدة الخدمة غير صالحة (5 دقائق على الأقل)'
+  if (/constraint/i.test(message)) return 'خطأ في البيانات — الرجاء التحقق من الحقول'
+  return message
+}
+
 /** Add N days to today and return YYYY-MM-DD (Cairo TZ). */
 function plusDays(n: number): string {
   const d = new Date()
@@ -238,7 +251,7 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
         barber_name: booking.barber_name,
         service_type: booking.service_type,
         booking_time: booking.booking_time,
-        duration: booking.duration,
+        duration: booking.duration ?? 30,
         queue_number,
         status: 'pending',
         notes: booking.notes,
@@ -266,7 +279,7 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
     },
     onError: (err: any) => {
       if (!err.message?.includes('محجوز')) {
-        toast.error(err.message || 'خطأ في إنشاء الحجز')
+        toast.error(translateBookingError(err.message))
       }
     },
   })
@@ -276,10 +289,13 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
       const currentBooking = bookings.find(b => b.id === id)
       if (!currentBooking) throw new Error('الحجز غير موجود')
 
-      if (updates.booking_time || updates.barber_id) {
-        const newbooking_time = updates.booking_time || currentBooking.booking_time
-        const newbarber_id = updates.barber_id || currentBooking.barber_id
-        const newDuration = updates.duration || currentBooking.duration || 30
+      const durationChanged =
+        updates.duration !== undefined && updates.duration !== currentBooking.duration
+
+      if (updates.booking_time || updates.barber_id || durationChanged) {
+        const newbooking_time = updates.booking_time ?? currentBooking.booking_time
+        const newbarber_id = updates.barber_id ?? currentBooking.barber_id
+        const newDuration = updates.duration ?? currentBooking.duration ?? 30
         const tempBookings = bookings.filter(b => b.id !== id)
         const conflicting = !isSlotAvailable({
           date: bookingDateOf(newbooking_time),
@@ -288,7 +304,7 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
           bookings: tempBookings,
           duration: newDuration,
         })
-        if (conflicting) throw new Error('هذا الموعد محجوز بالفعل للطبيب المحدد')
+        if (conflicting) throw new Error('هذا الموعد محجوز بالفعل للطبيب المحدد — عدّل المدة أو الوقت')
       }
 
       const dbUpdates: Record<string, any> = {}

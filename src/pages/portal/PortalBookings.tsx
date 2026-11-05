@@ -514,6 +514,20 @@ export function PortalBookings() {
                         </button>
                       </div>
                     )}
+                    {form.time && form.serviceId && (
+                      <p className="text-white/60 text-xs mt-2">
+                        {lang === 'ar' ? 'ينتهي:' : 'Ends:'}{' '}
+                        {(() => {
+                          const svc = services.find((s) => s.id === form.serviceId)
+                          const dur = svc?.duration || 30
+                          const [h, m] = form.time.split(':').map(Number)
+                          const total = (h || 0) * 60 + (m || 0) + dur
+                          const eh = Math.floor(total / 60) % 24
+                          const em = total % 60
+                          return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`
+                        })()}
+                      </p>
+                    )}
                   </div>
 
                   <button

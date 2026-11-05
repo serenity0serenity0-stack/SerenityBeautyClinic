@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBookings } from '../db/hooks/useBookings'
+import { useBookings, translateBookingError } from '../db/hooks/useBookings'
 import { useClients } from '../db/hooks/useClients'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useSettings } from '../db/hooks/useSettings'
@@ -14,6 +14,8 @@ import {
   getBarberWorkingWindow,
   isBarberOffOnDate,
   generateSlots,
+  nextAvailableStart,
+  minutesToTime,
 } from '../utils/bookingAvailability'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -109,9 +111,9 @@ export const Bookings: React.FC = () => {
   /**
    * Compute available/blocked time slots for a date + doctor.
    * Uses the shared availability util: per-doctor working hours, days off,
-   * vacations, duration-aware overlap detection, and Cairo-local past guard.
+   * vacations, continuous duration-aware scheduling, and Cairo-local past guard.
    */
-  const computeSlots = (date: string, selectedbarber_id?: string): TimeSlot[] => {
+  const computeSlots = (date: string, selectedbarber_id?: string, duration = 30): TimeSlot[] => {
     const barber = barbers?.find((b) => b.id === selectedbarber_id)
 
     // Per-doctor working window, falling back to the clinic-wide hours.
@@ -124,13 +126,14 @@ export const Bookings: React.FC = () => {
     // Doctor is off duty (day off / vacation) -> no slots.
     if (isBarberOffOnDate(barber, date)) return []
 
-    const duration = 30
+    // When editing, the appointment being edited must not block its own slot.
+    const visibleBookings = editingId ? bookings.filter((b) => b.id !== editingId) : bookings
+
     const slots = generateSlots({
       date,
       barberId: selectedbarber_id,
-      bookings,
+      bookings: visibleBookings,
       duration,
-      interval: 30,
       workingWindow,
       skipPast: true,
     })
@@ -160,25 +163,94 @@ export const Bookings: React.FC = () => {
     })
   }
 
-  // Memoized slots for the currently selected doctor/date
+  // Memoized slots for the currently selected doctor/date/duration
   const availableSlots = useMemo<TimeSlot[]>(
-    () => (formData.booking_date ? computeSlots(formData.booking_date, formData.barber_id || undefined) : []),
+    () =>
+      formData.booking_date
+        ? computeSlots(formData.booking_date, formData.barber_id || undefined, formData.duration)
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bookings, barbers, formData.booking_date, formData.barber_id, workingHours.start, workingHours.end]
+    [
+      bookings,
+      barbers,
+      editingId,
+      formData.booking_date,
+      formData.barber_id,
+      formData.duration,
+      workingHours.start,
+      workingHours.end,
+    ]
   )
 
-  // Memoized booking preview info
+  // Keep the selected time valid when the duration/date/doctor changes the grid.
+  // Never touches the database — this only fixes the in-progress form.
+  // While editing an existing booking we keep its saved start time as-is.
+  React.useEffect(() => {
+    if (editingId) return
+    if (!availableSlots.length) return
+    const current = availableSlots.find((s) => s.time === formData.booking_time && s.available)
+    if (current) return
+    const first = availableSlots.find((s) => s.available)
+    if (first) {
+      setFormData((prev) => ({ ...prev, booking_time: first.time }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableSlots, editingId])
+
+  // Memoized booking preview info (queue, wait, start/end, next available)
   const previewInfo = useMemo(() => {
-    if (!formData.booking_time) return null
-    const dayBookings = bookings.filter(
+    if (!formData.booking_time || !formData.booking_date) return null
+    const duration =
+      Number.isFinite(formData.duration) && formData.duration >= 5 ? Math.floor(formData.duration) : 30
+    const startMinutes = timeToMinutes(formData.booking_time)
+    const endMinutes = startMinutes + duration
+
+    const barber = barbers?.find((b) => b.id === formData.barber_id)
+    const workingWindow = getBarberWorkingWindow(barber, {
+      start: workingHours.start * 60,
+      end: workingHours.end * 60,
+      active: true,
+    })
+    const visibleBookings = editingId ? bookings.filter((b) => b.id !== editingId) : bookings
+
+    const dayBookings = visibleBookings.filter(
       (b: any) => bookingDateOf(b.booking_time) === formData.booking_date && b.status !== 'cancelled'
     )
-    const before = dayBookings.filter((b: any) => bookingMinutesOf(b.booking_time) < timeToMinutes(formData.booking_time))
+    const before = dayBookings.filter(
+      (b: any) => bookingMinutesOf(b.booking_time) < startMinutes
+    )
     const queue_number = before.length + 1
     const totalWaitMinutes = before.reduce((sum, b: any) => sum + (b.duration || 30), 0)
-    return { queue_number, estimatedWait: totalWaitMinutes }
+
+    const nextStart = nextAvailableStart({
+      date: formData.booking_date,
+      barberId: formData.barber_id || undefined,
+      bookings: visibleBookings,
+      duration,
+      workingWindow,
+      after: minutesToTime(endMinutes),
+    })
+
+    return {
+      queue_number,
+      estimatedWait: totalWaitMinutes,
+      duration,
+      startTime: formData.booking_time,
+      endTime: minutesToTime(endMinutes),
+      nextStart,
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookings, formData.booking_time, formData.booking_date])
+  }, [
+    bookings,
+    barbers,
+    editingId,
+    formData.booking_time,
+    formData.booking_date,
+    formData.barber_id,
+    formData.duration,
+    workingHours.start,
+    workingHours.end,
+  ])
 
   // اختيار ذكي - إيجاد أفضل طبيب متاح
   const findBestBarberOption = (date: string): { barber_id: string; barber_name: string; firstAvailableTime: string; earliestHour: number } | null => {
@@ -190,7 +262,7 @@ export const Bookings: React.FC = () => {
     barbers?.forEach((barber) => {
       if (!barber.id) return
 
-      const slots = computeSlots(date, barber.id)
+      const slots = computeSlots(date, barber.id, formData.duration)
       const firstAvailable = slots.find((s) => s.available)
 
       if (firstAvailable) {
@@ -303,11 +375,28 @@ export const Bookings: React.FC = () => {
       return
     }
 
-    // فحص إذا كان الوقت متاح
-    const selectedSlot = availableSlots.find((s) => s.time === formData.booking_time)
-    if (selectedSlot && !selectedSlot.available) {
-      toast.error(`⚠️ للأسف هذا الوقت ${selectedSlot.reason}!\nاختر أوقات أخرى في نفس اليوم`)
+    // فحص المدة
+    const safeDuration =
+      Number.isFinite(formData.duration) && formData.duration >= 5
+        ? Math.floor(formData.duration)
+        : 0
+
+    if (safeDuration < 5) {
+      toast.error('❌ مدة الخدمة يجب أن تكون 5 دقائق على الأقل')
       return
+    }
+
+    // فحص إذا كان الوقت متاحاً في الشبكة المحسوبة (المدة الحالية)
+    if (!editingId) {
+      const selectedSlot = availableSlots.find((s) => s.time === formData.booking_time)
+      if (!selectedSlot || !selectedSlot.available) {
+        toast.error(
+          selectedSlot?.reason
+            ? `⚠️ للأسف هذا الوقت ${selectedSlot.reason}!\nاختر أوقات أخرى في نفس اليوم`
+            : '⚠️ هذا الوقت لم يعد متاحاً — اختر وقتاً من القائمة المحدثة'
+        )
+        return
+      }
     }
 
     try {
@@ -328,7 +417,7 @@ export const Bookings: React.FC = () => {
           barber_id: formData.barber_id || undefined,
           service_type: formData.service_type || undefined,
           booking_time: booking_time,
-          duration: formData.duration,
+          duration: safeDuration,
         }
 
         await updateBooking(editingId, updates)
@@ -346,7 +435,7 @@ export const Bookings: React.FC = () => {
             : undefined,
           service_type: formData.service_type || undefined,
           booking_time: booking_time,
-          duration: formData.duration,
+          duration: safeDuration,
           status: 'pending',
           queue_number: 0, // Will be calculated by addBooking
         } as any)
@@ -359,15 +448,11 @@ export const Bookings: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving booking:', error)
 
-      // معالجة أخطاء قاعدة البيانات
+      // معالجة أخطاء قاعدة البيانات برسائل واضحة
       if (error.message?.includes('booking_time') || error.message?.includes('NOT NULL')) {
         toast.error('❌ خطأ: الرجاء تحديد التاريخ والوقت بشكل صحيح')
-      } else if (error.message?.includes('محجوز') || error.message?.includes('booked')) {
-        toast.error('⚠️ هذا الموعد محجوز بالفعل - اختر وقت آخر')
-      } else if (error.message?.includes('constraint')) {
-        toast.error('❌ خطأ في البيانات - الرجاء التحقق من جميع الحقول')
       } else {
-        toast.error(`❌ خطأ: ${error.message || 'حدث خطأ أثناء حفظ الحجز'}`)
+        toast.error(`❌ ${translateBookingError(error.message)}`)
       }
     }
   }
@@ -745,7 +830,7 @@ export const Bookings: React.FC = () => {
                   {!booking.queueInfo && (
                     <div className="bg-white/5 rounded-lg p-3">
                       <p className="text-gray-400 text-xs mb-1">المدة</p>
-                      <p className="text-white font-semibold">{booking.duration || 30}</p>
+                      <p className="text-white font-semibold">{booking.duration || 30} دقيقة</p>
                       <p className="text-gray-400 text-xs">دقيقة</p>
                     </div>
                   )}
@@ -1011,7 +1096,19 @@ export const Bookings: React.FC = () => {
                         <CheckCircle2 size={18} className="text-blue-400" />
                         <p className="text-sm font-semibold text-blue-300">معاينة الحجز</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <span className="text-gray-400">يبدأ:</span>
+                          <p className="text-lg font-bold text-white">{previewInfo.startTime}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">ينتهي:</span>
+                          <p className="text-lg font-bold text-white">{previewInfo.endTime}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">المدة:</span>
+                          <p className="text-lg font-bold text-pink-300">{previewInfo.duration} دقيقة</p>
+                        </div>
                         <div>
                           <span className="text-gray-400">رقمك في الدور:</span>
                           <p className="text-lg font-bold text-pink-400">#{previewInfo.queue_number}</p>
@@ -1019,6 +1116,12 @@ export const Bookings: React.FC = () => {
                         <div>
                           <span className="text-gray-400">الانتظار المتوقع:</span>
                           <p className="text-lg font-bold text-white">{previewInfo.estimatedWait} دقيقة</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">الموعد التالي المتاح:</span>
+                          <p className="text-lg font-bold text-emerald-300">
+                            {previewInfo.nextStart || 'لا يوجد'}
+                          </p>
                         </div>
                       </div>
                     </motion.div>
@@ -1032,12 +1135,19 @@ export const Bookings: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    min="15"
-                    step="15"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                    min="5"
+                    step="5"
+                    inputMode="numeric"
+                    value={Number.isFinite(formData.duration) && formData.duration > 0 ? formData.duration : ''}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      setFormData({ ...formData, duration: raw === '' ? 0 : parseInt(raw, 10) })
+                    }}
                     className="w-full bg-white/10 text-white px-4 py-2 rounded-lg border border-white/20 focus:border-pink-500 focus:outline-none focus:bg-white/15 transition"
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    الافتراضي 30 دقيقة — يمكنك تعديل المدة، وستُحدَّث الأوقات تلقائياً.
+                  </p>
                 </div>
 
                 {/* Service Type (Optional) */}

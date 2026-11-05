@@ -196,7 +196,6 @@ export function usePortalBookings(clinicId?: string, customerId?: string) {
             created_at: b.booking_time,
           })),
           duration,
-          interval: 30,
           workingWindow,
           skipPast: true,
         })

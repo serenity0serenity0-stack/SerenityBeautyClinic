@@ -15,6 +15,7 @@ interface ServiceForm {
   nameAr: string
   nameEn: string
   price: number
+  duration: number
   category: string
   serviceType: 'regular' | 'package'
   unitLabel: string
@@ -29,6 +30,7 @@ const emptyForm: ServiceForm = {
   nameAr: '',
   nameEn: '',
   price: 0,
+  duration: 30,
   category: '',
   serviceType: 'regular',
   unitLabel: '',
@@ -97,6 +99,7 @@ export const Services: React.FC = () => {
       nameAr: service.nameAr || '',
       nameEn: service.nameEn || '',
       price: service.price || 0,
+      duration: service.duration || 30,
       category: service.category || 'custom',
       serviceType: service.service_type || 'regular',
       unitLabel: service.unit_label || (service.service_type === 'package' ? 'جلسة' : ''),
@@ -123,6 +126,10 @@ export const Services: React.FC = () => {
       toast.error('برجاء إدخال السعر')
       return
     }
+    if (!f.duration || f.duration < 5) {
+      toast.error('برجاء إدخال مدة خدمة صالحة (5 دقائق على الأقل)')
+      return
+    }
     if (f.serviceType === 'package') {
       if (!f.unitLabel || f.packageQuantity <= 0) {
         toast.error('برجاء إدخال وحدة الباقة وعدد الوحدات (مثال: 1000 نبضة)')
@@ -134,7 +141,7 @@ export const Services: React.FC = () => {
       nameAr: f.nameAr,
       nameEn: f.nameEn,
       price: f.price,
-      duration: 30,
+      duration: f.duration,
       category: f.category,
       active: f.active,
       service_type: f.serviceType,
@@ -644,6 +651,26 @@ export const Services: React.FC = () => {
                 ))}
               </datalist>
             </div>
+          </div>
+
+          {/* Duration */}
+          <div>
+            <label className="block text-sm text-gray-300 mb-2">
+              مدة الخدمة (دقيقة)
+            </label>
+            <input
+              type="number"
+              min="5"
+              step="5"
+              inputMode="numeric"
+              value={Number.isFinite(serviceForm.duration) && serviceForm.duration > 0 ? serviceForm.duration : ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                setServiceForm({ ...serviceForm, duration: raw === '' ? 0 : parseInt(raw, 10) })
+              }}
+              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">الافتراضي 30 دقيقة — يستخدم كمدة افتراضية عند إنشاء حجز.</p>
           </div>
 
           {/* Service type toggle */}

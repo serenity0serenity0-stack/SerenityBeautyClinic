@@ -115,96 +115,176 @@ export interface GenerateSlotsOptions {
   date: string
   barberId?: string
   bookings: Booking[]
+  /** Length of the appointment being placed (minutes). */
   duration?: number
-  interval?: number
   workingWindow?: WorkingWindow
   /** When true, slots earlier than the current Cairo time are marked unavailable. */
   skipPast?: boolean
 }
 
+/** Normalise a caller-supplied duration to a usable appointment length. */
+const normalizeDuration = (duration?: number): number =>
+  Number.isFinite(duration) && (duration as number) >= 5 ? Math.floor(duration as number) : 30
+
+/** [start, end) in minutes-of-day for one doctor's active appointments on a date. */
+export interface BusyInterval {
+  start: number
+  end: number
+}
+
 /**
- * Per-doctor, duration-aware slot generation.
- * A slot is unavailable when:
- *   - it overlaps an active booking of the same doctor (pending/confirmed/checked_in/ongoing), or
- *   - it has already passed (Cairo wall clock), or
- *   - the requested duration does not fit before the doctor's shift ends.
+ * Active, merged busy intervals for one doctor on a date.
+ * Overlapping/touching appointments are merged so callers can walk the free gaps.
+ * Cancelled appointments are ignored (they release their time, matching the DB trigger).
+ */
+export const getBusyIntervals = ({
+  date,
+  barberId,
+  bookings,
+}: {
+  date: string
+  barberId?: string
+  bookings: Booking[]
+}): BusyInterval[] => {
+  if (!date) return []
+
+  const intervals = bookings
+    .filter((b) => bookingDateOf(b.booking_time) === date)
+    .filter((b) => (barberId ? b.barber_id === barberId : true))
+    .filter((b) => ACTIVE_BOOKING_STATUSES.includes(b.status as any))
+    .map((b) => {
+      const start = bookingMinutesOf(b.booking_time)
+      return { start, end: start + normalizeDuration(b.duration) }
+    })
+    .sort((a, b) => a.start - b.start)
+
+  const merged: BusyInterval[] = []
+  for (const interval of intervals) {
+    const last = merged[merged.length - 1]
+    if (last && interval.start <= last.end) {
+      last.end = Math.max(last.end, interval.end)
+    } else {
+      merged.push({ ...interval })
+    }
+  }
+  return merged
+}
+
+/**
+ * Continuous, duration-aware slot generation.
+ *
+ * Starts are not forced onto a 30-minute grid:
+ *   - inside a free gap, candidates begin at the gap start and step by the
+ *     appointment duration (back-to-back bookings, no rounding);
+ *   - after a booking the cursor jumps to that booking's END, so the next
+ *     available start is exactly when the previous appointment finishes;
+ *   - an unavailable entry is still emitted at each busy start so the UI can
+ *     show why that time is blocked.
+ *
+ * A slot is unavailable when it overlaps an active booking of the same doctor,
+ * has already passed (Cairo wall clock), or the duration does not fit before
+ * the doctor's shift ends.
  */
 export const generateSlots = (options: GenerateSlotsOptions): Slot[] => {
-  const {
-    date,
-    barberId,
-    bookings,
-    duration = 30,
-    interval = 30,
-    workingWindow,
-    skipPast = true,
-  } = options
+  const { date, barberId, bookings, duration, workingWindow, skipPast = true } = options
+  const slotDuration = normalizeDuration(duration)
 
   const window = workingWindow || { start: 9 * 60, end: 21 * 60, active: true }
   if (!window.active) return []
 
-  const slots: Slot[] = []
   const nowMinutes = skipPast ? timeToMinutes(getEgyptTimeString()) : -1
   const today = getEgyptDateString()
+  const isPast = (minute: number) =>
+    skipPast && (date < today || (date === today && minute < nowMinutes))
 
-  for (let minute = window.start; minute + duration <= window.end; minute += interval) {
-    const time = minutesToTime(minute)
-
-    let reason: string | undefined
-    let available = true
-
-    if (skipPast && (date < today || (date === today && minute < nowMinutes))) {
-      reason = 'الوقت عدا بالفعل'
-      available = false
-    }
-
-    if (available && barberId) {
-      const slotStart = minute
-      const slotEnd = minute + duration
-      const conflicting = bookings.some((b) => {
-        if (bookingDateOf(b.booking_time) !== date) return false
-        if (b.barber_id !== barberId) return false
-        if (!ACTIVE_BOOKING_STATUSES.includes(b.status as any)) return false
-
-        const bStart = bookingMinutesOf(b.booking_time)
-        const bEnd = bStart + (b.duration || 30)
-        return slotStart < bEnd && slotEnd > bStart
-      })
-
-      if (conflicting) {
-        reason = 'محجوز بالفعل'
-        available = false
-      }
-    }
-
+  const busy = getBusyIntervals({ date, barberId, bookings })
+  const slots: Slot[] = []
+  const push = (start: number, available: boolean, reason?: string) => {
+    const time = minutesToTime(start)
+    if (slots.some((s) => s.time === time)) return
     slots.push({ time, available, reason })
   }
 
-  return slots
+  // For today the first candidate can never be earlier than the current minute.
+  let cursor = window.start
+  if (skipPast && date === today) cursor = Math.max(cursor, nowMinutes)
+
+  for (const interval of busy) {
+    if (interval.end <= cursor) continue
+
+    // Free gap before this booking: pack candidates back-to-back.
+    const gapEnd = Math.min(interval.start, window.end)
+    for (let start = cursor; start + slotDuration <= gapEnd; start += slotDuration) {
+      if (isPast(start)) push(start, false, 'الوقت عدا بالفعل')
+      else push(start, true)
+    }
+
+    // Keep a blocked entry at the booking start for UI visibility.
+    if (interval.start >= window.start && interval.start + slotDuration <= window.end) {
+      push(interval.start, false, 'محجوز بالفعل')
+    }
+
+    cursor = Math.max(cursor, interval.end)
+    if (cursor >= window.end) break
+  }
+
+  for (let start = cursor; start + slotDuration <= window.end; start += slotDuration) {
+    if (isPast(start)) push(start, false, 'الوقت عدا بالفعل')
+    else push(start, true)
+  }
+
+  return slots.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+}
+
+/**
+ * First start at or after `after` where an appointment of `duration` fits.
+ * Used to show "the next session after this customer will be at ...".
+ */
+export const nextAvailableStart = (
+  options: GenerateSlotsOptions & { after: string }
+): string | null => {
+  const { date, barberId, bookings, duration, workingWindow, after, skipPast = true } = options
+  const slotDuration = normalizeDuration(duration)
+
+  const window = workingWindow || { start: 9 * 60, end: 21 * 60, active: true }
+  if (!window.active) return null
+
+  const startFrom = timeToMinutes(after)
+  let earliest = startFrom
+  if (skipPast) {
+    const today = getEgyptDateString()
+    if (date < today) return null
+    if (date === today) earliest = Math.max(earliest, timeToMinutes(getEgyptTimeString()))
+  }
+
+  const busy = getBusyIntervals({ date, barberId, bookings })
+  let cursor = Math.max(earliest, window.start)
+
+  for (const interval of busy) {
+    if (interval.end <= cursor) continue
+    if (cursor + slotDuration <= interval.start) break
+    cursor = Math.max(cursor, interval.end)
+  }
+
+  return cursor + slotDuration <= window.end ? minutesToTime(cursor) : null
 }
 
 /** Single-slot check (used by edit forms / conflict guard before insert). */
 export const isSlotAvailable = (options: GenerateSlotsOptions & { time: string }): boolean => {
-  const { date, barberId, bookings, duration = 30, time, workingWindow } = options
-  if (barberId) {
-    const slotStart = timeToMinutes(time)
-    const slotEnd = slotStart + duration
-    const conflicting = bookings.some((b) => {
-      if (bookingDateOf(b.booking_time) !== date) return false
-      if (b.barber_id !== barberId) return false
-      if (!ACTIVE_BOOKING_STATUSES.includes(b.status as any)) return false
-
-      const bStart = bookingMinutesOf(b.booking_time)
-      const bEnd = bStart + (b.duration || 30)
-      return slotStart < bEnd && slotEnd > bStart
-    })
-    if (conflicting) return false
-  }
+  const { date, barberId, bookings, duration, time, workingWindow } = options
+  const slotDuration = normalizeDuration(duration)
 
   if (workingWindow && !workingWindow.active) return false
+  if (workingWindow && timeToMinutes(time) + slotDuration > workingWindow.end) return false
 
-  const window = workingWindow
-  if (window && timeToMinutes(time) + duration > window.end) return false
+  if (barberId) {
+    const slotStart = timeToMinutes(time)
+    const slotEnd = slotStart + slotDuration
+    const conflicting = getBusyIntervals({ date, barberId, bookings }).some(
+      (interval) => slotStart < interval.end && slotEnd > interval.start
+    )
+    if (conflicting) return false
+  }
 
   return true
 }
