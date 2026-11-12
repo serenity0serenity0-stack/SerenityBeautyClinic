@@ -29,6 +29,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Zap,
+  Filter,
 } from 'lucide-react'
 import { formatDateEgypt, formatTimeEgypt } from '../utils/formatCurrency'
 import toast from 'react-hot-toast'
@@ -77,6 +78,8 @@ export const Bookings: React.FC = () => {
   const [showModal, setShowModal] = React.useState(false)
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [viewMode, setViewMode] = React.useState<'today' | 'upcoming'>('today')
+  const [statusFilter, setStatusFilter] = React.useState<'all' | Booking['status']>('all')
+  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc')
   const [showWaitingList, setShowWaitingList] = React.useState(false)
   const [searchResults, setSearchResults] = React.useState<Client[]>([])
   const [showSearchResults, setShowSearchResults] = React.useState(false)
@@ -500,6 +503,16 @@ export const Bookings: React.FC = () => {
 
   const currentBookings = viewMode === 'today' ? todayBookings : upcomingBookings
 
+  const filteredBookings = React.useMemo(() => {
+    let list = currentBookings as any[]
+    if (statusFilter !== 'all') list = list.filter((b) => b.status === statusFilter)
+    list = [...list].sort((a, b) => {
+      const cmp = (a.booking_time || '').localeCompare(b.booking_time || '')
+      return sortOrder === 'desc' ? -cmp : cmp
+    })
+    return list
+  }, [currentBookings, statusFilter, sortOrder])
+
   return (
     <div className="min-h-screen py-6">
       {/* Queue Status Widget */}
@@ -578,6 +591,35 @@ export const Bookings: React.FC = () => {
           <Calendar size={18} />
           الحجوزات القادمة ({upcomingBookings.length})
         </motion.button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white/5 border border-white/10 rounded-lg">
+        <Filter size={18} className="text-gray-400" />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm"
+        >
+          <option value="all">جميع الحالات</option>
+          <option value="pending">قيد الانتظار</option>
+          <option value="confirmed">مؤكد</option>
+          <option value="checked_in">حضر</option>
+          <option value="ongoing">جاري</option>
+          <option value="completed">اكتمل</option>
+          <option value="cancelled">ملغى</option>
+        </select>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value as any)}
+          className="bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm"
+        >
+          <option value="asc">الأقدم أولاً</option>
+          <option value="desc">الأحدث أولاً</option>
+        </select>
+        <span className="text-gray-400 text-sm mr-auto">
+          عدد الحجوزات: {filteredBookings.length}
+        </span>
       </div>
 
       {/* Waiting List Panel */}
@@ -679,7 +721,7 @@ export const Bookings: React.FC = () => {
       >
       <div className="grid gap-4">
         <AnimatePresence>
-          {currentBookings.length === 0 ? (
+          {filteredBookings.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -689,7 +731,7 @@ export const Bookings: React.FC = () => {
               <p>لا توجد حجوزات في هذا الوقت</p>
             </motion.div>
           ) : (
-            currentBookings.map((booking: any, index: number) => (
+            filteredBookings.map((booking: any, index: number) => (
               <motion.div
                 key={booking.id}
                 initial={{ opacity: 0, y: 10 }}

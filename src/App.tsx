@@ -19,6 +19,7 @@ import { Expenses } from './pages/Expenses'
 import { Analytics } from './pages/Analytics'
 import { Settings } from './pages/Settings'
 import { DailyLogs } from './pages/DailyLogs'
+import { Accounts } from './pages/Accounts'
 import { Staff } from './pages/Staff'
 import { Bookings } from './pages/Bookings'
 import { QueueDisplay } from './pages/QueueDisplay'
@@ -159,6 +160,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <DailyLogs />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accounts"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Accounts />
                 </Layout>
               </ProtectedRoute>
             }

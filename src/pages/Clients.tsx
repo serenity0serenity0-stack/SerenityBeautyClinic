@@ -440,6 +440,7 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white">{t('clients.title')}</h1>
+        <span className="text-gray-400 text-sm">عدد العملاء: {filteredClients.length}</span>
         <motion.button
           onClick={() => setIsModalOpen(true)}
           whileHover={{ scale: 1.05 }}

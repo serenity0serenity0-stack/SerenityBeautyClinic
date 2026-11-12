@@ -199,7 +199,7 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const todayBookings = useMemo(() => {
     const today = getEgyptDateString()
     return bookings
-      .filter((b) => bookingDateOf(b.booking_time) === today && b.status !== 'cancelled')
+      .filter((b) => bookingDateOf(b.booking_time) === today)
       .sort((a, b) => a.queue_number - b.queue_number)
       .map((b) => ({ ...b, queueInfo: getQueueInfo(b.queue_number, b.booking_time) }))
   }, [bookings, getQueueInfo])
@@ -210,10 +210,9 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
     const limit = plusDays(2)
     return bookings
       .filter((b) => {
-        if (b.status === 'cancelled') return false
         const d = bookingDateOf(b.booking_time)
         if (d < today || d > limit) return false
-        if (d === today && bookingMinutesOf(b.booking_time) < nowMinutes) return false
+        if (d === today && bookingMinutesOf(b.booking_time) < nowMinutes && b.status !== 'cancelled') return false
         return true
       })
       .sort((a, b) => a.booking_time.localeCompare(b.booking_time))

@@ -105,6 +105,24 @@ export const useTransactions = (opts?: { dateFrom?: string; dateTo?: string }) =
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Transaction> }) => {
+      if (!clinicId) throw new Error('Clinic ID is required')
+      const { data, error } = await supabase
+        .from('transactions')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('clinic_id', clinicId)
+        .select()
+        .single()
+      if (error) throw error
+      return data!
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', clinicId] })
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('transactions').delete().eq('id', id)
@@ -179,6 +197,10 @@ export const useTransactions = (opts?: { dateFrom?: string; dateTo?: string }) =
       return result
     },
     deleteTransaction: async (id: string) => { await deleteMutation.mutateAsync(id) },
+    updateTransaction: async (id: string, updates: Partial<Transaction>) => {
+      const result = await updateMutation.mutateAsync({ id, updates })
+      return result
+    },
     getTransactionsByDate,
     getTransactionsByclient_id,
     getTodayRevenue,

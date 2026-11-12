@@ -14,6 +14,8 @@ import {
   type DailyInvoiceLine,
 } from '../db/hooks/useDailyRecords'
 import { getEgyptDateString, getEgyptFormattedDate } from '../utils/egyptTime'
+import { useAuth } from '../hooks/useAuth'
+import { useTransactions } from '../db/hooks/useTransactions'
 import {
   ShoppingCart,
   CalendarCheck,
@@ -84,6 +86,23 @@ export const DailyLogs: React.FC = () => {
   } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<{ type: 'transaction' | 'consumption'; id: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editingSale, setEditingSale] = useState<DailyTransaction | null>(null)
+  const [editForm, setEditForm] = useState({ total: '', payment_method: 'cash', description: '' })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const { user } = useAuth()
+  const { updateTransaction } = useTransactions()
+  const ADMIN_ID = '9bf6605a-db64-4024-9245-f23ef16cae37'
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    if (!user?.id) return
+    if (user.id === ADMIN_ID) { setIsAdmin(true); return }
+    import('../db/supabase').then(({ supabase }) => {
+      supabase.from('admin_auth').select('id').eq('auth_user_id', user.id).single().then(({ data }) => {
+        if (data?.id === ADMIN_ID) setIsAdmin(true)
+      })
+    }).catch(() => {})
+  }, [user])
 
   const { sales, visits, consumptions, adjustments, loading, error, fetchRecords, clientNames, deleteRecord } =
     useDailyRecords()
@@ -184,6 +203,27 @@ export const DailyLogs: React.FC = () => {
       setPendingDelete(null)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const saveEdit = async () => {
+    if (!editingSale) return
+    setSavingEdit(true)
+    try {
+      const total = parseFloat(editForm.total) || 0
+      await updateTransaction(editingSale.id, {
+        total,
+        amount: total,
+        payment_method: editForm.payment_method as any,
+        description: editForm.description,
+      })
+      toast.success('تم تحديث المبيعة')
+      setEditingSale(null)
+      fetchRecords(selectedDate)
+    } catch (err: any) {
+      toast.error(err?.message || 'خطأ في التحديث')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -588,20 +628,76 @@ export const DailyLogs: React.FC = () => {
       </Skeleton>
 
       {/* Detail Drawer / Bottom Sheet */}
-      <DetailPanel detail={detail} onClose={() => setDetail(null)} clientName={clientName} />
+      <DetailPanel detail={detail} onClose={() => setDetail(null)} clientName={clientName} isAdmin={isAdmin} onEditSale={(tx) => { setEditingSale(tx); setEditForm({ total: String(tx.total ?? 0), payment_method: tx.payment_method || 'cash', description: tx.description || '' }); setDetail(null) }} />
 
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
-        title="تأكيد الحذف"
-        description="هل أنت متأكد من الحذف؟ سيتم عكس الرصيد المرتبط بهذا السجل."
+        title={'حذف السجل'}
+        description={'هل أنت متأكد من حذف هذا السجل؟'}
         variant="danger"
-        confirmText="حذف"
-        cancelText="إلغاء"
+        confirmText={'حذف'}
+        cancelText={'إلغاء'}
         loading={deleting}
       />
+
+      {/* Edit Sale Modal */}
+      {editingSale && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-white font-bold text-lg">تعديل المبيعة</h3>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">المبلغ (total)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editForm.total}
+                onChange={(e) => setEditForm({ ...editForm, total: e.target.value })}
+                className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">طريقة الدفع</label>
+              <select
+                value={editForm.payment_method}
+                onChange={(e) => setEditForm({ ...editForm, payment_method: e.target.value })}
+                className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20"
+              >
+                <option value="cash">نقداً</option>
+                <option value="card">بطاقة</option>
+                <option value="wallet">محفظة</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">تفاصيل المبيعة</label>
+              <input
+                type="text"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold disabled:opacity-50"
+              >
+                {savingEdit ? 'جاري الحفظ...' : 'حفظ'}
+              </button>
+              <button
+                onClick={() => setEditingSale(null)}
+                className="flex-1 bg-white/10 text-white py-2 rounded-lg font-semibold"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 
@@ -770,10 +866,14 @@ function DetailPanel({
   detail,
   onClose,
   clientName,
+  isAdmin,
+  onEditSale,
 }: {
   detail: { type: ActivityType; tx?: DailyTransaction; visit?: DailyVisit; adj?: DailyAdjustment } | null
   onClose: () => void
   clientName: (id?: string | null) => string
+  isAdmin?: boolean
+  onEditSale?: (tx: DailyTransaction) => void
 }) {
   if (!detail) return null
   const isDrawer = typeof window !== 'undefined' && window.innerWidth >= 1024
@@ -809,7 +909,7 @@ function DetailPanel({
               </div>
 
               <div className="space-y-6 text-sm">
-                {detail.tx && <SaleDetail tx={detail.tx} clientName={clientName} />}
+                {detail.tx && <SaleDetail tx={detail.tx} clientName={clientName} isAdmin={isAdmin} onEdit={onEditSale} />}
                 {detail.visit && <VisitDetail visit={detail.visit} clientName={clientName} />}
                 {detail.adj && <AdjustmentDetail adj={detail.adj} clientName={clientName} />}
               </div>
@@ -841,7 +941,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function SaleDetail({ tx, clientName }: { tx: DailyTransaction; clientName: (id?: string | null) => string }) {
+function SaleDetail({ tx, clientName, isAdmin, onEdit }: { tx: DailyTransaction; clientName: (id?: string | null) => string; isAdmin?: boolean; onEdit?: (tx: DailyTransaction) => void }) {
   const lines = tx.lines || []
   return (
     <>
@@ -894,6 +994,14 @@ function SaleDetail({ tx, clientName }: { tx: DailyTransaction; clientName: (id?
         <Field label="الخصم"><span className="text-red-400">- {money(tx.discount)}</span></Field>
         <Field label="الإجمالي"><span className="text-gold-400 font-bold">{money(tx.total)}</span></Field>
       </div>
+      {isAdmin && onEdit && (
+        <button
+          onClick={() => onEdit(tx)}
+          className="w-full mt-4 py-2 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold"
+        >
+          تعديل المبيعة
+        </button>
+      )}
     </>
   )
 }
