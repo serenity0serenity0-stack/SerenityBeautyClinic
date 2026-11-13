@@ -26,7 +26,26 @@ export const Accounts: React.FC = () => {
   const [dateFrom, setDateFrom] = useState(monthStart)
   const [dateTo, setDateTo] = useState(today)
 
+  const [sessions, setSessions] = useState<any[]>([])
   const { transactions, loading } = useTransactions({ dateFrom, dateTo })
+
+  // fetch sessions
+  useEffect(() => {
+    if (!clinicId) return
+    ;(async () => {
+      try {
+        const { data } = await supabase
+          .from('account_sessions')
+          .select('id, user_id, auth_user_id, login_at, logout_at, duration_seconds, status')
+          .eq('clinic_id', clinicId)
+          .gte('login_at', dateFrom + 'T00:00:00Z')
+          .lte('login_at', dateTo + 'T23:59:59Z')
+        setSessions(data || [])
+      } catch {
+        setSessions([])
+      }
+    })()
+  }, [clinicId, dateFrom, dateTo])
 
   useEffect(() => {
     if (!user?.id) return
@@ -76,15 +95,24 @@ export const Accounts: React.FC = () => {
 
   // Per-account totals
   const accountTotals = useMemo(() => {
-    const map: Record<string, { name: string; uid: string; count: number; total: number; days: number }> = {}
+    const map: Record<string, { name: string; uid: string; count: number; total: number; days: number; sessions: number; usageSeconds: number }> = {}
     for (const r of dailyRows) {
-      if (!map[r.uid]) map[r.uid] = { name: r.account, uid: r.uid, count: 0, total: 0, days: 0 }
+      if (!map[r.uid]) map[r.uid] = { name: r.account, uid: r.uid, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
       map[r.uid].count += r.count
       map[r.uid].total += r.total
       map[r.uid].days += 1
     }
+    // add sessions
+    for (const s of sessions) {
+      const uid = s.auth_user_id || s.user_id
+      if (!map[uid]) {
+        map[uid] = { name: nameOf(uid), uid, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
+      }
+      map[uid].sessions += 1
+      map[uid].usageSeconds += s.duration_seconds || 0
+    }
     return Object.values(map).sort((a, b) => b.total - a.total)
-  }, [dailyRows])
+  }, [dailyRows, sessions])
 
   if (!isAdmin) {
     return (
@@ -143,6 +171,8 @@ export const Accounts: React.FC = () => {
                   <th className="px-3 py-2 text-right">عدد الأيام</th>
                   <th className="px-3 py-2 text-right">عدد المعاملات</th>
                   <th className="px-3 py-2 text-right">الإجمالي</th>
+                  <th className="px-3 py-2 text-right">الجلسات</th>
+                  <th className="px-3 py-2 text-right">مدة الاستخدام</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,6 +182,8 @@ export const Accounts: React.FC = () => {
                     <td className="px-3 py-2 text-gray-300">{a.days}</td>
                     <td className="px-3 py-2 text-gray-300">{a.count}</td>
                     <td className="px-3 py-2 text-emerald-400 font-bold">{formatCurrency(a.total)}</td>
+                    <td className="px-3 py-2 text-gray-300">{a.sessions}</td>
+                    <td className="px-3 py-2 text-blue-300">{Math.floor(a.usageSeconds / 3600)}h {Math.floor((a.usageSeconds % 3600) / 60)}m</td>
                   </tr>
                 ))}
               </tbody>
@@ -185,6 +217,39 @@ export const Accounts: React.FC = () => {
                     <td className="px-3 py-2 text-white">{r.account}</td>
                     <td className="px-3 py-2 text-gray-300">{r.count}</td>
                     <td className="px-3 py-2 text-emerald-400 font-bold">{formatCurrency(r.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Session History */}
+      <GlassCard>
+        <h2 className="text-white font-bold mb-3">سجل الجلسات ({sessions.length})</h2>
+        {sessions.length === 0 ? (
+          <p className="text-gray-400">لا توجد جلسات في هذا النطاق</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="px-3 py-2 text-right">الحساب</th>
+                  <th className="px-3 py-2 text-right">تسجيل الدخول</th>
+                  <th className="px-3 py-2 text-right">تسجيل الخروج</th>
+                  <th className="px-3 py-2 text-right">المدة</th>
+                  <th className="px-3 py-2 text-right">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s2) => (
+                  <tr key={s2.id} className="border-b border-white/5">
+                    <td className="px-3 py-2 text-white">{nameOf(s2.auth_user_id || s2.user_id)}</td>
+                    <td className="px-3 py-2 text-gray-300">{new Date(s2.login_at).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-gray-300">{s2.logout_at ? new Date(s2.logout_at).toLocaleString() : '—'}</td>
+                    <td className="px-3 py-2 text-blue-300">{s2.duration_seconds ? Math.floor(s2.duration_seconds/3600)+'h '+Math.floor((s2.duration_seconds%3600)/60)+'m' : '—'}</td>
+                    <td className="px-3 py-2 text-gray-300">{s2.status}</td>
                   </tr>
                 ))}
               </tbody>

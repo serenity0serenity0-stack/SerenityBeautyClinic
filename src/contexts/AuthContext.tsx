@@ -115,6 +115,8 @@ const fetchAuthProfile = async (userId: string): Promise<AuthProfile> => {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthUser>(initialState)
   const [hasSession, setHasSession] = useState(false)
+  const sessionIdRef = useRef<string | null>(null)
+  const accountIdRef = useRef<string | null>(null)
   const resolvingRef = useRef(false)
   const resolvedUserIdRef = useRef<string | null>(null)
   const securityVersionRef = useRef<number | null>(null)
@@ -392,6 +394,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (reason) {
         logoutReasonRef.current = reason
       }
+      // Close the current session
+      const sid = sessionIdRef.current
+      if (sid) {
+        try {
+          await supabase
+            .from('account_sessions')
+            .update({ logout_at: new Date().toISOString() })
+            .eq('session_id', sid)
+        } catch {}
+        sessionIdRef.current = null
+      }
       clearHeartbeat()
       clearResolveRetry()
       clearSessionRefs()
@@ -460,7 +473,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearHeartbeat()
   }, [hasSession, startHeartbeat, clearHeartbeat])
 
-  // Realtime subscription: listen to admin_auth changes for current user
+  // Login session tracking for Accounts Activity analytics
+  useEffect(() => {
+    if (!state.user?.id || !state.clinicId) return
+    if (sessionIdRef.current) return
+    const dedupKey = `session_created_${state.user.id}`
+    const last = (typeof window !== 'undefined') ? window.localStorage.getItem(dedupKey) : null
+    if (last && Date.now() - Number(last) < 5000) return
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(dedupKey, String(Date.now()))
+      setTimeout(() => { try { window.localStorage.removeItem(dedupKey) } catch {} }, 6000)
+    }
+
+    let cancelled = false
+    const createSession = async () => {
+      try {
+        // Resolve the application account id (admin_auth.id) if available
+        const { data: info } = await supabase
+          .from('admin_auth')
+          .select('id')
+          .eq('auth_user_id', state.user!.id)
+          .maybeSingle()
+        const accountId = info?.id || state.user!.id
+        accountIdRef.current = accountId
+
+        const { data, error } = await supabase
+          .from('account_sessions')
+          .insert({
+            user_id: accountId,
+            auth_user_id: state.user!.id,
+            clinic_id: state.clinicId,
+            login_at: new Date().toISOString(),
+            status: 'ACTIVE',
+          })
+          .select('session_id')
+          .single()
+        if (!cancelled && !error && data) {
+          sessionIdRef.current = data.session_id
+        }
+      } catch {
+        // ignore tracking errors
+      }
+    }
+    void createSession()
+    return () => { cancelled = true }
+  }, [state.user?.id, state.clinicId])
+
+  // Close session on logout (beforeunload marks interrupted)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const sid = sessionIdRef.current
+      if (sid) {
+        supabase.rpc('mark_session_interrupted', { p_session_id: sid }).then(() => {}, () => {})
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', handleBeforeUnload)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+      }
+    }
+  }, [])
   useEffect(() => {
     if (!state.user?.id || !state.role) return
 
