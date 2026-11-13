@@ -13,10 +13,11 @@ interface StaffAccount {
   auth_user_id: string
   name: string | null
   role: string | null
+  email: string | null
 }
 
 export const Accounts: React.FC = () => {
-  const { user, clinicId } = useAuth()
+  const { user, clinicId, role } = useAuth()
   const [isAdmin, setIsAdmin] = useState(false)
   const [accounts, setAccounts] = useState<StaffAccount[]>([])
   const [accountFilter, setAccountFilter] = useState<string>('all')
@@ -49,25 +50,38 @@ export const Accounts: React.FC = () => {
 
   useEffect(() => {
     if (!user?.id) return
-    if (user.id === ADMIN_ID) setIsAdmin(true)
+    if (user.id === ADMIN_ID || role === 'admin') setIsAdmin(true)
     ;(async () => {
       try {
-        const { data } = await supabase.from('admin_auth').select('id, auth_user_id, name, role').eq('clinic_id', clinicId)
-        if (data) setAccounts(data as StaffAccount[])
-        const me = (data || []).find((a: any) => a.auth_user_id === user.id || a.id === ADMIN_ID)
-        if (me && me.id === ADMIN_ID) setIsAdmin(true)
+        const { data, error } = await supabase.rpc('get_staff_users')
+        if (error) throw error
+        if (data) {
+          setAccounts((data as any[]).map((a: any) => ({
+            id: a.id,
+            auth_user_id: a.auth_user_id,
+            name: a.name,
+            role: a.role,
+            email: a.email,
+          })) as StaffAccount[])
+        }
+        if (user.id === ADMIN_ID || role === 'admin') setIsAdmin(true)
       } catch {
-        // ignore
+        // fallback: try direct query (may be blocked by RLS)
+        try {
+          const { data } = await supabase.from('admin_auth').select('id, auth_user_id, name, role, email').eq('clinic_id', clinicId)
+          if (data) setAccounts(data as StaffAccount[])
+        } catch {}
       }
     })()
-    if (user.id === ADMIN_ID) setIsAdmin(true)
-  }, [user, clinicId])
+    if (user.id === ADMIN_ID || role === 'admin') setIsAdmin(true)
+  }, [user, clinicId, role])
 
   // Map auth_user_id -> display name
   const nameOf = (uid: string | null) => {
-    if (!uid) return 'غير معروف'
-    const a = accounts.find((x) => x.auth_user_id === uid)
-    return a?.name || uid.slice(0, 8)
+    if (!uid) return 'Unknown Account'
+    const a = accounts.find((x) => x.auth_user_id === uid || x.id === uid)
+    if (a) return a.name || a.email || uid.slice(0, 8)
+    return 'Unknown Account'
   }
 
   const filteredTx = useMemo(() => {
@@ -128,6 +142,25 @@ export const Accounts: React.FC = () => {
     <div className="min-h-screen py-6 space-y-6">
       <h1 className="text-2xl sm:text-3xl font-bold text-white">حسابات الموظفين / Staff Accounts</h1>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Accounts', value: accounts.length },
+          { label: 'Active Accounts', value: new Set([...sessions.map((s:any)=>s.auth_user_id||s.user_id), ...filteredTx.map((t:any)=>t.created_by).filter(Boolean)]).size },
+          { label: 'Total Sessions', value: sessions.length },
+          { label: 'Total Usage', value: Math.floor(sessions.reduce((a:any,s:any)=>a+(s.duration_seconds||0),0)/3600)+'h '+Math.floor((sessions.reduce((a:any,s:any)=>a+(s.duration_seconds||0),0)%3600)/60)+'m' },
+          { label: 'Total Transactions', value: filteredTx.length },
+          { label: 'Total Value', value: formatCurrency(filteredTx.reduce((a:any,t:any)=>a+(t.total||0),0)) },
+          { label: 'Avg Tx/Account', value: (filteredTx.length / (new Set(filteredTx.map((t:any)=>t.created_by).filter(Boolean)).size || 1)).toFixed(1) },
+          { label: 'Avg Tx Value', value: formatCurrency(filteredTx.reduce((a:any,t:any)=>a+(t.total||0),0) / (filteredTx.length || 1)) },
+        ].map((c, i) => (
+          <GlassCard key={i}>
+            <p className="text-gray-400 text-xs mb-1">{c.label}</p>
+            <p className="text-white font-bold text-lg">{c.value}</p>
+          </GlassCard>
+        ))}
+      </div>
+
       <GlassCard>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -143,7 +176,7 @@ export const Accounts: React.FC = () => {
             <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm">
               <option value="all">جميع الحسابات</option>
               {accounts.map((a) => (
-                <option key={a.auth_user_id} value={a.auth_user_id}>{a.name || a.auth_user_id.slice(0, 8)} ({a.role})</option>
+                <option key={a.auth_user_id} value={a.auth_user_id}>{a.name || a.email || a.auth_user_id.slice(0, 8)} ({a.role}) - {a.email}</option>
               ))}
             </select>
           </div>
