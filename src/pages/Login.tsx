@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
 import { firstAllowedPage } from '@/lib/permissions'
 import { motion } from 'framer-motion'
-import { Mail, Lock, LogIn } from 'lucide-react'
+import { Mail, Lock, LogIn, Loader2 } from 'lucide-react'
 import logo from '../assets/serenity-logo.png'
 
 // Validation schema
@@ -234,13 +234,8 @@ export default function Login() {
             >
               {isSubmitting || authLoading ? (
                 <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <LogIn className="w-5 h-5" />
-                  </motion.div>
-                  <span>{t('common.loading') || 'Loading...'}</span>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>{t('common.loading') || 'جاري تسجيل الدخول...'}</span>
                 </>
               ) : (
                 <>

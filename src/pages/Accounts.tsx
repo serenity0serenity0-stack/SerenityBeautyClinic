@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useTransactions } from '../db/hooks/useTransactions'
+import { useServices } from '../db/hooks/useServices'
 import { supabase } from '../db/supabase'
 import { formatCurrency } from '../utils/formatCurrency'
 import { Search } from 'lucide-react'
@@ -32,6 +33,7 @@ export const Accounts: React.FC = () => {
 
   const [sessions, setSessions] = useState<any[]>([])
   const { transactions } = useTransactions({ dateFrom, dateTo })
+  const { services } = useServices()
 
   // fetch sessions (count only needed)
   useEffect(() => {
@@ -79,6 +81,20 @@ export const Accounts: React.FC = () => {
     })()
     if (user.id === ADMIN_ID || role === 'admin') setIsAdmin(true)
   }, [user, clinicId, role])
+
+  const serviceMap = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const s of (services || [])) {
+      if (s.id) m[s.id] = s.nameAr || s.nameEn || s.id
+    }
+    return m
+  }, [services])
+
+  const serviceNames = (t: any): string => {
+    const items = Array.isArray(t?.items) ? t.items : []
+    const names = items.map((i: any) => serviceMap[i?.service_id] || i?.name || i?.service_id).filter(Boolean)
+    return names.length ? names.join('، ') : (t?.description || '—')
+  }
 
   const nameOf = (uid: string | null) => {
     if (!uid) return 'حساب غير معروف'
@@ -286,6 +302,7 @@ export const Accounts: React.FC = () => {
                   <tr className="border-b border-white/10 text-gray-400">
                     <th className="px-3 py-2 text-right">الحساب</th>
                     <th className="px-3 py-2 text-right">العميل</th>
+                    <th className="px-3 py-2 text-right">الخدمة</th>
                     <th className="px-3 py-2 text-right">رقم المعاملة</th>
                     <th className="px-3 py-2 text-right">التاريخ</th>
                     <th className="px-3 py-2 text-right">المبلغ</th>
@@ -297,6 +314,7 @@ export const Accounts: React.FC = () => {
                     <tr key={t.id} className="border-b border-white/5">
                       <td className="px-3 py-2 text-white">{nameOf(t.created_by)}</td>
                       <td className="px-3 py-2 text-gray-300">{t.client_name || 'عميل غير محدد'}</td>
+                      <td className="px-3 py-2 text-gray-300">{serviceNames(t)}</td>
                       <td className="px-3 py-2 text-gray-300">{t.invoice_no || t.id?.slice(0, 8)}</td>
                       <td className="px-3 py-2 text-gray-300">{t.date}</td>
                       <td className="px-3 py-2 text-emerald-400 font-bold">{formatCurrency(t.total)}</td>

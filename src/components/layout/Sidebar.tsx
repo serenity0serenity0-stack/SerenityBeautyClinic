@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }
     { icon: <DollarSign size={20} />, label: t('navigation.expenses'), href: '/expenses', key: 'expenses' },
     { icon: <Clock size={20} />, label: t('navigation.queue'), href: '/queue', key: 'queue' },
     { icon: <BarChart3 size={20} />, label: t('navigation.analytics'), href: '/analytics', key: 'analytics' },
-    ...(isSpecialAdmin ? [{ icon: <DollarSign size={20} />, label: 'Accounts', href: '/accounts', key: 'accounts' }] : []),
+    ...(isSpecialAdmin ? [{ icon: <DollarSign size={20} />, label: 'أكونتات', href: '/accounts', key: 'accounts' }] : []),
     { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings', key: 'settings' },
   ].filter(link => link.key === 'accounts' || canAccess(role, permissions, link.key))
 
