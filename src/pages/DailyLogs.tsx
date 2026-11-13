@@ -113,6 +113,21 @@ export const DailyLogs: React.FC = () => {
     return () => clearTimeout(id)
   }, [search])
 
+  // Auto-set date range when an invoice number is entered (invoice format: YYYYMMDD + seq)
+  useEffect(() => {
+    const inv = invoiceFilter.trim().replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    const m = inv.match(/(\d{4})(\d{2})(\d{2})/)
+    if (m) {
+      const y = parseInt(m[1], 10)
+      const mo = parseInt(m[2], 10)
+      const d = parseInt(m[3], 10)
+      if (y >= 2000 && y <= 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+        const dateStr = `${m[1]}-${m[2]}-${m[3]}`
+        setSelectedDate(dateStr)
+      }
+    }
+  }, [invoiceFilter])
+
   // Reload day when date changes
   useEffect(() => {
     fetchRecords(selectedDate)
