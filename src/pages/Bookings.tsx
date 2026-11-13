@@ -69,7 +69,7 @@ const timeToMinutes = (iso: string) => {
 export const Bookings: React.FC = () => {
   const { i18n } = useTranslation()
   const lang: 'ar' | 'en' = i18n.language === 'en' ? 'en' : 'ar'
-  const { loading, bookings, getTodayBookings, getUpcomingBookings, addBooking, updateBooking, deleteBooking } = useBookings()
+  const { loading, bookings, getTodayBookings, getUpcomingBookings, getPreviousBookings, addBooking, updateBooking, deleteBooking } = useBookings()
   const { searchClients } = useClients()
   const { barbers } = useBarbers()
   const { settings, updateSetting } = useSettings()
@@ -77,7 +77,7 @@ export const Bookings: React.FC = () => {
 
   const [showModal, setShowModal] = React.useState(false)
   const [editingId, setEditingId] = React.useState<string | null>(null)
-  const [viewMode, setViewMode] = React.useState<'today' | 'upcoming'>('today')
+  const [viewMode, setViewMode] = React.useState<'today' | 'upcoming' | 'previous'>('today')
   const [statusFilter, setStatusFilter] = React.useState<'all' | Booking['status']>('all')
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc')
   const [showWaitingList, setShowWaitingList] = React.useState(false)
@@ -110,6 +110,7 @@ export const Bookings: React.FC = () => {
   // Memoized derived data — computed once per bookings change, not on every render
   const todayBookings = getTodayBookings()
   const upcomingBookings = getUpcomingBookings()
+  const previousBookings = getPreviousBookings()
 
   /**
    * Compute available/blocked time slots for a date + doctor.
@@ -501,7 +502,12 @@ export const Bookings: React.FC = () => {
     // Available slots recompute automatically when bookings refresh
   }
 
-  const currentBookings = viewMode === 'today' ? todayBookings : upcomingBookings
+  const currentBookings =
+    viewMode === 'today'
+      ? todayBookings
+      : viewMode === 'upcoming'
+      ? upcomingBookings
+      : previousBookings
 
   const filteredBookings = React.useMemo(() => {
     let list = currentBookings as any[]
@@ -590,6 +596,19 @@ export const Bookings: React.FC = () => {
         >
           <Calendar size={18} />
           الحجوزات القادمة ({upcomingBookings.length})
+        </motion.button>
+        <motion.button
+          onClick={() => setViewMode('previous')}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
+            viewMode === 'previous'
+              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
+              : 'bg-white/10 text-gray-300 hover:bg-white/15'
+          }`}
+        >
+          <Calendar size={18} />
+          الحجوزات السابقة ({previousBookings.length})
         </motion.button>
       </div>
 

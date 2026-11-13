@@ -22,7 +22,7 @@ type SortBy = 'name' | 'visits' | 'spent' | 'recent'
 
 export const Clients: React.FC = () => {
   const { t } = useTranslation()
-  const { clients, loading: clientsLoading, addClient, updateClient, deleteClient, searchClients } = useClients()
+  const { clients, loading: clientsLoading, totalCount, page, totalPages, setPage, addClient, updateClient, deleteClient, searchClients } = useClients()
   const { getTransactionsByclient_id } = useTransactions()
   const { barbers, fetchBarbers } = useBarbers()
   const { notes, fetchNotes, addNote, updateNote, deleteNote } = useCustomerNotes()
@@ -440,7 +440,9 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white">{t('clients.title')}</h1>
-        <span className="text-gray-400 text-sm">عدد العملاء: {filteredClients.length}</span>
+        <span className="text-gray-400 text-sm">
+          إجمالي: {totalCount} — معروض: {filteredClients.length}
+        </span>
         <motion.button
           onClick={() => setIsModalOpen(true)}
           whileHover={{ scale: 1.05 }}
@@ -606,6 +608,27 @@ const [txs, balance, consumptions, adjustments] = await Promise.all([
           ))}
         </div>
       </Skeleton>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-center gap-3 mt-4">
+        <button
+          onClick={() => setPage(Math.max(0, page - 1))}
+          disabled={page <= 0}
+          className="px-3 py-1.5 bg-white/10 text-white rounded-lg disabled:opacity-40"
+        >
+          السابق
+        </button>
+        <span className="text-gray-400 text-sm">
+          صفحة {page + 1} من {totalPages}
+        </span>
+        <button
+          onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+          disabled={page >= totalPages - 1}
+          className="px-3 py-1.5 bg-white/10 text-white rounded-lg disabled:opacity-40"
+        >
+          التالي
+        </button>
+      </div>
 
       {/* Add Client Modal */}
       <Modal

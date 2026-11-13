@@ -195,7 +195,15 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
     [bookings]
   )
 
-  // ── Memoized derived data ──
+  const previousBookings = useMemo(() => {
+    const today = getEgyptDateString()
+    return bookings
+      .filter((b) => {
+        const d = bookingDateOf(b.booking_time)
+        return d < today
+      })
+      .sort((a, b) => b.booking_time.localeCompare(a.booking_time))
+  }, [bookings])
   const todayBookings = useMemo(() => {
     const today = getEgyptDateString()
     return bookings
@@ -365,6 +373,7 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
     deleteBooking: async (id: string) => { await deleteMutation.mutateAsync(id) },
     getTodayBookings: useCallback(() => todayBookings, [todayBookings]),
     getUpcomingBookings: useCallback(() => upcomingBookings, [upcomingBookings]),
+    getPreviousBookings: useCallback(() => previousBookings, [previousBookings]),
     getClientBookings,
     getBarberSchedule,
     calculateSmartQueue,

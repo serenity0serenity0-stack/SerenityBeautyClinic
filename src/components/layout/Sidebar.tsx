@@ -37,8 +37,11 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }) => {
   const { t } = useTranslation()
   const { language } = useLanguage()
-  const { role, permissions } = useAuth()
+  const { role, permissions, user } = useAuth()
   const navigate = useNavigate()
+
+  const ADMIN_ID = '9bf6605a-db64-4024-9245-f23ef16cae37'
+  const isSpecialAdmin = user?.id === ADMIN_ID
 
   // Cashiers only see the pages the admin granted them; admins see everything
   const links: SidebarLink[] = [
@@ -52,8 +55,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPath }
     { icon: <DollarSign size={20} />, label: t('navigation.expenses'), href: '/expenses', key: 'expenses' },
     { icon: <Clock size={20} />, label: t('navigation.queue'), href: '/queue', key: 'queue' },
     { icon: <BarChart3 size={20} />, label: t('navigation.analytics'), href: '/analytics', key: 'analytics' },
+    ...(isSpecialAdmin ? [{ icon: <DollarSign size={20} />, label: 'Accounts', href: '/accounts', key: 'accounts' }] : []),
     { icon: <Settings size={20} />, label: t('navigation.settings'), href: '/settings', key: 'settings' },
-  ].filter(link => canAccess(role, permissions, link.key))
+  ].filter(link => link.key === 'accounts' || canAccess(role, permissions, link.key))
 
   const handleNavigate = (path: string) => {
     navigate(path)

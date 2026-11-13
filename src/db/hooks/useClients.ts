@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase, Client } from '../supabase'
@@ -9,7 +9,6 @@ const CLIENT_COLUMNS =
   'id, clinic_id, name, phone, email, birthday, is_vip, total_visits, total_spent, last_visit, created_at, updated_at'
 
 // The list view only needs the most recent clients; searching covers the rest.
-const LIST_LIMIT = 50
 const SEARCH_LIMIT = 50
 
 // Keep the dataset reasonably fresh for the POS-facing flows, but still cache
@@ -34,22 +33,42 @@ const normalizeSearchInput = (value: string): string => {
   return normalized
 }
 
-export const useClients = () => {
+export const useClients = (opts?: { pageSize?: number }) => {
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
+  const pageSize = opts?.pageSize ?? 50
+  const [page, setPage] = useState(0)
 
-  const queryKey: ['clients', string | null | undefined] = ['clients', clinicId]
+  const queryKey: ['clients', string | null | undefined, number, number] = ['clients', clinicId, page, pageSize]
+
+  // Total count (independent of pagination)
+  const countQuery = useQuery({
+    queryKey: ['clients-count', clinicId],
+    queryFn: async () => {
+      if (!clinicId) return 0
+      const { count, error } = await supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+      if (error) throw error
+      return count ?? 0
+    },
+    enabled: !!clinicId,
+    staleTime: STALE_TIME,
+  })
 
   const listQuery = useQuery({
     queryKey,
     queryFn: async () => {
       if (!clinicId) return []
+      const from = page * pageSize
+      const to = from + pageSize - 1
       const { data, error } = await supabase
         .from('clients')
         .select(CLIENT_COLUMNS)
         .eq('clinic_id', clinicId)
         .order('created_at', { ascending: false })
-        .limit(LIST_LIMIT)
+        .range(from, to)
       if (error) throw error
       return (data || []) as Client[]
     },
@@ -58,6 +77,8 @@ export const useClients = () => {
   })
 
   const clients = (listQuery.data || []) as Client[]
+  const totalCount = countQuery.data ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
   // Server-side search: prefers the optimized search_clients RPC, falls back to
   // a plain PostgREST ILIKE query so search still works without the RPC.
@@ -111,7 +132,8 @@ export const useClients = () => {
       return data?.[0]
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ['clients', clinicId] })
+      queryClient.invalidateQueries({ queryKey: ['clients-count', clinicId] })
     },
   })
 
@@ -128,7 +150,8 @@ export const useClients = () => {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ['clients', clinicId] })
+      queryClient.invalidateQueries({ queryKey: ['clients-count', clinicId] })
     },
   })
 
@@ -138,7 +161,8 @@ export const useClients = () => {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ['clients', clinicId] })
+      queryClient.invalidateQueries({ queryKey: ['clients-count', clinicId] })
     },
   })
 
@@ -196,6 +220,11 @@ export const useClients = () => {
     clients,
     loading: listQuery.isLoading,
     error: listQuery.error ? listQuery.error.message ?? 'An error occurred' : null,
+    totalCount,
+    page,
+    pageSize,
+    totalPages,
+    setPage,
     fetchClients,
     addClient,
     updateClient,
