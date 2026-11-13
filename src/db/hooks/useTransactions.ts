@@ -6,7 +6,7 @@ import { getEgyptDateString } from '../../utils/egyptTime'
 import toast from 'react-hot-toast'
 
 const TX_COLUMNS =
-  'id, client_id, client_name, client_phone, barber_id, barber_name, amount, discount, discount_type, total, payment_method, status, description, is_completed, invoice_no, date, time, items, subtotal, visit_number, created_at, clinic_id'
+  'id, client_id, client_name, client_phone, barber_id, barber_name, amount, discount, discount_type, total, payment_method, status, description, is_completed, invoice_no, date, time, items, subtotal, visit_number, created_at, created_by, clinic_id'
 
 export const useTransactions = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const { clinicId } = useAuth()
@@ -39,11 +39,13 @@ export const useTransactions = (opts?: { dateFrom?: string; dateTo?: string }) =
     mutationFn: async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>) => {
       if (!clinicId) throw new Error('Clinic ID is required')
 
+      const { data: { user } } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           ...transaction,
           clinic_id: clinicId,
+          created_by: user?.id ?? null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

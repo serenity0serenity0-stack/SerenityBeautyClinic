@@ -1,56 +1,90 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { useClients } from '../db/hooks/useClients'
 import { useTransactions } from '../db/hooks/useTransactions'
+import { supabase } from '../db/supabase'
 import { formatCurrency } from '../utils/formatCurrency'
 import { Search } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
 
 const ADMIN_ID = '9bf6605a-db64-4024-9245-f23ef16cae37'
 
-export const Accounts: React.FC = () => {
-  const { user } = useAuth()
-  const { clients, loading: clientsLoading } = useClients()
-  const { transactions, loading: txLoading } = useTransactions()
+interface StaffAccount {
+  id: string
+  auth_user_id: string
+  name: string | null
+  role: string | null
+}
 
+export const Accounts: React.FC = () => {
+  const { user, clinicId } = useAuth()
   const [isAdmin, setIsAdmin] = useState(false)
+  const [accounts, setAccounts] = useState<StaffAccount[]>([])
+  const [accountFilter, setAccountFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
-  const [selectedClient, setSelectedClient] = useState<string | null>(null)
+  const today = new Date().toISOString().slice(0, 10)
+  const monthStart = today.slice(0, 7) + '-01'
+  const [dateFrom, setDateFrom] = useState(monthStart)
+  const [dateTo, setDateTo] = useState(today)
+
+  const { transactions, loading } = useTransactions({ dateFrom, dateTo })
 
   useEffect(() => {
     if (!user?.id) return
-    if (user.id === ADMIN_ID) { setIsAdmin(true); return }
-    // fallback: check admin_auth row id
-    import('../db/supabase').then(({ supabase }) => {
-      supabase.from('admin_auth').select('id').eq('auth_user_id', user.id).single().then(({ data }) => {
-        if (data?.id === ADMIN_ID) setIsAdmin(true)
-      })
-    }).catch(() => {})
-  }, [user])
+    if (user.id === ADMIN_ID) setIsAdmin(true)
+    ;(async () => {
+      try {
+        const { data } = await supabase.from('admin_auth').select('id, auth_user_id, name, role').eq('clinic_id', clinicId)
+        if (data) setAccounts(data as StaffAccount[])
+        const me = (data || []).find((a: any) => a.auth_user_id === user.id || a.id === ADMIN_ID)
+        if (me && me.id === ADMIN_ID) setIsAdmin(true)
+      } catch {
+        // ignore
+      }
+    })()
+    if (user.id === ADMIN_ID) setIsAdmin(true)
+  }, [user, clinicId])
 
-  const filteredClients = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let list = clients || []
-    if (q) list = list.filter((c: any) => (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q))
+  // Map auth_user_id -> display name
+  const nameOf = (uid: string | null) => {
+    if (!uid) return 'غير معروف'
+    const a = accounts.find((x) => x.auth_user_id === uid)
+    return a?.name || uid.slice(0, 8)
+  }
+
+  const filteredTx = useMemo(() => {
+    let list = transactions || []
+    if (accountFilter !== 'all') list = list.filter((t: any) => t.created_by === accountFilter)
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter((t: any) => (t.client_name || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
+    }
     return list
-  }, [clients, search])
+  }, [transactions, accountFilter, search])
 
-  const clientTotals = useMemo(() => {
-    const map: Record<string, { count: number; total: number; last: string }> = {}
-    for (const t of transactions || []) {
-      const key = t.client_id || t.client_phone || t.client_name || 'unknown'
-      if (!map[key]) map[key] = { count: 0, total: 0, last: '' }
+  // Daily breakdown per account
+  const dailyRows = useMemo(() => {
+    const map: Record<string, { account: string; uid: string; date: string; count: number; total: number }> = {}
+    for (const t of filteredTx) {
+      const uid = (t as any).created_by || 'unknown'
+      const key = `${uid}__${t.date}`
+      if (!map[key]) map[key] = { account: nameOf(uid), uid, date: t.date, count: 0, total: 0 }
       map[key].count += 1
       map[key].total += t.total || 0
-      if (!map[key].last || (t.created_at && t.created_at > map[key].last)) map[key].last = t.created_at || ''
     }
-    return map
-  }, [transactions])
+    return Object.values(map).sort((a, b) => b.date.localeCompare(a.date) || a.account.localeCompare(b.account))
+  }, [filteredTx])
 
-  const selectedTx = useMemo(() => {
-    if (!selectedClient) return []
-    return (transactions || []).filter((t: any) => (t.client_id || t.client_phone || t.client_name) === selectedClient)
-  }, [transactions, selectedClient])
+  // Per-account totals
+  const accountTotals = useMemo(() => {
+    const map: Record<string, { name: string; uid: string; count: number; total: number; days: number }> = {}
+    for (const r of dailyRows) {
+      if (!map[r.uid]) map[r.uid] = { name: r.account, uid: r.uid, count: 0, total: 0, days: 0 }
+      map[r.uid].count += r.count
+      map[r.uid].total += r.total
+      map[r.uid].days += 1
+    }
+    return Object.values(map).sort((a, b) => b.total - a.total)
+  }, [dailyRows])
 
   if (!isAdmin) {
     return (
@@ -64,83 +98,100 @@ export const Accounts: React.FC = () => {
 
   return (
     <div className="min-h-screen py-6 space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white">الحسابات / Transactions</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-white">حسابات الموظفين / Staff Accounts</h1>
 
       <GlassCard>
-        <div className="flex items-center gap-2">
-          <Search size={18} className="text-gray-400" />
-          <input
-            type="text"
-            placeholder="بحث عن عميل..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">من تاريخ</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">إلى تاريخ</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">الحساب</label>
+            <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm">
+              <option value="all">جميع الحسابات</option>
+              {accounts.map((a) => (
+                <option key={a.auth_user_id} value={a.auth_user_id}>{a.name || a.auth_user_id.slice(0, 8)} ({a.role})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">بحث</label>
+            <div className="flex items-center gap-2">
+              <Search size={16} className="text-gray-400" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm" placeholder="اسم العميل..." />
+            </div>
+          </div>
         </div>
       </GlassCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Accounts list */}
-        <GlassCard>
-          <h2 className="text-white font-bold mb-3">الحسابات ({filteredClients.length})</h2>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {clientsLoading || txLoading ? (
-              <p className="text-gray-400">جاري التحميل...</p>
-            ) : filteredClients.length === 0 ? (
-              <p className="text-gray-400">لا توجد حسابات</p>
-            ) : (
-              filteredClients.map((c: any) => {
-                const key = c.id || c.phone || c.name
-                const tot = clientTotals[key] || { count: 0, total: 0, last: '' }
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedClient(key)}
-                    className={`w-full text-right p-3 rounded-lg border transition ${
-                      selectedClient === key ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-white font-semibold">{c.name}</p>
-                        <p className="text-gray-400 text-xs">{c.phone}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-emerald-400 font-bold">{formatCurrency(tot.total)}</p>
-                        <p className="text-gray-400 text-xs">{tot.count} معاملة</p>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })
-            )}
+      {/* Per-account summary */}
+      <GlassCard>
+        <h2 className="text-white font-bold mb-3">ملخص الحسابات</h2>
+        {accountTotals.length === 0 ? (
+          <p className="text-gray-400">لا توجد بيانات</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="px-3 py-2 text-right">الحساب</th>
+                  <th className="px-3 py-2 text-right">عدد الأيام</th>
+                  <th className="px-3 py-2 text-right">عدد المعاملات</th>
+                  <th className="px-3 py-2 text-right">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accountTotals.map((a) => (
+                  <tr key={a.uid} className="border-b border-white/5">
+                    <td className="px-3 py-2 text-white">{a.name}</td>
+                    <td className="px-3 py-2 text-gray-300">{a.days}</td>
+                    <td className="px-3 py-2 text-gray-300">{a.count}</td>
+                    <td className="px-3 py-2 text-emerald-400 font-bold">{formatCurrency(a.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </GlassCard>
+        )}
+      </GlassCard>
 
-        {/* Transactions for selected */}
-        <GlassCard>
-          <h2 className="text-white font-bold mb-3">
-            معاملات {selectedClient ? '' : '(اختر حساباً)'}
-          </h2>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {selectedTx.length === 0 ? (
-              <p className="text-gray-400">لا توجد معاملات</p>
-            ) : (
-              selectedTx.map((t: any) => (
-                <div key={t.id} className="p-3 rounded-lg border border-white/10 bg-white/5">
-                  <div className="flex justify-between">
-                    <span className="text-white text-sm">{t.description || t.payment_method || 'معاملة'}</span>
-                    <span className="text-emerald-400 font-bold">{formatCurrency(t.total)}</span>
-                  </div>
-                  <div className="text-gray-400 text-xs mt-1">
-                    {t.date} {t.time} — {t.payment_method}
-                  </div>
-                </div>
-              ))
-            )}
+      {/* Daily breakdown */}
+      <GlassCard>
+        <h2 className="text-white font-bold mb-3">الاستخدام اليومي ({dailyRows.length} سجل)</h2>
+        {loading ? (
+          <p className="text-gray-400">جاري التحميل...</p>
+        ) : dailyRows.length === 0 ? (
+          <p className="text-gray-400">لا توجد معاملات في هذا النطاق</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="px-3 py-2 text-right">التاريخ</th>
+                  <th className="px-3 py-2 text-right">الحساب</th>
+                  <th className="px-3 py-2 text-right">عدد المعاملات</th>
+                  <th className="px-3 py-2 text-right">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyRows.map((r, i) => (
+                  <tr key={i} className="border-b border-white/5">
+                    <td className="px-3 py-2 text-gray-300">{r.date}</td>
+                    <td className="px-3 py-2 text-white">{r.account}</td>
+                    <td className="px-3 py-2 text-gray-300">{r.count}</td>
+                    <td className="px-3 py-2 text-emerald-400 font-bold">{formatCurrency(r.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </GlassCard>
-      </div>
+        )}
+      </GlassCard>
     </div>
   )
 }
