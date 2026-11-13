@@ -152,6 +152,7 @@ export interface Transaction {
   subtotal?: number
   visit_number?: number
   created_at?: string
+  created_by?: string
   updated_at?: string
   clinic_id?: string
 }

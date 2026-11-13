@@ -5,7 +5,6 @@ import { supabase } from '../db/supabase'
 import { formatCurrency } from '../utils/formatCurrency'
 import { Search } from 'lucide-react'
 import { GlassCard } from '../components/ui/GlassCard'
-
 const ADMIN_ID = '9bf6605a-db64-4024-9245-f23ef16cae37'
 
 interface StaffAccount {
@@ -21,6 +20,7 @@ export const Accounts: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false)
   const [accounts, setAccounts] = useState<StaffAccount[]>([])
   const [accountFilter, setAccountFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const today = new Date().toISOString().slice(0, 10)
   const monthStart = today.slice(0, 7) + '-01'
@@ -35,12 +35,14 @@ export const Accounts: React.FC = () => {
     if (!clinicId) return
     ;(async () => {
       try {
+        const startUtc = new Date(dateFrom + 'T00:00:00+02:00').toISOString()
+        const endExclusive = new Date(new Date(dateTo + 'T00:00:00+02:00').getTime() + 24*60*60*1000).toISOString()
         const { data } = await supabase
           .from('account_sessions')
           .select('id, user_id, auth_user_id, login_at, logout_at, duration_seconds, status')
           .eq('clinic_id', clinicId)
-          .gte('login_at', dateFrom + 'T00:00:00Z')
-          .lte('login_at', dateTo + 'T23:59:59Z')
+          .gte('login_at', startUtc)
+          .lt('login_at', endExclusive)
         setSessions(data || [])
       } catch {
         setSessions([])
@@ -86,15 +88,39 @@ export const Accounts: React.FC = () => {
 
   const filteredTx = useMemo(() => {
     let list = transactions || []
-    if (accountFilter !== 'all') list = list.filter((t: any) => t.created_by === accountFilter)
+    const roleAccountIds = roleFilter === 'all'
+      ? null
+      : new Set(accounts.filter((a) => a.role === roleFilter).map((a) => a.auth_user_id))
+    if (accountFilter !== 'all') {
+      list = list.filter((t: any) => t.created_by === accountFilter)
+      if (roleFilter !== 'all' && !roleAccountIds?.has(accountFilter)) {
+        list = []
+      }
+    } else if (roleFilter !== 'all') {
+      list = list.filter((t: any) => t.created_by && roleAccountIds?.has(t.created_by))
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       list = list.filter((t: any) => (t.client_name || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
     }
     return list
-  }, [transactions, accountFilter, search])
+  }, [transactions, accountFilter, roleFilter, search, accounts])
 
   // Daily breakdown per account
+  const filteredSessions = useMemo(() => {
+    let list = sessions || []
+    const roleAccountIds = roleFilter === 'all'
+      ? null
+      : new Set(accounts.filter((a) => a.role === roleFilter).map((a) => a.auth_user_id))
+    if (accountFilter !== 'all') {
+      list = list.filter((s) => (s.auth_user_id || s.user_id) === accountFilter)
+      if (roleFilter !== 'all' && !roleAccountIds?.has(accountFilter)) list = []
+    } else if (roleFilter !== 'all') {
+      list = list.filter((s) => roleAccountIds?.has(s.auth_user_id || s.user_id))
+    }
+    return list
+  }, [sessions, accountFilter, roleFilter, accounts])
+
   const dailyRows = useMemo(() => {
     const map: Record<string, { account: string; uid: string; date: string; count: number; total: number }> = {}
     for (const t of filteredTx) {
@@ -109,24 +135,34 @@ export const Accounts: React.FC = () => {
 
   // Per-account totals
   const accountTotals = useMemo(() => {
-    const map: Record<string, { name: string; uid: string; count: number; total: number; days: number; sessions: number; usageSeconds: number }> = {}
+    const roleFilteredAccounts = roleFilter === 'all'
+      ? accounts
+      : accounts.filter((a) => a.role === roleFilter)
+    const selectedAccounts = accountFilter === 'all'
+      ? roleFilteredAccounts
+      : roleFilteredAccounts.filter((a) => a.auth_user_id === accountFilter)
+
+    const map: Record<string, { name: string; uid: string; email: string | null; role: string | null; count: number; total: number; days: number; sessions: number; usageSeconds: number }> = {}
+    for (const a of selectedAccounts) {
+      map[a.auth_user_id] = { name: a.name || a.email || a.auth_user_id.slice(0, 8), uid: a.auth_user_id, email: a.email, role: a.role, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
+    }
+    if (filteredTx.some((t) => !t.created_by)) {
+      map['unknown'] = { name: 'Unknown Account', uid: 'unknown', email: null, role: null, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
+    }
     for (const r of dailyRows) {
-      if (!map[r.uid]) map[r.uid] = { name: r.account, uid: r.uid, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
+      if (!map[r.uid]) map[r.uid] = { name: r.account, uid: r.uid, email: null, role: null, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
       map[r.uid].count += r.count
       map[r.uid].total += r.total
       map[r.uid].days += 1
     }
-    // add sessions
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       const uid = s.auth_user_id || s.user_id
-      if (!map[uid]) {
-        map[uid] = { name: nameOf(uid), uid, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
-      }
+      if (!map[uid]) map[uid] = { name: nameOf(uid), uid, email: null, role: null, count: 0, total: 0, days: 0, sessions: 0, usageSeconds: 0 }
       map[uid].sessions += 1
       map[uid].usageSeconds += s.duration_seconds || 0
     }
     return Object.values(map).sort((a, b) => b.total - a.total)
-  }, [dailyRows, sessions])
+  }, [accounts, roleFilter, accountFilter, dailyRows, filteredSessions, filteredTx])
 
   if (!isAdmin) {
     return (
@@ -147,7 +183,7 @@ export const Accounts: React.FC = () => {
         {[
           { label: 'Total Accounts', value: accounts.length },
           { label: 'Active Accounts', value: new Set([...sessions.map((s:any)=>s.auth_user_id||s.user_id), ...filteredTx.map((t:any)=>t.created_by).filter(Boolean)]).size },
-          { label: 'Total Sessions', value: sessions.length },
+          { label: 'Total Sessions', value: filteredSessions.length },
           { label: 'Total Usage', value: Math.floor(sessions.reduce((a:any,s:any)=>a+(s.duration_seconds||0),0)/3600)+'h '+Math.floor((sessions.reduce((a:any,s:any)=>a+(s.duration_seconds||0),0)%3600)/60)+'m' },
           { label: 'Total Transactions', value: filteredTx.length },
           { label: 'Total Value', value: formatCurrency(filteredTx.reduce((a:any,t:any)=>a+(t.total||0),0)) },
@@ -181,12 +217,29 @@ export const Accounts: React.FC = () => {
             </select>
           </div>
           <div>
+            <label className="block text-sm text-gray-400 mb-2">الدور</label>
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-full bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm">
+              <option value="all">جميع الأدوار</option>
+              {[...new Set(accounts.map((a) => a.role).filter(Boolean))].map((r) => (
+                <option key={r} value={r as string}>{r}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm text-gray-400 mb-2">بحث</label>
             <div className="flex items-center gap-2">
               <Search size={16} className="text-gray-400" />
               <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm" placeholder="اسم العميل..." />
             </div>
           </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={() => { setDateFrom(monthStart); setDateTo(today); setAccountFilter('all'); setRoleFilter('all'); setSearch('') }}
+            className="px-4 py-2 bg-white/10 text-white rounded-lg border border-white/20 text-sm hover:bg-white/20"
+          >
+            إعادة تعيين الفلاتر
+          </button>
         </div>
       </GlassCard>
 
