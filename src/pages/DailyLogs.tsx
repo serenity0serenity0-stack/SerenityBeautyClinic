@@ -122,15 +122,15 @@ export const DailyLogs: React.FC = () => {
   // and the KPI cards — matches client name, phone, service name, invoice # and
   // doctor/employee across sales, visits and adjustments.
   const filtered = useMemo(() => {
+    const inv = invoiceFilter.trim().replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
     const q = debouncedSearch.trim().toLowerCase()
-    const inv = invoiceFilter.trim()
     const dm = (s?: string | null) => (s || '').toLowerCase()
 
     let fSales = sales
     if (q) fSales = fSales.filter((s: any) =>
       [s.client_name, s.client_phone, invoiceNoText(s.invoice_no)].some((x) => dm(x).includes(q))
     )
-    if (inv) fSales = fSales.filter((s: any) => invoiceNoText(s.invoice_no) === inv)
+    if (inv) fSales = fSales.filter((s: any) => invoiceNoText(s.invoice_no).includes(inv))
 
     let fVisits = visits
     if (q) fVisits = fVisits.filter((v: any) =>
@@ -173,12 +173,14 @@ export const DailyLogs: React.FC = () => {
   const allItems = useMemo(() => {
     const items: { key: string; ts: number }[] = []
     fSales.forEach((s) => items.push({ key: `sale:${s.id}`, ts: new Date(s.created_at || 0).getTime() }))
-    fVisits.forEach((v) => items.push({ key: `visit:${v.id}`, ts: new Date(v.created_at || 0).getTime() }))
-    fAdjustments.forEach((a) =>
-      items.push({ key: `adj:${a.id}`, ts: new Date(a.created_at || 0).getTime() })
-    )
+    if (!invoiceFilter.trim()) {
+      fVisits.forEach((v) => items.push({ key: `visit:${v.id}`, ts: new Date(v.created_at || 0).getTime() }))
+      fAdjustments.forEach((a) =>
+        items.push({ key: `adj:${a.id}`, ts: new Date(a.created_at || 0).getTime() })
+      )
+    }
     return items.sort((a, b) => b.ts - a.ts)
-  }, [fSales, fVisits, fAdjustments])
+  }, [fSales, fVisits, fAdjustments, invoiceFilter])
 
   const hasActiveFilters = search !== '' || doctorFilter !== '' || paymentFilter !== '' || invoiceFilter !== ''
 
