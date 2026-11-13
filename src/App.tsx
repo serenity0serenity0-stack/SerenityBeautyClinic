@@ -7,6 +7,7 @@ import { useAuth } from './hooks/useAuth'
 import { AuthProvider } from './contexts/AuthContext'
 import { canAccess, firstAllowedPage, ROUTE_TO_PAGE } from './lib/permissions'
 import { AppSkeletonProvider } from './components/skeletons'
+import { AdminRoute } from './components/AdminRoute'
 
 // Pages
 import Login from './pages/Login'
@@ -168,9 +169,11 @@ function App() {
             path="/accounts"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <Accounts />
-                </Layout>
+                <AdminRoute>
+                  <Layout>
+                    <Accounts />
+                  </Layout>
+                </AdminRoute>
               </ProtectedRoute>
             }
           />

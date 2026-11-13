@@ -395,7 +395,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logoutReasonRef.current = reason
       }
       // Close the current session
-      const sid = sessionIdRef.current
+      const storageKey = state.user?.id ? `current_session_id_${state.user.id}` : null
+      const sid = sessionIdRef.current || (storageKey && typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null)
       if (sid) {
         try {
           await supabase
@@ -404,6 +405,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('session_id', sid)
         } catch {}
         sessionIdRef.current = null
+        if (storageKey && typeof window !== 'undefined') {
+          try { window.localStorage.removeItem(storageKey) } catch {}
+        }
       }
       clearHeartbeat()
       clearResolveRetry()
@@ -476,19 +480,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Login session tracking for Accounts Activity analytics
   useEffect(() => {
     if (!state.user?.id || !state.clinicId) return
-    if (sessionIdRef.current) return
-    const dedupKey = `session_created_${state.user.id}`
-    const last = (typeof window !== 'undefined') ? window.localStorage.getItem(dedupKey) : null
-    if (last && Date.now() - Number(last) < 5000) return
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(dedupKey, String(Date.now()))
-      setTimeout(() => { try { window.localStorage.removeItem(dedupKey) } catch {} }, 6000)
-    }
+    const storageKey = `current_session_id_${state.user.id}`
+    const existingSid = (typeof window !== 'undefined') ? window.localStorage.getItem(storageKey) : null
 
     let cancelled = false
-    const createSession = async () => {
+    const ensureSession = async () => {
+      // If we already have a session id (from this tab or another), check if it's still active
+      if (existingSid) {
+        try {
+          const { data } = await supabase
+            .from('account_sessions')
+            .select('session_id, status')
+            .eq('session_id', existingSid)
+            .maybeSingle()
+          if (data && data.status === 'ACTIVE') {
+            if (!cancelled) sessionIdRef.current = data.session_id
+            return
+          }
+        } catch {}
+      }
+
+      // dedupe rapid creation across tabs
+      const dedupKey = `session_created_${state.user?.id}`
+      const last = (typeof window !== 'undefined') ? window.localStorage.getItem(dedupKey) : null
+      if (last && Date.now() - Number(last) < 5000) return
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(dedupKey, String(Date.now()))
+        setTimeout(() => { try { window.localStorage.removeItem(dedupKey) } catch {} }, 6000)
+      }
+
       try {
-        // Resolve the application account id (admin_auth.id) if available
         const { data: info } = await supabase
           .from('admin_auth')
           .select('id')
@@ -510,19 +531,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single()
         if (!cancelled && !error && data) {
           sessionIdRef.current = data.session_id
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(storageKey, data.session_id)
+          }
         }
       } catch {
         // ignore tracking errors
       }
     }
-    void createSession()
+    void ensureSession()
     return () => { cancelled = true }
   }, [state.user?.id, state.clinicId])
 
   // Close session on logout (beforeunload marks interrupted)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const sid = sessionIdRef.current
+      const storageKey = state.user?.id ? `current_session_id_${state.user.id}` : null
+      const sid = sessionIdRef.current || (storageKey && typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null)
       if (sid) {
         supabase.rpc('mark_session_interrupted', { p_session_id: sid }).then(() => {}, () => {})
       }
@@ -535,7 +560,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.removeEventListener('beforeunload', handleBeforeUnload)
       }
     }
-  }, [])
+  }, [state.user?.id])
   useEffect(() => {
     if (!state.user?.id || !state.role) return
 
