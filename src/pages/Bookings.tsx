@@ -69,7 +69,7 @@ const timeToMinutes = (iso: string) => {
 export const Bookings: React.FC = () => {
   const { i18n } = useTranslation()
   const lang: 'ar' | 'en' = i18n.language === 'en' ? 'en' : 'ar'
-  const { loading, bookings, getTodayBookings, getUpcomingBookings, getPreviousBookings, addBooking, updateBooking, deleteBooking } = useBookings()
+  const { loading, error: bookingsError, bookings, getTodayBookings, getUpcomingBookings, getPreviousBookings, addBooking, updateBooking, deleteBooking } = useBookings()
   const { searchClients } = useClients()
   const { barbers } = useBarbers()
   const { settings, updateSetting } = useSettings()
@@ -641,7 +641,15 @@ export const Bookings: React.FC = () => {
         </span>
       </div>
 
-      {/* Waiting List Panel */}
+      {/* Error / Debug Info */}
+      {bookingsError && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">
+          خطأ في جلب الحجوزات: {bookingsError}
+        </div>
+      )}
+      <div className="mb-4 text-gray-400 text-xs">
+        إجمالي الحجوزات المجلوبة: {bookings.length} | اليوم: {todayBookings.length} | قادمة: {upcomingBookings.length} | سابقة: {previousBookings.length}
+      </div>
       <AnimatePresence>
         {showWaitingList && (
           <motion.div
