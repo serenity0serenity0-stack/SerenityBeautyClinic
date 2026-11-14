@@ -47,12 +47,15 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const { clinicId } = useAuth()
   const queryClient = useQueryClient()
 
-  // Bookings need a wider window: 7 days past (for queue display) + 7 days future
+  // Bookings need a wider window to show past and future appointments
   const dateFrom = opts?.dateFrom ?? (() => {
-    const d = new Date(); d.setDate(d.getDate() - 7)
+    const d = new Date(); d.setDate(d.getDate() - 365)
     return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
   })()
-  const dateTo = opts?.dateTo ?? plusDays(7)
+  const dateTo = opts?.dateTo ?? (() => {
+    const d = new Date(); d.setDate(d.getDate() + 365)
+    return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })
+  })()
 
   const listQuery = useQuery<Booking[]>({
     queryKey: ['bookings', clinicId, dateFrom, dateTo],
@@ -215,7 +218,7 @@ export const useBookings = (opts?: { dateFrom?: string; dateTo?: string }) => {
   const upcomingBookings = useMemo(() => {
     const today = getEgyptDateString()
     const nowMinutes = timeToMinutes(getEgyptTimeString())
-    const limit = plusDays(2)
+    const limit = plusDays(365)
     return bookings
       .filter((b) => {
         const d = bookingDateOf(b.booking_time)
