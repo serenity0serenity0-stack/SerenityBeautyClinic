@@ -78,8 +78,10 @@ export const Bookings: React.FC = () => {
   const [staffFilter, setStaffFilter] = React.useState('all')
   const [serviceFilter, setServiceFilter] = React.useState('all')
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc')
+  const [selectedDate, setSelectedDate] = React.useState<string | null>(null)
   const [openBookingId, setOpenBookingId] = React.useState<string | null>(null)
   const [expandedDays, setExpandedDays] = React.useState<Set<string>>(new Set())
+
   const [showWaitingList, setShowWaitingList] = React.useState(false)
   const [searchResults, setSearchResults] = React.useState<Client[]>([])
   const [showSearchResults, setShowSearchResults] = React.useState(false)
@@ -513,8 +515,14 @@ export const Bookings: React.FC = () => {
   const staffOptions = Array.from(new Set((bookings || []).map((b: any) => b.barber_name || b.barber_id).filter(Boolean)))
   const serviceOptions = Array.from(new Set((bookings || []).map((b: any) => b.service_type || b.service_name).filter(Boolean)))
 
-  const grouped = useGroupedBookings(currentBookings, tab, search, statusFilter, staffFilter, serviceFilter)
+  const grouped = useGroupedBookings(currentBookings, tab, search, statusFilter, staffFilter, serviceFilter, selectedDate)
   const days = sortOrder === 'desc' ? [...grouped.days].reverse() : grouped.days
+
+  React.useEffect(() => {
+    if (selectedDate && days.length === 0) {
+      setSelectedDate(null)
+    }
+  }, [selectedDate, days.length])
 
   return (
     <div className="min-h-screen py-6">
@@ -571,7 +579,7 @@ export const Bookings: React.FC = () => {
         {(['today', 'upcoming', 'previous'] as const).map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => { setTab(t); setSelectedDate(null) }}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${tab === t ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}
           >
             {t === 'today' ? 'اليوم' : t === 'upcoming' ? 'القادمة' : 'السابقة'} ({t === 'today' ? todayBookings.length : t === 'upcoming' ? upcomingBookings.length : previousBookings.length})
@@ -601,7 +609,13 @@ export const Bookings: React.FC = () => {
         statusCounts={grouped.statusCounts}
       />
 
-      <DateJumpStrip days={days} onJump={(d) => setExpandedDays((prev) => new Set(prev).add(d))} lang="ar" />
+      <DateJumpStrip
+        days={days}
+        selectedDate={selectedDate}
+        onJump={(d) => setSelectedDate((prev) => (prev === d ? null : d))}
+        onClear={() => setSelectedDate(null)}
+        lang="ar"
+      />
 
       {/* Bookings Grid */}
       {loading ? (
@@ -614,6 +628,12 @@ export const Bookings: React.FC = () => {
         <div className="text-center py-12 text-gray-400">
           <AlertCircle className="mx-auto mb-4 text-pink-400/50" size={40} />
           <p>لا توجد حجوزات</p>
+          <button
+            onClick={() => { setSearch(''); setStatusFilter('all'); setStaffFilter('all'); setServiceFilter('all'); setSelectedDate(null) }}
+            className="mt-4 px-4 py-2 bg-white/10 text-white rounded-lg border border-white/20 text-sm hover:bg-white/20"
+          >
+            مسح الفلاتر
+          </button>
         </div>
       ) : (
         days.map((day) => (

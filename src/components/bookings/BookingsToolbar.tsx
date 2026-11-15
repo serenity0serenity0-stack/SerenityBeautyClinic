@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, ChevronDown, ChevronUp } from 'lucide-react'
 
 export interface BookingsToolbarProps {
@@ -23,12 +24,12 @@ export interface BookingsToolbarProps {
   statusCounts: Record<string, number>
 }
 
-export const BookingsToolbar: React.FC<BookingsToolbarProps> = ({
-  search, onSearchChange, statusFilter, onStatusFilterChange,
-  staffFilter, onStaffFilterChange, serviceFilter, onServiceFilterChange,
-  statusOptions, staffOptions, serviceOptions, sortOrder, onSortOrderChange,
-  onExpandAll, onCollapseAll, lang, totalCount, dayCount, statusCounts,
-}) => {
+export const BookingsToolbar: React.FC<BookingsToolbarProps> = (props) => {
+  const { t } = useTranslation()
+  const { search, onSearchChange, statusFilter, onStatusFilterChange,
+    staffFilter, onStaffFilterChange, serviceFilter, onServiceFilterChange,
+    statusOptions, staffOptions, serviceOptions, sortOrder, onSortOrderChange,
+    onExpandAll, onCollapseAll, lang, totalCount, dayCount, statusCounts } = props
   return (
     <div className="space-y-3 mb-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -45,7 +46,7 @@ export const BookingsToolbar: React.FC<BookingsToolbarProps> = ({
         <select value={statusFilter} onChange={(e) => onStatusFilterChange(e.target.value)} className="bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm">
           <option value="all">{lang === 'ar' ? 'جميع الحالات' : 'All statuses'}</option>
           {statusOptions.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{t(`bookings.status.${s}`, { defaultValue: s })}</option>
           ))}
         </select>
         <select value={staffFilter} onChange={(e) => onStaffFilterChange(e.target.value)} className="bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm">
@@ -68,7 +69,7 @@ export const BookingsToolbar: React.FC<BookingsToolbarProps> = ({
       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
         <span>{lang === 'ar' ? 'الإجمالي' : 'Total'}: {totalCount} | {lang === 'ar' ? 'أيام' : 'Days'}: {dayCount}</span>
         {Object.entries(statusCounts).map(([s, c]) => (
-          <span key={s} className="bg-white/5 px-2 py-0.5 rounded">{s}: {c}</span>
+          <span key={s} className="bg-white/5 px-2 py-0.5 rounded">{t(`bookings.status.${s}`, { defaultValue: s })}: {c}</span>
         ))}
         <div className="ms-auto flex gap-2">
           <button onClick={onExpandAll} className="px-2 py-1 bg-white/10 rounded hover:bg-white/20 flex items-center gap-1">

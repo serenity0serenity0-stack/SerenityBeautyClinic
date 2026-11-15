@@ -1,8 +1,9 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { BookingDetailsPanel } from './BookingDetailsPanel'
 import { BookingRow } from './BookingRow'
+import { BookingDetailsPanel } from './BookingDetailsPanel'
 
 export interface BookingDayGroupProps {
   date: string
@@ -60,6 +61,7 @@ export const BookingDayGroup: React.FC<BookingDayGroupProps> = ({
   onCancel,
   onDelete,
 }) => {
+  const { t } = useTranslation()
   const statusCounts: Record<string, number> = {}
   for (const b of bookings) {
     const s = b.status || 'unknown'
@@ -90,7 +92,7 @@ export const BookingDayGroup: React.FC<BookingDayGroupProps> = ({
         <div className="flex gap-1 flex-wrap justify-end">
           {Object.entries(statusCounts).map(([status, count]) => (
             <span key={status} className="text-xs text-gray-400 bg-white/5 px-2 py-0.5 rounded">
-              {status}: {count}
+              {t(`bookings.status.${status}`, { defaultValue: status })}: {count}
             </span>
           ))}
         </div>

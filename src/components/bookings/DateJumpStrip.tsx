@@ -1,14 +1,36 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 
 export interface DateJumpStripProps {
   days: { date: string; bookings: any[] }[]
+  selectedDate: string | null
   onJump: (date: string) => void
+  onClear: () => void
   lang: 'ar' | 'en'
 }
 
-export const DateJumpStrip: React.FC<DateJumpStripProps> = ({ days, onJump, lang }) => {
+export const DateJumpStrip: React.FC<DateJumpStripProps> = ({ days, selectedDate, onJump, onClear, lang }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const selectedRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (selectedRef.current && containerRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }, [selectedDate])
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+    <div ref={containerRef} className="flex gap-2 overflow-x-auto pb-2 mb-4">
+      <button
+        onClick={onClear}
+        aria-pressed={selectedDate === null}
+        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs border transition ${
+          selectedDate === null
+            ? 'bg-purple-600 text-white border-purple-500'
+            : 'bg-white/10 text-gray-300 border-white/10 hover:bg-white/20'
+        }`}
+      >
+        {lang === 'ar' ? 'كل الأيام' : 'All days'}
+      </button>
       {days.map((d) => {
         const label = (() => {
           try {
@@ -17,11 +39,18 @@ export const DateJumpStrip: React.FC<DateJumpStripProps> = ({ days, onJump, lang
             return d.date
           }
         })()
+        const isSelected = selectedDate === d.date
         return (
           <button
             key={d.date}
+            ref={isSelected ? selectedRef : undefined}
             onClick={() => onJump(d.date)}
-            className="shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-gray-300 border border-white/10"
+            aria-pressed={isSelected}
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs border transition ${
+              isSelected
+                ? 'bg-purple-600 text-white border-purple-500'
+                : 'bg-white/10 text-gray-300 border-white/10 hover:bg-white/20'
+            }`}
           >
             {label} ({d.bookings?.length ?? 0})
           </button>
