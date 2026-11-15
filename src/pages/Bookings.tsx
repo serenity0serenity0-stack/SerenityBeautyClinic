@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useBookings, translateBookingError } from '../db/hooks/useBookings'
 import { useClients } from '../db/hooks/useClients'
+import { useGroupedBookings } from '../hooks/useGroupedBookings'
 import { useBarbers } from '../db/hooks/useBarbers'
 import { useSettings } from '../db/hooks/useSettings'
 import { useWaitingList } from '../db/hooks/useWaitingList'
@@ -18,24 +18,21 @@ import {
   minutesToTime,
 } from '../utils/bookingAvailability'
 import { motion, AnimatePresence } from 'framer-motion'
+import { BookingDayGroup } from '../components/bookings/BookingDayGroup'
+import { BookingsToolbar } from '../components/bookings/BookingsToolbar'
+import { DateJumpStrip } from '../components/bookings/DateJumpStrip'
 import {
-  Calendar,
   Clock,
   Plus,
   X,
   Search,
-  Edit2,
-  Trash2,
   AlertCircle,
   CheckCircle2,
   Zap,
-  Filter,
 } from 'lucide-react'
-import { formatDateEgypt, formatTimeEgypt } from '../utils/formatCurrency'
 import toast from 'react-hot-toast'
 import { QueueStatus } from '../components/ui/QueueStatus'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { Skeleton, BookingCardSkeleton } from '../components/skeletons'
 
 interface NewBooking {
   searchQuery: string
@@ -67,19 +64,22 @@ const timeToMinutes = (iso: string) => {
 }
 
 export const Bookings: React.FC = () => {
-  const { i18n } = useTranslation()
-  const lang: 'ar' | 'en' = i18n.language === 'en' ? 'en' : 'ar'
-  const { loading, error: bookingsError, bookings, getTodayBookings, getUpcomingBookings, getPreviousBookings, addBooking, updateBooking, deleteBooking } = useBookings()
+  const { loading, bookings, getTodayBookings, getUpcomingBookings, getPreviousBookings, addBooking, updateBooking, deleteBooking } = useBookings()
   const { searchClients } = useClients()
   const { barbers } = useBarbers()
   const { settings, updateSetting } = useSettings()
-  const { waiting, fetchWaitingList, setWaitingStatus, removeFromWaitingList } = useWaitingList()
+  const { waiting, fetchWaitingList } = useWaitingList()
 
   const [showModal, setShowModal] = React.useState(false)
   const [editingId, setEditingId] = React.useState<string | null>(null)
-  const [viewMode, setViewMode] = React.useState<'today' | 'upcoming' | 'previous'>('today')
-  const [statusFilter, setStatusFilter] = React.useState<'all' | Booking['status']>('all')
+  const [tab, setTab] = React.useState<'today' | 'upcoming' | 'previous'>('today')
+  const [search, setSearch] = React.useState('')
+  const [statusFilter, setStatusFilter] = React.useState('all')
+  const [staffFilter, setStaffFilter] = React.useState('all')
+  const [serviceFilter, setServiceFilter] = React.useState('all')
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc')
+  const [openBookingId, setOpenBookingId] = React.useState<string | null>(null)
+  const [expandedDays, setExpandedDays] = React.useState<Set<string>>(new Set())
   const [showWaitingList, setShowWaitingList] = React.useState(false)
   const [searchResults, setSearchResults] = React.useState<Client[]>([])
   const [showSearchResults, setShowSearchResults] = React.useState(false)
@@ -503,21 +503,18 @@ export const Bookings: React.FC = () => {
   }
 
   const currentBookings =
-    viewMode === 'today'
+    tab === 'today'
       ? todayBookings
-      : viewMode === 'upcoming'
+      : tab === 'upcoming'
       ? upcomingBookings
       : previousBookings
 
-  const filteredBookings = React.useMemo(() => {
-    let list = currentBookings as any[]
-    if (statusFilter !== 'all') list = list.filter((b) => b.status === statusFilter)
-    list = [...list].sort((a, b) => {
-      const cmp = (a.booking_time || '').localeCompare(b.booking_time || '')
-      return sortOrder === 'desc' ? -cmp : cmp
-    })
-    return list
-  }, [currentBookings, statusFilter, sortOrder])
+  const statusOptions = Array.from(new Set((bookings || []).map((b: any) => b.status).filter(Boolean)))
+  const staffOptions = Array.from(new Set((bookings || []).map((b: any) => b.barber_name || b.barber_id).filter(Boolean)))
+  const serviceOptions = Array.from(new Set((bookings || []).map((b: any) => b.service_type || b.service_name).filter(Boolean)))
+
+  const grouped = useGroupedBookings(currentBookings, tab, search, statusFilter, staffFilter, serviceFilter)
+  const days = sortOrder === 'desc' ? [...grouped.days].reverse() : grouped.days
 
   return (
     <div className="min-h-screen py-6">
@@ -569,364 +566,77 @@ export const Bookings: React.FC = () => {
         </div>
       </div>
 
-      {/* View Mode Tabs */}
-      <div className="flex flex-wrap gap-4 mb-8">
-        <motion.button
-          onClick={() => setViewMode('today')}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
-            viewMode === 'today'
-              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
-              : 'bg-white/10 text-gray-300 hover:bg-white/15'
-          }`}
-        >
-          <Clock size={18} />
-          حجوزات اليوم ({todayBookings.length})
-        </motion.button>
-        <motion.button
-          onClick={() => setViewMode('upcoming')}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
-            viewMode === 'upcoming'
-              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
-              : 'bg-white/10 text-gray-300 hover:bg-white/15'
-          }`}
-        >
-          <Calendar size={18} />
-          الحجوزات القادمة ({upcomingBookings.length})
-        </motion.button>
-        <motion.button
-          onClick={() => setViewMode('previous')}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition ${
-            viewMode === 'previous'
-              ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-dark'
-              : 'bg-white/10 text-gray-300 hover:bg-white/15'
-          }`}
-        >
-          <Calendar size={18} />
-          الحجوزات السابقة ({previousBookings.length})
-        </motion.button>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white/5 border border-white/10 rounded-lg">
-        <Filter size={18} className="text-gray-400" />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm"
-        >
-          <option value="all">جميع الحالات</option>
-          <option value="pending">قيد الانتظار</option>
-          <option value="confirmed">مؤكد</option>
-          <option value="checked_in">حضر</option>
-          <option value="ongoing">جاري</option>
-          <option value="completed">اكتمل</option>
-          <option value="cancelled">ملغى</option>
-        </select>
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value as any)}
-          className="bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 text-sm"
-        >
-          <option value="asc">الأقدم أولاً</option>
-          <option value="desc">الأحدث أولاً</option>
-        </select>
-        <span className="text-gray-400 text-sm mr-auto">
-          عدد الحجوزات: {filteredBookings.length}
-        </span>
-      </div>
-
-      {/* Error / Debug Info */}
-      {bookingsError && (
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">
-          خطأ في جلب الحجوزات: {bookingsError}
-        </div>
-      )}
-      <div className="mb-4 text-gray-400 text-xs">
-        إجمالي الحجوزات المجلوبة: {bookings.length} | اليوم: {todayBookings.length} | قادمة: {upcomingBookings.length} | سابقة: {previousBookings.length}
-      </div>
-      <AnimatePresence>
-        {showWaitingList && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(['today', 'upcoming', 'previous'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${tab === t ? 'bg-gradient-to-r from-pink-600 to-pink-700 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}
           >
-            <div className="glass-dark rounded-lg p-6 mb-8 border border-amber-500/20">
-              <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-                <h2 className="text-xl font-bold text-white">🕐 قائمة الانتظار</h2>
-                <span className="text-sm text-gray-400">
-                  عملاء ينتظرون في حال توفر موعد
-                </span>
-              </div>
-              {waiting.length === 0 ? (
-                <p className="text-gray-400 text-center py-6">لا يوجد عملاء في قائمة الانتظار</p>
-              ) : (
-                <div className="grid gap-3">
-                  {waiting.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex flex-wrap justify-between items-center gap-3 bg-white/5 rounded-lg p-3"
-                    >
-                      <div className="min-w-0">
-                        <h3 className="text-white font-semibold truncate">{entry.client_name}</h3>
-                        <p className="text-gray-400 text-sm truncate">
-                          {entry.client_phone}
-                          {entry.service_type ? ` • ${entry.service_type}` : ''}
-                          {entry.barber_name ? ` • ${entry.barber_name}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <motion.button
-                          onClick={() => {
-                            setEditingId(null)
-                            resetForm()
-                            setFormData((prev) => ({
-                              ...prev,
-                              client_name: entry.client_name,
-                              client_phone: entry.client_phone,
-                              service_type: entry.service_type || '',
-                              barber_id: entry.barber_id || prev.barber_id,
-                            }))
-                            setShowModal(true)
-                          }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="px-3 py-1 rounded text-sm bg-pink-500/20 text-pink-300 border border-pink-500/30 hover:bg-pink-500/30"
-                          title="احجز موعداً لهذا العميل"
-                        >
-                          احجز
-                        </motion.button>
-                        <motion.button
-                          onClick={() => {
-                            if (entry.id) setWaitingStatus(entry.id, 'notified')
-                          }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="px-3 py-1 rounded text-sm bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30"
-                          title="تم إخطار العميل"
-                        >
-                          إخطار
-                        </motion.button>
-                        <motion.button
-                          onClick={() => {
-                            if (entry.id) removeFromWaitingList(entry.id)
-                          }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="px-3 py-1 rounded text-sm bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30"
-                          title="إزالة"
-                        >
-                          <Trash2 size={14} />
-                        </motion.button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {t === 'today' ? 'اليوم' : t === 'upcoming' ? 'القادمة' : 'السابقة'} ({t === 'today' ? todayBookings.length : t === 'upcoming' ? upcomingBookings.length : previousBookings.length})
+          </button>
+        ))}
+      </div>
+
+      <BookingsToolbar
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        staffFilter={staffFilter}
+        onStaffFilterChange={setStaffFilter}
+        serviceFilter={serviceFilter}
+        onServiceFilterChange={setServiceFilter}
+        statusOptions={statusOptions}
+        staffOptions={staffOptions}
+        serviceOptions={serviceOptions}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
+        onExpandAll={() => setExpandedDays(new Set(days.map((d) => d.date)))}
+        onCollapseAll={() => setExpandedDays(new Set())}
+        lang="ar"
+        totalCount={grouped.totalCount}
+        dayCount={days.length}
+        statusCounts={grouped.statusCounts}
+      />
+
+      <DateJumpStrip days={days} onJump={(d) => setExpandedDays((prev) => new Set(prev).add(d))} lang="ar" />
 
       {/* Bookings Grid */}
-      <Skeleton
-        loading={loading}
-        skeleton={
-          <div className="grid gap-4">
-            {[0, 1, 2].map((card) => (
-              <BookingCardSkeleton key={card} />
-            ))}
-          </div>
-        }
-      >
-      <div className="grid gap-4">
-        <AnimatePresence>
-          {filteredBookings.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12 text-gray-400"
-            >
-              <AlertCircle className="mx-auto mb-4 text-pink-400/50" size={40} />
-              <p>لا توجد حجوزات في هذا الوقت</p>
-            </motion.div>
-          ) : (
-            filteredBookings.map((booking: any, index: number) => (
-              <motion.div
-                key={booking.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ delay: Math.min(index * 0.04, 0.4) }}
-                className={`glass-dark rounded-lg p-6 border-2 transition ${
-                  booking.status === 'completed'
-                    ? 'border-green-500/50 bg-green-500/5'
-                    : booking.status === 'cancelled'
-                    ? 'border-red-500/30 bg-red-500/5'
-                    : 'border-white/10'
-                }`}
-              >
-                <div className="flex flex-wrap justify-between items-start gap-3 mb-4">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="flex gap-2">
-                      <div className="bg-gradient-to-r from-pink-600 to-pink-700/20 rounded-lg px-3 py-1">
-                        <span className="text-pink-400 font-bold">#{booking.queue_number}</span>
-                      </div>
-                      <div
-                        className={`rounded-lg px-3 py-1 text-xs font-bold ${
-                          booking.status === 'completed'
-                            ? 'bg-green-500/30 text-green-300'
-                            : booking.status === 'cancelled'
-                            ? 'bg-red-500/30 text-red-300'
-                            : booking.status === 'ongoing' || booking.status === 'checked_in'
-                            ? 'bg-blue-500/30 text-blue-300'
-                            : booking.status === 'confirmed'
-                            ? 'bg-purple-500/30 text-purple-300'
-                            : 'bg-yellow-500/30 text-yellow-300'
-                        }`}
-                      >
-                        {booking.status === 'completed'
-                          ? '✅ اكتمل'
-                          : booking.status === 'cancelled'
-                          ? '❌ ملغى'
-                          : booking.status === 'ongoing' || booking.status === 'checked_in'
-                          ? '⏳ جاري'
-                          : booking.status === 'confirmed'
-                          ? '✔️ مؤكد'
-                          : '⏰ انتظار'}
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-white font-semibold truncate">{booking.client_name}</h3>
-                      <p className="text-gray-400 text-sm truncate">{booking.client_phone}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {booking.status !== 'completed' && booking.status !== 'cancelled' && (
-                      <motion.button
-                        onClick={() => handleStatusChange(booking.id, 'completed')}
-                        whileHover={{ scale: 1.1 }}
-                        className="p-2 hover:bg-green-500/20 rounded transition text-green-400 border border-green-500/30"
-                        title="تحديد كمكتمل"
-                        aria-label="تحديد كمكتمل"
-                      >
-                        <CheckCircle2 size={18} />
-                      </motion.button>
-                    )}
-                    <select
-                      value={booking.status}
-                      onChange={(e) => handleStatusChange(booking.id, e.target.value as Booking['status'])}
-                      aria-label="حالة الحجز"
-                      className={`px-3 py-1 rounded text-sm border focus:outline-none transition ${
-                        booking.status === 'completed'
-                          ? 'bg-green-500/20 text-green-300 border-green-500/40'
-                          : booking.status === 'cancelled'
-                          ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                          : 'bg-white/10 text-white border-white/20 focus:border-pink-500'
-                      }`}
-                    >
-                      <option value="pending">قيد الانتظار</option>
-                      <option value="confirmed">مؤكد</option>
-                      <option value="checked_in">حضر</option>
-                      <option value="ongoing">جاري</option>
-                      <option value="completed">اكتمل</option>
-                      <option value="cancelled">ملغى</option>
-                    </select>
-                    <motion.button
-                      onClick={() => handleEdit(booking)}
-                      whileHover={{ scale: 1.1 }}
-                      className="p-2 hover:bg-white/10 rounded transition text-blue-400"
-                      aria-label="تعديل الحجز"
-                    >
-                      <Edit2 size={18} />
-                    </motion.button>
-                    <motion.button
-                      onClick={() => handleDelete(booking.id)}
-                      whileHover={{ scale: 1.1 }}
-                      className="p-2 hover:bg-white/10 rounded transition text-red-400"
-                      aria-label="حذف الحجز"
-                    >
-                      <Trash2 size={18} />
-                    </motion.button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs mb-1">الموعد</p>
-                    <p className="text-white font-semibold">
-                      {formatDateEgypt(booking.booking_time, lang)}
-                    </p>
-                    <p className="text-pink-400">
-                      {formatTimeEgypt(booking.booking_time, lang)}
-                    </p>
-                  </div>
-
-                  {booking.queueInfo && (
-                    <>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400 text-xs mb-1">أمامك في الدور</p>
-                        <p className="text-white font-semibold text-lg">
-                          {booking.queueInfo.peopleAhead}
-                        </p>
-                        <p className="text-gray-400 text-xs">شخص</p>
-                      </div>
-
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400 text-xs mb-1">الانتظار المتوقع</p>
-                        <p className="text-white font-semibold text-lg">
-                          {booking.queueInfo.estimatedWaitMinutes}
-                        </p>
-                        <p className="text-gray-400 text-xs">دقيقة</p>
-                      </div>
-
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400 text-xs mb-1">الوقت المتوقع</p>
-                        <p className="text-pink-400 font-semibold text-sm">
-                          {booking.queueInfo.estimatedStartTime}
-                        </p>
-                      </div>
-                    </>
-                  )}
-
-                  {!booking.queueInfo && (
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-1">المدة</p>
-                      <p className="text-white font-semibold">{booking.duration || 30} دقيقة</p>
-                      <p className="text-gray-400 text-xs">دقيقة</p>
-                    </div>
-                  )}
-                </div>
-
-                {(booking.barber_name || booking.service_type) && (
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    {booking.barber_name && (
-                      <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded">
-                        <span className="text-gray-400">الطبيب:</span>
-                        <span className="text-white font-semibold">{booking.barber_name}</span>
-                      </div>
-                    )}
-                    {booking.service_type && (
-                      <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded">
-                        <span className="text-gray-400">النوع:</span>
-                        <span className="text-white font-semibold">{booking.service_type}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
-      </div>
-      </Skeleton>
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="glass-dark rounded-lg p-4 border border-white/10 animate-pulse h-12" />
+          ))}
+        </div>
+      ) : days.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <AlertCircle className="mx-auto mb-4 text-pink-400/50" size={40} />
+          <p>لا توجد حجوزات</p>
+        </div>
+      ) : (
+        days.map((day) => (
+          <BookingDayGroup
+            key={day.date}
+            date={day.date}
+            bookings={day.bookings}
+            lang="ar"
+            expanded={expandedDays.has(day.date) || (expandedDays.size === 0 && day.date === days[0]?.date)}
+            onToggleExpand={(d) => setExpandedDays((prev) => {
+              const next = new Set(prev)
+              if (next.has(d)) { next.delete(d) } else { next.add(d) }
+              return next
+            })}
+            openBookingId={openBookingId}
+            onToggleBooking={(id) => setOpenBookingId((prev) => (prev === id ? null : id))}
+            onConfirm={(id) => handleStatusChange(id, 'completed')}
+            onEdit={handleEdit}
+            onCancel={(id) => handleStatusChange(id, 'cancelled')}
+            onDelete={handleDelete}
+          />
+        ))
+      )}
 
       {/* Modal */}
       <AnimatePresence>
