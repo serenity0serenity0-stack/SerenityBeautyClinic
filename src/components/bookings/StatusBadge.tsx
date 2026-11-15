@@ -17,7 +17,7 @@ export const StatusBadge: React.FC<{ status: string | null | undefined; classNam
   const { i18n } = useTranslation()
   const value = status || ''
   const style = STATUS_STYLES[value] || DEFAULT_STYLE
-  const label = i18n.t(`bookings.status.${value}`, { defaultValue: value || '—' })
+  const label = i18n.t(`bookings.status.${value}`, { defaultValue: i18n.t(`bookings.${value}`, { defaultValue: value || '—' }) })
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${style.bg} ${style.text} ${style.border} ${className}`}

@@ -1,7 +1,14 @@
-import React from 'react'
-import { Phone, Clock, User, Calendar, FileText, CheckCircle2, XCircle, Edit2, Trash2 } from 'lucide-react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StatusBadge } from './StatusBadge'
+import { Clock, User, FileText, CheckCircle2, XCircle, Edit2, Trash2, Phone } from 'lucide-react'
+
+// Status transition config (style/logic, not business data). Unknown statuses → no action.
+const STATUS_TRANSITIONS: Record<string, string> = {
+  pending: 'confirmed',
+  confirmed: 'checked_in',
+  checked_in: 'ongoing',
+  ongoing: 'completed',
+}
 
 export interface BookingDetailsPanelProps {
   booking: any
@@ -13,10 +20,11 @@ export interface BookingDetailsPanelProps {
 
 export const BookingDetailsPanel: React.FC<BookingDetailsPanelProps> = ({ booking, onConfirm, onEdit, onCancel, onDelete }) => {
   const { t } = useTranslation()
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (!booking) return null
 
-  const dateStr = booking.booking_time ? booking.booking_time.split('T')[0] : ''
   const timeStr = booking.booking_time ? booking.booking_time.split('T')[1]?.substring(0, 5) : ''
   const duration = booking.duration || 0
   const endTime = (() => {
@@ -32,20 +40,17 @@ export const BookingDetailsPanel: React.FC<BookingDetailsPanelProps> = ({ bookin
   const barberName = booking.barber_name
   const notes = booking.notes
   const createdAt = booking.created_at
+  const source = booking.source || booking.booking_source || null
+  const nextStatus = STATUS_TRANSITIONS[booking.status || '']
 
   return (
     <div id={`details-${booking.id}`} className="px-4 py-4 bg-white/5 border-t border-white/10 space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-        <div className="flex items-center gap-2">
-          <Calendar size={14} className="text-gray-400" />
-          <span className="text-gray-400">{t('bookings.booking_date', 'Date')}:</span>
-          <span className="text-white">{dateStr} {timeStr}</span>
-        </div>
-        {endTime && (
+        {timeStr && (
           <div className="flex items-center gap-2">
             <Clock size={14} className="text-gray-400" />
-            <span className="text-gray-400">{t('bookings.expectedTime', 'End')}:</span>
-            <span className="text-white">{endTime} ({duration} {t('bookings.minute', 'min')})</span>
+            <span className="text-gray-400">{t('bookings.booking_time', 'Time')}:</span>
+            <span className="text-white">{timeStr}{endTime ? ` → ${endTime}` : ''} ({duration} {t('bookings.minute', 'min')})</span>
           </div>
         )}
         {barberName && (
@@ -63,28 +68,33 @@ export const BookingDetailsPanel: React.FC<BookingDetailsPanelProps> = ({ bookin
             </a>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">{t('bookings.status', 'Status')}:</span>
-          <StatusBadge status={booking.status} />
-        </div>
         {createdAt && (
           <div className="flex items-center gap-2">
             <FileText size={14} className="text-gray-400" />
-            <span className="text-gray-400">{t('bookings.created_at', 'Created')}:</span>
-            <span className="text-white text-xs">{new Date(createdAt).toLocaleString()}</span>
+            <span className="text-gray-400">{t('bookings.created', 'Created')}:</span>
+            <span className="text-white text-xs">{new Date(createdAt).toLocaleString('ar-EG')}</span>
+          </div>
+        )}
+        {source && (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">{t('bookings.source', 'Source')}:</span>
+            <span className="text-white">{source}</span>
           </div>
         )}
       </div>
 
       {serviceType && (
         <div className="pt-3 border-t border-white/10">
-          <p className="text-gray-300 font-semibold mb-2 flex items-center gap-2">
-            {t('bookings.service', 'Service')}
-          </p>
+          <p className="text-gray-300 font-semibold mb-2">{t('bookings.service', 'Service')}</p>
           <div className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
             <span className="text-white">{serviceType}</span>
             <span className="text-gray-400 text-xs">{duration} {t('bookings.minute', 'min')}</span>
           </div>
+          {duration > 0 && (
+            <div className="text-end text-xs text-gray-400 mt-1">
+              {t('bookings.total', 'Total')}: {duration} {t('bookings.minute', 'min')}
+            </div>
+          )}
         </div>
       )}
 
@@ -96,12 +106,12 @@ export const BookingDetailsPanel: React.FC<BookingDetailsPanelProps> = ({ bookin
       )}
 
       <div className="flex flex-wrap gap-2 pt-3 border-t border-white/10">
-        {booking.status !== 'completed' && booking.status !== 'cancelled' && onConfirm && (
+        {nextStatus && onConfirm && (
           <button
             onClick={(e) => { e.stopPropagation(); onConfirm(booking.id) }}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 text-xs"
           >
-            <CheckCircle2 size={14} /> {t('bookings.complete', 'Complete')}
+            <CheckCircle2 size={14} /> {t(`bookings.status.${nextStatus}`, nextStatus)}
           </button>
         )}
         {onEdit && (
@@ -122,20 +132,60 @@ export const BookingDetailsPanel: React.FC<BookingDetailsPanelProps> = ({ bookin
           </a>
         )}
         {booking.status !== 'cancelled' && onCancel && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onCancel(booking.id) }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 text-xs"
-          >
-            <XCircle size={14} /> {t('bookings.cancel', 'Cancel')}
-          </button>
+          <>
+            {!confirmCancel ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmCancel(true) }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 text-xs"
+              >
+                <XCircle size={14} /> {t('bookings.cancel', 'Cancel')}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-300">{t('bookings.confirm_cancel', 'Cancel this booking?')} ({booking.client_name})</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onCancel(booking.id); setConfirmCancel(false) }}
+                  className="px-2 py-1 rounded bg-red-600 text-white text-xs"
+                >
+                  {t('bookings.confirm', 'Yes')}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmCancel(false) }}
+                  className="px-2 py-1 rounded bg-white/10 text-white text-xs"
+                >
+                  {t('bookings.no', 'No')}
+                </button>
+              </div>
+            )}
+          </>
         )}
         {onDelete && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(booking.id) }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 text-xs"
-          >
-            <Trash2 size={14} /> {t('bookings.delete_booking', 'Delete')}
-          </button>
+          <>
+            {!confirmDelete ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 border border-white/10 text-xs"
+              >
+                <Trash2 size={14} /> {t('bookings.delete_booking', 'Delete')}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-300">{t('bookings.confirm_delete', 'Delete this booking?')} ({booking.client_name})</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(booking.id); setConfirmDelete(false) }}
+                  className="px-2 py-1 rounded bg-red-600 text-white text-xs"
+                >
+                  {t('bookings.confirm', 'Yes')}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(false) }}
+                  className="px-2 py-1 rounded bg-white/10 text-white text-xs"
+                >
+                  {t('bookings.no', 'No')}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

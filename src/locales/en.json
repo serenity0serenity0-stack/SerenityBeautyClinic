@@ -330,7 +330,29 @@
     "pending": "Pending",
     "ongoing": "Ongoing",
     "completed": "Completed",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "confirmed": "Confirmed",
+    "checked_in": "Checked In",
+    "complete": "Complete",
+    "cancel": "Cancel",
+    "call": "Call",
+    "created": "Created",
+    "notes": "Notes",
+    "total": "Total",
+    "expected_end": "Expected End",
+    "confirm_cancel": "Cancel this booking?",
+    "confirm_delete": "Delete this booking?",
+    "confirm": "Yes",
+    "no": "No",
+    "source": "Source",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "checked_in": "Checked In",
+      "ongoing": "Ongoing",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
   },
   "portal": {
     "nav": {

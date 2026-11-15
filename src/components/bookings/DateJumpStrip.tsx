@@ -1,7 +1,7 @@
 import React from 'react'
 
 export interface DateJumpStripProps {
-  days: { date: string }[]
+  days: { date: string; bookings: any[] }[]
   onJump: (date: string) => void
   lang: 'ar' | 'en'
 }
@@ -23,7 +23,7 @@ export const DateJumpStrip: React.FC<DateJumpStripProps> = ({ days, onJump, lang
             onClick={() => onJump(d.date)}
             className="shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-gray-300 border border-white/10"
           >
-            {label}
+            {label} ({d.bookings?.length ?? 0})
           </button>
         )
       })}

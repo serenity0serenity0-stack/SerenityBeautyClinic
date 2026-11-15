@@ -319,7 +319,29 @@
     "pending": "قيد الانتظار",
     "ongoing": "جاري",
     "completed": "مكتمل",
-    "cancelled": "ملغى"
+    "cancelled": "ملغى",
+    "confirmed": "مؤكد",
+    "checked_in": "حضر",
+    "complete": "إكمال",
+    "cancel": "إلغاء",
+    "call": "اتصال",
+    "created": "تم الإنشاء",
+    "notes": "ملاحظات",
+    "total": "المجموع",
+    "expected_end": "الوقت المتوقع للانتهاء",
+    "confirm_cancel": "إلغاء هذا الحجز؟",
+    "confirm_delete": "حذف هذا الحجز؟",
+    "confirm": "نعم",
+    "no": "لا",
+    "source": "المصدر",
+    "status": {
+      "pending": "قيد الانتظار",
+      "confirmed": "مؤكد",
+      "checked_in": "حضر",
+      "ongoing": "جاري",
+      "completed": "اكتمل",
+      "cancelled": "ملغى"
+    }
   },
   "portal": {
     "nav": {
